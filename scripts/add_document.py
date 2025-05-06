@@ -10,7 +10,7 @@ This script demonstrates how to:
 import sys
 import os
 import uuid
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -19,23 +19,52 @@ from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.database.db_linkage import DatabaseLinkage
 
-def extract_entities(text: str) -> List[Dict[str, Any]]:
+def extract_entities_from_metadata(metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
-    Simple entity extraction function.
-    In a real system, you would use NLP techniques or LLMs for this.
-    
+    Extract entities from metadata 'concepts' field.
+
     Args:
-        text: Document text
-        
+        metadata: Document metadata with optional 'concepts' field
+
     Returns:
         List of extracted entities
     """
-    # This is a very simple implementation for demonstration
-    # In a real system, you would use NLP or LLMs for entity extraction
     entities = []
-    
-    # Define some keywords to look for
-    keywords = {
+
+    # Check if concepts are provided in metadata
+    if 'concepts' in metadata:
+        # Split concepts by comma
+        concept_names = [c.strip() for c in metadata['concepts'].split(',')]
+
+        for concept_name in concept_names:
+            if concept_name:  # Skip empty strings
+                # Create a simple ID from the concept name
+                concept_id = f"concept-{concept_name.lower().replace(' ', '-')}"
+
+                entities.append({
+                    "id": concept_id,
+                    "name": concept_name,
+                    "type": "Concept"
+                })
+
+    return entities
+
+def extract_entities_from_text(text: str, domain: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Extract entities from text with domain-specific support.
+
+    Args:
+        text: Document text
+        domain: Optional domain for domain-specific extraction
+
+    Returns:
+        List of extracted entities
+    """
+    # This is a simple implementation that can be extended with more sophisticated NLP
+    entities = []
+
+    # Define common keywords across domains
+    common_keywords = {
         "machine learning": "ML",
         "neural network": "NN",
         "deep learning": "DL",
@@ -55,38 +84,170 @@ def extract_entities(text: str) -> List[Dict[str, Any]]:
         "transfer learning": "TL",
         "fine-tuning": "FT",
         "backpropagation": "BP",
-        "gradient descent": "GD"
+        "gradient descent": "GD",
+        "rag": "RAG",
+        "retrieval-augmented generation": "RAG",
+        "graphrag": "GRAG",
+        "knowledge graph": "KG",
+        "vector database": "VDB",
+        "embedding": "EMB",
+        "hybrid search": "HS",
+        "deduplication": "DD",
+        "large language model": "LLM",
+        "llm": "LLM",
+        "neo4j": "NEO",
+        "chromadb": "CHROMA"
     }
-    
+
+    # Domain-specific keywords
+    domain_keywords = {
+        "AI": {
+            "prompt engineering": "PE",
+            "chain of thought": "COT",
+            "few-shot learning": "FSL",
+            "zero-shot learning": "ZSL",
+            "multimodal": "MM",
+            "text-to-image": "T2I",
+            "diffusion model": "DM",
+            "stable diffusion": "SD",
+            "dall-e": "DALLE",
+            "midjourney": "MJ",
+            "gpt": "GPT",
+            "bert": "BERT",
+            "t5": "T5",
+            "llama": "LLAMA",
+            "claude": "CLAUDE"
+        },
+        "Programming": {
+            "python": "PY",
+            "javascript": "JS",
+            "typescript": "TS",
+            "java": "JAVA",
+            "c++": "CPP",
+            "rust": "RUST",
+            "go": "GO",
+            "docker": "DOCKER",
+            "kubernetes": "K8S",
+            "microservices": "MS",
+            "api": "API",
+            "rest": "REST",
+            "graphql": "GQL",
+            "database": "DB",
+            "sql": "SQL",
+            "nosql": "NOSQL",
+            "git": "GIT",
+            "ci/cd": "CICD",
+            "devops": "DEVOPS"
+        },
+        "Finance": {
+            "stock market": "SM",
+            "investment": "INV",
+            "portfolio": "PORT",
+            "asset allocation": "AA",
+            "diversification": "DIV",
+            "risk management": "RM",
+            "financial planning": "FP",
+            "retirement": "RET",
+            "tax strategy": "TAX",
+            "cryptocurrency": "CRYPTO",
+            "blockchain": "BC",
+            "bitcoin": "BTC",
+            "ethereum": "ETH",
+            "defi": "DEFI",
+            "nft": "NFT"
+        },
+        "Photography": {
+            "exposure": "EXP",
+            "aperture": "AP",
+            "shutter speed": "SS",
+            "iso": "ISO",
+            "composition": "COMP",
+            "depth of field": "DOF",
+            "bokeh": "BOK",
+            "raw": "RAW",
+            "jpeg": "JPEG",
+            "lightroom": "LR",
+            "photoshop": "PS",
+            "portrait": "PORT",
+            "landscape": "LAND",
+            "macro": "MACRO",
+            "astrophotography": "ASTRO"
+        }
+    }
+
+    # Determine which keywords to use based on domain
+    keywords_to_use = common_keywords.copy()
+    if domain and domain in domain_keywords:
+        keywords_to_use.update(domain_keywords[domain])
+
     # Check for each keyword in the text
-    for keyword, abbr in keywords.items():
-        if keyword.lower() in text.lower():
+    text_lower = text.lower()
+    for keyword, abbr in keywords_to_use.items():
+        if keyword.lower() in text_lower:
             entity_id = f"concept-{abbr.lower()}"
             entities.append({
                 "id": entity_id,
                 "name": keyword.title(),
                 "type": "Concept",
-                "abbreviation": abbr
+                "abbreviation": abbr,
+                "domain": domain
             })
-    
+
     return entities
+
+def extract_entities(text: str, metadata: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """
+    Extract entities from both text and metadata.
+
+    Args:
+        text: Document text
+        metadata: Document metadata
+
+    Returns:
+        List of extracted entities
+    """
+    # Extract domain from metadata if available
+    domain = metadata.get("category") if metadata else None
+
+    # Extract entities from text with domain awareness
+    text_entities = extract_entities_from_text(text, domain)
+
+    # Extract entities from metadata if available
+    metadata_entities = extract_entities_from_metadata(metadata) if metadata else []
+
+    # Combine entities, avoiding duplicates by normalizing concept names
+    normalized_entities = {}
+
+    # Process text entities first
+    for entity in text_entities:
+        # Normalize the name (lowercase)
+        normalized_name = entity["name"].lower()
+        normalized_entities[normalized_name] = entity
+
+    # Then process metadata entities, which can override text entities
+    for entity in metadata_entities:
+        normalized_name = entity["name"].lower()
+        normalized_entities[normalized_name] = entity
+
+    # Return the unique entities
+    return list(normalized_entities.values())
 
 def extract_relationships(entities: List[Dict[str, Any]], text: str) -> List[Tuple[str, str, float]]:
     """
     Simple relationship extraction function.
     In a real system, you would use NLP techniques or LLMs for this.
-    
+
     Args:
         entities: List of extracted entities
         text: Document text
-        
+
     Returns:
         List of relationships as (source_id, target_id, strength)
     """
     # This is a very simple implementation for demonstration
     # In a real system, you would use NLP or LLMs for relationship extraction
     relationships = []
-    
+
     # If we have at least 2 entities, create relationships between them
     if len(entities) >= 2:
         # Create relationships between all pairs of entities
@@ -94,14 +255,14 @@ def extract_relationships(entities: List[Dict[str, Any]], text: str) -> List[Tup
             for j in range(i+1, len(entities)):
                 source_id = entities[i]["id"]
                 target_id = entities[j]["id"]
-                
+
                 # Calculate a simple strength based on proximity in the text
                 # In a real system, you would use more sophisticated methods
                 strength = 0.5  # Default strength
-                
+
                 # Add the relationship
                 relationships.append((source_id, target_id, strength))
-    
+
     return relationships
 
 def add_document_to_graphrag(
@@ -112,42 +273,49 @@ def add_document_to_graphrag(
 ) -> Dict[str, Any]:
     """
     Add a document to the GraphRAG system.
-    
+
     Args:
         text: Document text
         metadata: Document metadata
         neo4j_db: Neo4j database instance
         vector_db: Vector database instance
-        
+
     Returns:
         Dictionary with document ID and extracted entities
     """
-    # 1. Extract entities from the document
-    entities = extract_entities(text)
-    
+    # 1. Extract entities from the document and metadata
+    entities = extract_entities(text, metadata)
+
     # 2. Extract relationships between entities
     relationships = extract_relationships(entities, text)
-    
+
     # 3. Create a unique ID for the document
     doc_id = f"doc-{uuid.uuid4()}"
-    
-    # 4. Add entities to Neo4j
+
+    # 4. Add entities to Neo4j with improved deduplication
     for entity in entities:
-        # Check if entity already exists
-        query = f"""
-        MATCH (c:Concept {{id: $id}})
+        # First, check if a concept with the same normalized name already exists
+        normalized_name = entity["name"].lower()
+        query = """
+        MATCH (c:Concept)
+        WHERE toLower(c.name) = $normalized_name
         RETURN c
         """
-        results = neo4j_db.run_query(query, {"id": entity["id"]})
-        
-        if not results:
-            # Create the entity
-            query = f"""
-            CREATE (c:Concept {{
-                id: $id,
-                name: $name,
-                abbreviation: $abbreviation
-            }})
+        existing_concepts = neo4j_db.run_query(query, {"normalized_name": normalized_name})
+
+        if existing_concepts:
+            # Use the existing concept ID instead of creating a new one
+            existing_concept = existing_concepts[0]
+            print(f"Found existing concept with name '{entity['name']}' (ID: {existing_concept['c']['id']})")
+
+            # Update the entity ID to match the existing concept
+            entity["id"] = existing_concept['c']['id']
+
+            # Update the existing concept with any new properties
+            query = """
+            MATCH (c:Concept {id: $id})
+            SET c.name = $name,
+                c.abbreviation = $abbreviation
             RETURN c
             """
             neo4j_db.run_query(query, {
@@ -155,10 +323,48 @@ def add_document_to_graphrag(
                 "name": entity["name"],
                 "abbreviation": entity.get("abbreviation", "")
             })
-            print(f"Created entity: {entity['name']}")
+            print(f"Updated existing concept: {entity['name']}")
         else:
-            print(f"Entity already exists: {entity['name']}")
-    
+            # Check if entity with this ID already exists
+            query = """
+            MATCH (c:Concept {id: $id})
+            RETURN c
+            """
+            results = neo4j_db.run_query(query, {"id": entity["id"]})
+
+            if not results:
+                # Create the entity
+                query = """
+                CREATE (c:Concept {
+                    id: $id,
+                    name: $name,
+                    abbreviation: $abbreviation
+                })
+                RETURN c
+                """
+                neo4j_db.run_query(query, {
+                    "id": entity["id"],
+                    "name": entity["name"],
+                    "abbreviation": entity.get("abbreviation", ""),
+                    "domain": entity.get("domain", "")
+                })
+                print(f"Created new concept: {entity['name']}")
+            else:
+                # Update the existing entity
+                query = """
+                MATCH (c:Concept {id: $id})
+                SET c.name = $name,
+                    c.abbreviation = $abbreviation
+                RETURN c
+                """
+                neo4j_db.run_query(query, {
+                    "id": entity["id"],
+                    "name": entity["name"],
+                    "abbreviation": entity.get("abbreviation", ""),
+                    "domain": entity.get("domain", "")
+                })
+                print(f"Updated concept: {entity['name']}")
+
     # 5. Add relationships to Neo4j
     for source_id, target_id, strength in relationships:
         # Check if relationship already exists
@@ -167,7 +373,7 @@ def add_document_to_graphrag(
         RETURN r
         """
         results = neo4j_db.run_query(query, {"source_id": source_id, "target_id": target_id})
-        
+
         if not results:
             # Create the relationship
             query = f"""
@@ -184,18 +390,18 @@ def add_document_to_graphrag(
             print(f"Created relationship: {source_id} -> {target_id}")
         else:
             print(f"Relationship already exists: {source_id} -> {target_id}")
-    
+
     # 6. Add document to vector database
     # Update metadata with entity IDs
     doc_metadata = metadata.copy()
     doc_metadata["doc_id"] = doc_id
-    
+
     # Add concept IDs to metadata
     if entities:
         # ChromaDB doesn't support lists in metadata, so we'll join them into a string
         doc_metadata["concept_ids"] = ",".join([entity["id"] for entity in entities])
         doc_metadata["concept_id"] = entities[0]["id"]  # Primary concept
-    
+
     # Add document to vector database
     vector_db.add_documents(
         documents=[text],
@@ -203,7 +409,7 @@ def add_document_to_graphrag(
         ids=[doc_id]
     )
     print(f"Added document to vector database with ID: {doc_id}")
-    
+
     return {
         "doc_id": doc_id,
         "entities": entities,
@@ -215,66 +421,67 @@ def main():
     Main function to demonstrate adding a document to the GraphRAG system.
     """
     print("Initializing databases...")
-    
+
     # Initialize databases
     neo4j_db = Neo4jDatabase()
     vector_db = VectorDatabase()
     db_linkage = DatabaseLinkage(neo4j_db, vector_db)
-    
+
     # Verify connections
     if not neo4j_db.verify_connection():
         print("❌ Neo4j connection failed!")
         return
-    
+
     if not vector_db.verify_connection():
         print("❌ Vector database connection failed!")
         return
-    
+
     print("✅ Database connections verified!")
-    
+
     # Example document
     document_text = """
     Neural Networks and Deep Learning: A Comprehensive Guide
-    
-    Neural networks are a set of algorithms, modeled loosely after the human brain, 
-    that are designed to recognize patterns. They interpret sensory data through a 
-    kind of machine perception, labeling or clustering raw input. The patterns they 
-    recognize are numerical, contained in vectors, into which all real-world data, 
+
+    Neural networks are a set of algorithms, modeled loosely after the human brain,
+    that are designed to recognize patterns. They interpret sensory data through a
+    kind of machine perception, labeling or clustering raw input. The patterns they
+    recognize are numerical, contained in vectors, into which all real-world data,
     be it images, sound, text or time series, must be translated.
-    
-    Deep learning is a subset of machine learning where artificial neural networks, 
-    algorithms inspired by the human brain, learn from large amounts of data. Deep 
-    learning is behind many recent advances in AI, including computer vision, natural 
+
+    Deep learning is a subset of machine learning where artificial neural networks,
+    algorithms inspired by the human brain, learn from large amounts of data. Deep
+    learning is behind many recent advances in AI, including computer vision, natural
     language processing, and speech recognition.
-    
-    Convolutional Neural Networks (CNNs) are particularly effective for image processing 
-    tasks. They use convolutional layers to automatically and adaptively learn spatial 
+
+    Convolutional Neural Networks (CNNs) are particularly effective for image processing
+    tasks. They use convolutional layers to automatically and adaptively learn spatial
     hierarchies of features from input images.
-    
-    Recurrent Neural Networks (RNNs) are designed for sequential data. Long Short-Term 
-    Memory (LSTM) networks are a type of RNN capable of learning long-term dependencies, 
+
+    Recurrent Neural Networks (RNNs) are designed for sequential data. Long Short-Term
+    Memory (LSTM) networks are a type of RNN capable of learning long-term dependencies,
     making them ideal for tasks like language modeling and speech recognition.
-    
-    Transformers have revolutionized natural language processing with their attention 
-    mechanism, which allows the model to focus on different parts of the input sequence 
+
+    Transformers have revolutionized natural language processing with their attention
+    mechanism, which allows the model to focus on different parts of the input sequence
     when producing the output.
-    
-    Training neural networks typically involves using gradient descent to minimize a 
-    loss function. Backpropagation is used to calculate the gradient of the loss function 
+
+    Training neural networks typically involves using gradient descent to minimize a
+    loss function. Backpropagation is used to calculate the gradient of the loss function
     with respect to the weights of the network.
-    
-    Transfer learning is a technique where a pre-trained model is fine-tuned on a specific 
+
+    Transfer learning is a technique where a pre-trained model is fine-tuned on a specific
     task, allowing for effective learning with less data.
     """
-    
+
     # Document metadata
     document_metadata = {
         "title": "Neural Networks and Deep Learning: A Comprehensive Guide",
         "author": "AI Researcher",
         "category": "AI",
-        "source": "Example"
+        "source": "Example",
+        "concepts": "Neural Networks, Deep Learning, Transformers, Attention Mechanism"
     }
-    
+
     # Add document to GraphRAG system
     print("\nAdding document to GraphRAG system...")
     result = add_document_to_graphrag(
@@ -283,7 +490,7 @@ def main():
         neo4j_db=neo4j_db,
         vector_db=vector_db
     )
-    
+
     # Perform a hybrid search
     print("\nPerforming hybrid search...")
     search_results = db_linkage.hybrid_search(
@@ -291,19 +498,19 @@ def main():
         n_vector_results=2,
         max_graph_hops=2
     )
-    
+
     # Display search results
     print("\nVector results:")
     for i, doc in enumerate(search_results["vector_results"]["documents"]):
         print(f"  {i+1}. {doc[:100]}...")
-    
+
     print("\nGraph results:")
     for i, result in enumerate(search_results["graph_results"]):
         print(f"  {i+1}. {result['name']} (Score: {result['relevance_score']})")
-    
+
     # Close Neo4j connection
     neo4j_db.close()
-    
+
     print("\n✅ Document added and search performed successfully!")
 
 if __name__ == "__main__":
