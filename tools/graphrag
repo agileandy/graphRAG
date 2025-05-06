@@ -1,0 +1,9 @@
+#!/bin/bash
+# GraphRAG CLI Tool
+# This script is a wrapper for the GraphRAG MPC client
+
+# Get the directory of this script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Run the Python script with the provided arguments
+python3 "$SCRIPT_DIR/graphrag_mpc_client.py" "$@"
