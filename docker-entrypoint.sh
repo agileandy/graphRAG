@@ -25,6 +25,10 @@ wait_for_neo4j() {
   return 1
 }
 
+# Fix Neo4j configuration
+echo "Fixing Neo4j configuration..."
+sed -i 's/db.logs.query.enabled=true/db.logs.query.enabled=INFO/g' /app/neo4j/conf/neo4j.conf
+
 # Start Neo4j in the background
 echo "Starting Neo4j..."
 /app/neo4j/bin/neo4j start

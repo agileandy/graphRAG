@@ -52,8 +52,7 @@ RUN sed -i 's/#server.default_listen_address=0.0.0.0/server.default_listen_addre
     echo "dbms.jvm.additional=-XX:+UseG1GC" >> /app/neo4j/conf/neo4j.conf && \
     echo "dbms.jvm.additional=-XX:+UseStringDeduplication" >> /app/neo4j/conf/neo4j.conf && \
     echo "dbms.tx_state.memory_allocation=ON_HEAP" >> /app/neo4j/conf/neo4j.conf && \
-    echo "dbms.memory.transaction.total_max=512m" >> /app/neo4j/conf/neo4j.conf && \
-    echo "dbms.logs.query.enabled=true" >> /app/neo4j/conf/neo4j.conf && \
+    echo "db.logs.query.enabled=INFO" >> /app/neo4j/conf/neo4j.conf && \
     echo "dbms.logs.query.rotation.keep_number=10" >> /app/neo4j/conf/neo4j.conf && \
     echo "dbms.logs.query.rotation.size=20m" >> /app/neo4j/conf/neo4j.conf
 

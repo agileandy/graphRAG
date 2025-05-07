@@ -21,6 +21,7 @@ fi
 
 # Build and start the container
 echo "Building and starting the GraphRAG Docker container..."
+docker-compose build --no-cache
 docker-compose up -d
 
 # Check if the container is running
