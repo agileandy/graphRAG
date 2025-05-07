@@ -43,9 +43,11 @@ RUN mkdir -p /app/neo4j && \
 
 # Configure Neo4j with optimized settings
 RUN sed -i 's/#server.default_listen_address=0.0.0.0/server.default_listen_address=0.0.0.0/g' /app/neo4j/conf/neo4j.conf && \
-    sed -i 's/#dbms.memory.heap.initial_size=512m/dbms.memory.heap.initial_size=512m/g' /app/neo4j/conf/neo4j.conf && \
-    sed -i 's/#dbms.memory.heap.max_size=512m/dbms.memory.heap.max_size=1024m/g' /app/neo4j/conf/neo4j.conf && \
-    sed -i 's/#dbms.memory.pagecache.size=10g/dbms.memory.pagecache.size=512m/g' /app/neo4j/conf/neo4j.conf && \
+    sed -i 's/#dbms.memory.heap.initial_size=512m/dbms.memory.heap.initial_size=1024m/g' /app/neo4j/conf/neo4j.conf && \
+    sed -i 's/#dbms.memory.heap.max_size=512m/dbms.memory.heap.max_size=2048m/g' /app/neo4j/conf/neo4j.conf && \
+    sed -i 's/#dbms.memory.pagecache.size=10g/dbms.memory.pagecache.size=1024m/g' /app/neo4j/conf/neo4j.conf && \
+    sed -i 's/#dbms.memory.transaction.total.max=256m/dbms.memory.transaction.total.max=512m/g' /app/neo4j/conf/neo4j.conf && \
+    sed -i 's/#db.memory.transaction.max=16m/db.memory.transaction.max=64m/g' /app/neo4j/conf/neo4j.conf && \
     echo "dbms.security.auth_enabled=true" >> /app/neo4j/conf/neo4j.conf && \
     echo "dbms.connector.bolt.listen_address=0.0.0.0:7687" >> /app/neo4j/conf/neo4j.conf && \
     echo "dbms.connector.http.listen_address=0.0.0.0:7474" >> /app/neo4j/conf/neo4j.conf && \
@@ -68,7 +70,7 @@ ENV NEO4J_URI=bolt://localhost:7687 \
     PYTHONPATH=/app \
     GRAPHRAG_LOG_LEVEL=INFO \
     GRAPHRAG_LOG_DIR=/app/data/logs \
-    JAVA_OPTS="-Xms512m -Xmx1024m" \
+    JAVA_OPTS="-Xms1024m -Xmx2048m" \
     GUNICORN_WORKERS=2 \
     GUNICORN_THREADS=4 \
     GUNICORN_TIMEOUT=120 \

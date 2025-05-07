@@ -65,18 +65,62 @@ def initialize_neo4j(neo4j_db: Neo4jDatabase) -> bool:
         # Create indexes
         print("Creating indexes...")
 
-        # Index for Book title
+        # Book indexes
         neo4j_db.run_query("""
         CREATE INDEX book_title IF NOT EXISTS
         FOR (b:Book)
         ON (b.title)
         """)
 
-        # Index for Concept name
+        neo4j_db.run_query("""
+        CREATE INDEX book_category IF NOT EXISTS
+        FOR (b:Book)
+        ON (b.category)
+        """)
+
+        neo4j_db.run_query("""
+        CREATE INDEX book_isbn IF NOT EXISTS
+        FOR (b:Book)
+        ON (b.isbn)
+        """)
+
+        # Chapter indexes
+        neo4j_db.run_query("""
+        CREATE INDEX chapter_title IF NOT EXISTS
+        FOR (c:Chapter)
+        ON (c.title)
+        """)
+
+        neo4j_db.run_query("""
+        CREATE INDEX chapter_book_id IF NOT EXISTS
+        FOR (c:Chapter)
+        ON (c.book_id)
+        """)
+
+        # Section indexes
+        neo4j_db.run_query("""
+        CREATE INDEX section_title IF NOT EXISTS
+        FOR (s:Section)
+        ON (s.title)
+        """)
+
+        neo4j_db.run_query("""
+        CREATE INDEX section_chapter_id IF NOT EXISTS
+        FOR (s:Section)
+        ON (s.chapter_id)
+        """)
+
+        # Concept indexes
         neo4j_db.run_query("""
         CREATE INDEX concept_name IF NOT EXISTS
         FOR (c:Concept)
         ON (c.name)
+        """)
+
+        neo4j_db.run_query("""
+        CREATE INDEX concept_category IF NOT EXISTS
+        FOR (c:Concept)
+        ON (c.category)
         """)
 
         print("✅ Neo4j database initialized successfully!")

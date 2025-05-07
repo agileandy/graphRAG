@@ -2,13 +2,17 @@
 Vector database connection and operations for GraphRAG project.
 """
 import os
-from typing import Dict, List, Optional, Any, Union
+import time
+from typing import Dict, List, Optional, Any, Union, Tuple
 import chromadb
 from chromadb.config import Settings
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Default batch size for adding documents
+DEFAULT_BATCH_SIZE = 100
 
 class VectorDatabase:
     """
@@ -17,7 +21,7 @@ class VectorDatabase:
     def __init__(self, persist_directory: Optional[str] = None):
         """
         Initialize vector database connection.
-        
+
         Args:
             persist_directory: Directory to persist vector database
                 (default: from environment variable)
@@ -27,32 +31,51 @@ class VectorDatabase:
         )
         self.client = None
         self.collection = None
-        
-    def connect(self, collection_name: str = "ebook_chunks") -> None:
+
+    def connect(self,
+                collection_name: str = "ebook_chunks",
+                optimize_for_large_datasets: bool = True) -> None:
         """
         Connect to vector database and get or create collection.
-        
+
         Args:
             collection_name: Name of the collection to use
+            optimize_for_large_datasets: Whether to optimize for large datasets
         """
         # Ensure the persist directory exists
         os.makedirs(self.persist_directory, exist_ok=True)
-        
+
         # Create client with persistence using the new client format
         self.client = chromadb.PersistentClient(
             path=self.persist_directory
         )
-        
-        # Get or create collection
+
+        # Configure collection settings for large datasets
+        collection_metadata = {
+            "hnsw:space": "cosine",  # Use cosine similarity
+        }
+
+        if optimize_for_large_datasets:
+            # Add HNSW index parameters optimized for large datasets
+            collection_metadata.update({
+                # Increase the number of connections in the graph for better recall
+                "hnsw:construction_ef": 128,  # Default is 100
+                "hnsw:search_ef": 128,        # Default is 10
+                "hnsw:M": 16,                 # Default is 16
+                # Optimize for memory usage
+                "hnsw:num_threads": 4         # Use multiple threads for indexing
+            })
+
+        # Get or create collection with optimized settings
         self.collection = self.client.get_or_create_collection(
             name=collection_name,
-            metadata={"hnsw:space": "cosine"}
+            metadata=collection_metadata
         )
-        
+
     def verify_connection(self) -> bool:
         """
         Verify vector database connection.
-        
+
         Returns:
             True if connection is successful, False otherwise.
         """
@@ -64,110 +87,187 @@ class VectorDatabase:
         except Exception as e:
             print(f"Vector database connection error: {e}")
             return False
-            
-    def add_documents(self, 
-                     documents: List[str], 
+
+    def add_documents(self,
+                     documents: List[str],
                      embeddings: Optional[List[List[float]]] = None,
                      metadatas: Optional[List[Dict[str, Any]]] = None,
-                     ids: Optional[List[str]] = None) -> None:
+                     ids: Optional[List[str]] = None,
+                     batch_size: int = DEFAULT_BATCH_SIZE) -> None:
         """
         Add documents to vector database.
-        
+
         Args:
             documents: List of document texts
             embeddings: List of document embeddings (optional)
             metadatas: List of document metadata (optional)
             ids: List of document IDs (optional)
+            batch_size: Number of documents to add in each batch
         """
         if self.collection is None:
             self.connect()
-            
+
         # Generate IDs if not provided
         if ids is None:
             ids = [f"doc_{i}" for i in range(len(documents))]
-            
-        # Add documents
-        self.collection.add(
-            documents=documents,
-            embeddings=embeddings,
-            metadatas=metadatas,
-            ids=ids
-        )
-        
-    def query(self, 
+
+        # Process in batches to avoid memory issues and improve performance
+        total_docs = len(documents)
+
+        if total_docs <= batch_size:
+            # Small enough to add in one batch
+            self.collection.add(
+                documents=documents,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                ids=ids
+            )
+        else:
+            # Process in batches
+            print(f"Adding {total_docs} documents in batches of {batch_size}...")
+
+            for i in range(0, total_docs, batch_size):
+                end_idx = min(i + batch_size, total_docs)
+                batch_docs = documents[i:end_idx]
+                batch_ids = ids[i:end_idx]
+
+                # Handle embeddings and metadata if provided
+                batch_embeddings = None
+                if embeddings is not None:
+                    batch_embeddings = embeddings[i:end_idx]
+
+                batch_metadatas = None
+                if metadatas is not None:
+                    batch_metadatas = metadatas[i:end_idx]
+
+                # Add batch
+                self.collection.add(
+                    documents=batch_docs,
+                    embeddings=batch_embeddings,
+                    metadatas=batch_metadatas,
+                    ids=batch_ids
+                )
+
+                print(f"  Added batch {i//batch_size + 1}/{(total_docs + batch_size - 1)//batch_size}: "
+                      f"documents {i+1}-{end_idx} of {total_docs}")
+
+                # Small delay to avoid overwhelming the database
+                time.sleep(0.1)
+
+    def query(self,
              query_texts: Optional[List[str]] = None,
              query_embeddings: Optional[List[List[float]]] = None,
              n_results: int = 5,
              where: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Query vector database.
-        
+
         Args:
             query_texts: List of query texts
             query_embeddings: List of query embeddings
             n_results: Number of results to return
             where: Filter query by metadata
-            
+
         Returns:
             Query results
         """
         if self.collection is None:
             self.connect()
-            
+
         return self.collection.query(
             query_texts=query_texts,
             query_embeddings=query_embeddings,
             n_results=n_results,
             where=where
         )
-        
-    def get(self, 
+
+    def get(self,
            ids: Optional[List[str]] = None,
            where: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Get documents from vector database.
-        
+
         Args:
             ids: List of document IDs
             where: Filter query by metadata
-            
+
         Returns:
             Documents
         """
         if self.collection is None:
             self.connect()
-            
+
         return self.collection.get(
             ids=ids,
             where=where
         )
-        
+
     def count(self) -> int:
         """
         Count documents in vector database.
-        
+
         Returns:
             Number of documents
         """
         if self.collection is None:
             self.connect()
-            
+
         return self.collection.count()
-        
+
+    def process_document_batch(self,
+                          documents: List[str],
+                          metadatas: List[Dict[str, Any]],
+                          ids: Optional[List[str]] = None,
+                          batch_size: int = DEFAULT_BATCH_SIZE) -> None:
+        """
+        Process a batch of documents with optimized settings.
+
+        This method handles:
+        1. Metadata optimization for efficient filtering
+        2. Batch processing to avoid memory issues
+        3. Proper ID generation if not provided
+
+        Args:
+            documents: List of document texts
+            metadatas: List of document metadata
+            ids: List of document IDs (optional)
+            batch_size: Number of documents per batch
+        """
+        from src.processing.document_processor import optimize_metadata
+
+        # Ensure connection
+        if self.collection is None:
+            self.connect()
+
+        # Generate IDs if not provided
+        if ids is None:
+            ids = [f"doc-{i}" for i in range(len(documents))]
+
+        # Optimize metadata for each document
+        optimized_metadatas = [optimize_metadata(meta) for meta in metadatas]
+
+        # Add documents in batches
+        self.add_documents(
+            documents=documents,
+            metadatas=optimized_metadatas,
+            ids=ids,
+            batch_size=batch_size
+        )
+
     def create_dummy_data(self) -> None:
         """
         Create dummy data for testing.
         """
         if self.collection is None:
             self.connect()
-            
+
         # Create some dummy documents with metadata linking to Neo4j nodes
         documents = [
             "Neural networks are a set of algorithms, modeled loosely after the human brain, that are designed to recognize patterns.",
             "Decision trees are a non-parametric supervised learning method used for classification and regression.",
             "Gradient descent is an optimization algorithm used to minimize some function by iteratively moving in the direction of steepest descent."
         ]
-        
+
         # Metadata linking to Neo4j nodes
         metadatas = [
             {
@@ -195,10 +295,10 @@ class VectorDatabase:
                 "source": "Introduction to Machine Learning"
             }
         ]
-        
+
         # IDs matching Neo4j node IDs for concepts
         ids = ["chunk-concept-001", "chunk-concept-002", "chunk-concept-003"]
-        
+
         # Add documents
         self.add_documents(
             documents=documents,
