@@ -26,9 +26,25 @@ var/
 
 # Data directories
 data/
+chroma_db/
 
-# Neo4j data
+# Neo4j data and runtime files
 neo4j/data/
+neo4j/run/*.pid
+neo4j/logs/
+neo4j.conf
+
+# MCP/MPC server files
+mcp_server_startup.log
+mcp_settings.json
+
+# Development notes and specs
+activeDevelopment.md
+systemDesign.md
+specs/next-steps-*.md
+
+# Test files
+test_*.py
 
 # IDE
 .idea/
