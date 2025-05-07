@@ -9,6 +9,7 @@ import sys
 import json
 import asyncio
 import glob
+import time
 import websockets
 from typing import Dict, List, Any
 
@@ -217,6 +218,13 @@ async def handle_add_document(data: Dict[str, Any]) -> Dict[str, Any]:
     metadata = data.get('metadata', {})
 
     try:
+        # Ensure vector database is connected
+        vector_db.connect()
+        
+        # Ensure Neo4j database is connected
+        if not neo4j_db.verify_connection():
+            return {'error': 'Neo4j database connection failed'}
+            
         # Import here to avoid circular imports
         from scripts.add_document import add_document_to_graphrag
 
@@ -262,6 +270,13 @@ async def handle_add_folder(data: Dict[str, Any]) -> Dict[str, Any]:
         return {'error': f"Folder not found: {folder_path}"}
 
     try:
+        # Ensure vector database is connected
+        vector_db.connect()
+        
+        # Ensure Neo4j database is connected
+        if not neo4j_db.verify_connection():
+            return {'error': 'Neo4j database connection failed'}
+            
         # Import here to avoid circular imports
         from scripts.add_document import add_document_to_graphrag
 
@@ -446,8 +461,36 @@ async def handle_passages_about_concept(data: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return {'error': str(e)}
 
+# Simple ping handler for connection testing
+async def handle_ping(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Handle ping request.
+
+    Args:
+        data: Request data
+
+    Returns:
+        Ping response
+    """
+    # Ensure vector database is connected
+    vector_db.connect()
+    
+    # Ensure Neo4j database is connected
+    neo4j_db.verify_connection()
+    
+    return {
+        'status': 'success',
+        'message': 'Pong!',
+        'timestamp': time.time(),
+        'vector_db_collection': vector_db.collection.name if vector_db.collection else None,
+        'neo4j_connected': neo4j_db.verify_connection()
+    }
+
 # Map of action handlers
 ACTION_HANDLERS = {
+    # Utility tools
+    'ping': handle_ping,  # Simple ping for connection testing
+    
     # Search tools
     'search': handle_search,  # Hybrid search
     'concept': handle_concept,  # Get concept info
