@@ -18,6 +18,10 @@ services:
       - ./data:/app/data
       # Mount ebooks folder
       - /Users/andyspamer/ebooks:/app/ebooks
+      # Mount source code for development
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./tools:/app/tools
     environment:
       # Use 0.0.0.0 inside the container
       - NEO4J_URI=bolt://0.0.0.0:7687

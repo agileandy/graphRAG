@@ -174,14 +174,26 @@ Run the following scripts to verify that the database setup is working correctly
 
 ```bash
 # Verify Neo4j connection and schema
-python scripts/verify_neo4j.py
+uv run scripts/verify_neo4j.py
 
 # Verify vector database connection
-python scripts/verify_vector_db.py
+uv run scripts/verify_vector_db.py
 
 # Verify database linkage
-python scripts/verify_linkage.py
+uv run scripts/verify_linkage.py
+
+# Run a complete end-to-end test
+./scripts/run_end_to_end_test.sh
 ```
+
+The end-to-end test script:
+1. Resets the databases (Neo4j and ChromaDB)
+2. Verifies database connections
+3. Adds a test document
+4. Performs a search query
+5. Displays the results
+
+This is useful for ensuring that the entire system is working correctly, especially after making changes to the code or configuration.
 
 ## Usage
 
@@ -190,7 +202,7 @@ python scripts/verify_linkage.py
 To add a single document to the GraphRAG system:
 
 ```bash
-python scripts/add_document.py
+uv run scripts/add_document.py
 ```
 
 This script demonstrates:
@@ -205,10 +217,10 @@ To process multiple documents at once:
 
 ```bash
 # First, create example documents
-python scripts/batch_process.py --create-examples
+uv run scripts/batch_process.py --create-examples
 
 # Then process the example documents
-python scripts/batch_process.py --dir ./example_docs
+uv run scripts/batch_process.py --dir ./example_docs
 ```
 
 This script:
@@ -222,16 +234,16 @@ To query the GraphRAG system:
 
 ```bash
 # Interactive mode
-python scripts/query_graphrag.py
+uv run scripts/query_graphrag.py
 
 # Direct search
-python scripts/query_graphrag.py --query "How do transformers work in deep learning?"
+uv run scripts/query_graphrag.py --query "How do transformers work in deep learning?"
 
 # Explore a concept
-python scripts/query_graphrag.py --concept "neural network"
+uv run scripts/query_graphrag.py --concept "neural network"
 
 # Find documents for a concept
-python scripts/query_graphrag.py --documents "machine learning"
+uv run scripts/query_graphrag.py --documents "machine learning"
 ```
 
 This script demonstrates:
@@ -316,7 +328,7 @@ GraphRAG provides LangChain tools for easy integration with LangChain agents:
 
 ```bash
 # Run the LangChain agent example
-python scripts/langchain_agent_example.py
+uv run scripts/langchain_agent_example.py
 ```
 
 The LangChain integration provides the following tools:
@@ -332,7 +344,7 @@ GraphRAG provides OpenAI function calling integration for easy integration with 
 
 ```bash
 # Run the OpenAI function calling example
-python scripts/openai_function_example.py
+uv run scripts/openai_function_example.py
 ```
 
 The OpenAI function calling integration provides the following functions:
@@ -351,7 +363,7 @@ GraphRAG provides a WebSocket-based MPC (Message Passing Communication) server f
 ./scripts/start_mpc_server.sh
 
 # Run the MPC client example
-python scripts/mpc_client_example.py
+uv run scripts/mpc_client_example.py
 ```
 
 The MPC server supports the following actions:
@@ -360,6 +372,34 @@ The MPC server supports the following actions:
 - `concept` - Explore a concept
 - `documents` - Find documents related to a concept
 - `add_document` - Add a document to the system
+
+## Docker Development
+
+For detailed information about developing with Docker, see the [Docker Development Guide](docs/docker_development.md).
+
+The guide covers:
+- Development workflow options (volume mounts vs. inside container)
+- How to synchronize changes between the container and local source code
+- End-to-end testing procedures
+- Troubleshooting common issues
+
+### Volume Mounts for Development
+
+The docker-compose.yml file includes volume mounts for source code to facilitate development:
+
+```yaml
+volumes:
+  # Persist data
+  - ./data:/app/data
+  # Mount ebooks folder
+  - /Users/andyspamer/ebooks:/app/ebooks
+  # Mount source code for development
+  - ./src:/app/src
+  - ./scripts:/app/scripts
+  - ./tools:/app/tools
+```
+
+This allows you to make changes to the local source code and have them immediately reflected in the container.
 
 ## Using Docker with AI Agents
 
@@ -370,13 +410,13 @@ When using the Docker container with AI agents, you'll need to make sure your ag
 If your agent is running outside the Docker container, use the following URL to connect to the API server:
 
 ```python
-api_url = "http://localhost:5000"
+api_url = "http://localhost:5001"  # Note the port is 5001 in docker-compose.yml
 ```
 
 If your agent is running inside the same Docker network, you can use the container name:
 
 ```python
-api_url = "http://graphrag:5000"
+api_url = "http://graphrag:5000"  # Inside container uses port 5000
 ```
 
 ### Connecting to the MPC Server
@@ -384,8 +424,8 @@ api_url = "http://graphrag:5000"
 For the MPC server, use the following WebSocket URL:
 
 ```python
-mpc_url = "ws://localhost:8765"  # From outside the container
-mpc_url = "ws://graphrag:8765"   # From inside the Docker network
+mpc_url = "ws://localhost:8766"  # From outside the container (port 8766 in docker-compose.yml)
+mpc_url = "ws://graphrag:8765"   # From inside the Docker network (port 8765 inside container)
 ```
 
 ### Example: Using LangChain with Docker
@@ -394,7 +434,7 @@ mpc_url = "ws://graphrag:8765"   # From inside the Docker network
 from src.agents.langchain_tools import get_graphrag_tools
 
 # Connect to the GraphRAG API server in Docker
-tools = get_graphrag_tools(api_url="http://localhost:5000")
+tools = get_graphrag_tools(api_url="http://localhost:5001")
 ```
 
 ### Example: Using OpenAI Functions with Docker
@@ -403,8 +443,8 @@ tools = get_graphrag_tools(api_url="http://localhost:5000")
 from src.agents.openai_functions import get_graphrag_functions, get_graphrag_function_map
 
 # Connect to the GraphRAG API server in Docker
-functions = get_graphrag_functions(api_url="http://localhost:5000")
-function_map = get_graphrag_function_map(api_url="http://localhost:5000")
+functions = get_graphrag_functions(api_url="http://localhost:5001")
+function_map = get_graphrag_function_map(api_url="http://localhost:5001")
 ```
 
 ## Extending the System
