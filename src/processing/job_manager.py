@@ -1,0 +1,299 @@
+"""
+Job management system for GraphRAG project.
+
+This module provides a job queue and management system for handling
+long-running background tasks in the GraphRAG system.
+"""
+import os
+import time
+import uuid
+import asyncio
+import threading
+from typing import Dict, List, Any, Optional, Callable, Awaitable, Union
+from enum import Enum
+from datetime import datetime
+import json
+
+# Job status enum
+class JobStatus(str, Enum):
+    """Job status enum."""
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+class Job:
+    """
+    Job class for tracking background tasks.
+    """
+    def __init__(
+        self,
+        job_id: str,
+        job_type: str,
+        params: Dict[str, Any],
+        created_by: Optional[str] = None
+    ):
+        """
+        Initialize a job.
+
+        Args:
+            job_id: Unique job ID
+            job_type: Type of job (e.g., "add-document", "add-folder")
+            params: Job parameters
+            created_by: ID of the client that created the job
+        """
+        self.job_id = job_id
+        self.job_type = job_type
+        self.params = params
+        self.created_by = created_by
+        self.status = JobStatus.QUEUED
+        self.progress = 0.0
+        self.total_items = 0
+        self.processed_items = 0
+        self.created_at = datetime.now()
+        self.started_at = None
+        self.completed_at = None
+        self.result = None
+        self.error = None
+        self.task = None  # Will hold the asyncio task
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert job to dictionary.
+
+        Returns:
+            Job as dictionary
+        """
+        return {
+            "job_id": self.job_id,
+            "job_type": self.job_type,
+            "status": self.status,
+            "progress": self.progress,
+            "total_items": self.total_items,
+            "processed_items": self.processed_items,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "result": self.result,
+            "error": self.error
+        }
+
+    def update_progress(self, processed_items: int, total_items: int) -> None:
+        """
+        Update job progress.
+
+        Args:
+            processed_items: Number of processed items
+            total_items: Total number of items
+        """
+        self.processed_items = processed_items
+        self.total_items = total_items
+        if total_items > 0:
+            self.progress = (processed_items / total_items) * 100
+        else:
+            self.progress = 0
+
+    def start(self) -> None:
+        """Mark job as started."""
+        self.status = JobStatus.RUNNING
+        self.started_at = datetime.now()
+
+    def complete(self, result: Any = None) -> None:
+        """
+        Mark job as completed.
+
+        Args:
+            result: Job result
+        """
+        self.status = JobStatus.COMPLETED
+        self.completed_at = datetime.now()
+        self.progress = 100
+        self.result = result
+
+    def fail(self, error: str) -> None:
+        """
+        Mark job as failed.
+
+        Args:
+            error: Error message
+        """
+        self.status = JobStatus.FAILED
+        self.completed_at = datetime.now()
+        self.error = error
+
+    def cancel(self) -> None:
+        """Mark job as cancelled."""
+        self.status = JobStatus.CANCELLED
+        self.completed_at = datetime.now()
+
+class JobManager:
+    """
+    Job manager for handling background tasks.
+    """
+    _instance = None
+
+    def __new__(cls):
+        """Singleton pattern."""
+        if cls._instance is None:
+            cls._instance = super(JobManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        """Initialize job manager."""
+        if self._initialized:
+            return
+        
+        self.jobs: Dict[str, Job] = {}
+        self.lock = threading.RLock()
+        self._initialized = True
+
+    def create_job(
+        self,
+        job_type: str,
+        params: Dict[str, Any],
+        created_by: Optional[str] = None
+    ) -> Job:
+        """
+        Create a new job.
+
+        Args:
+            job_type: Type of job
+            params: Job parameters
+            created_by: ID of the client that created the job
+
+        Returns:
+            Created job
+        """
+        job_id = str(uuid.uuid4())
+        job = Job(job_id, job_type, params, created_by)
+        
+        with self.lock:
+            self.jobs[job_id] = job
+        
+        return job
+
+    def get_job(self, job_id: str) -> Optional[Job]:
+        """
+        Get a job by ID.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            Job or None if not found
+        """
+        with self.lock:
+            return self.jobs.get(job_id)
+
+    def get_jobs(
+        self,
+        status: Optional[Union[JobStatus, List[JobStatus]]] = None,
+        job_type: Optional[str] = None,
+        created_by: Optional[str] = None
+    ) -> List[Job]:
+        """
+        Get jobs filtered by status, type, and creator.
+
+        Args:
+            status: Filter by status
+            job_type: Filter by job type
+            created_by: Filter by creator
+
+        Returns:
+            List of jobs
+        """
+        with self.lock:
+            jobs = list(self.jobs.values())
+        
+        # Filter by status
+        if status:
+            if isinstance(status, list):
+                jobs = [job for job in jobs if job.status in status]
+            else:
+                jobs = [job for job in jobs if job.status == status]
+        
+        # Filter by job type
+        if job_type:
+            jobs = [job for job in jobs if job.job_type == job_type]
+        
+        # Filter by creator
+        if created_by:
+            jobs = [job for job in jobs if job.created_by == created_by]
+        
+        return jobs
+
+    def run_job_async(
+        self,
+        job: Job,
+        task_func: Callable[[Job], Awaitable[Any]]
+    ) -> None:
+        """
+        Run a job asynchronously.
+
+        Args:
+            job: Job to run
+            task_func: Async function to run
+        """
+        async def _run_job():
+            job.start()
+            try:
+                result = await task_func(job)
+                job.complete(result)
+            except Exception as e:
+                job.fail(str(e))
+                raise
+        
+        # Create and store the task
+        job.task = asyncio.create_task(_run_job())
+
+    def cancel_job(self, job_id: str) -> bool:
+        """
+        Cancel a job.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            True if job was cancelled, False otherwise
+        """
+        job = self.get_job(job_id)
+        if not job:
+            return False
+        
+        if job.status in [JobStatus.QUEUED, JobStatus.RUNNING]:
+            if job.task and not job.task.done():
+                job.task.cancel()
+            job.cancel()
+            return True
+        
+        return False
+
+    def cleanup_old_jobs(self, max_age_hours: int = 24) -> int:
+        """
+        Clean up old completed jobs.
+
+        Args:
+            max_age_hours: Maximum age in hours
+
+        Returns:
+            Number of jobs cleaned up
+        """
+        now = datetime.now()
+        jobs_to_remove = []
+        
+        with self.lock:
+            for job_id, job in self.jobs.items():
+                if job.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
+                    if job.completed_at:
+                        age = (now - job.completed_at).total_seconds() / 3600
+                        if age > max_age_hours:
+                            jobs_to_remove.append(job_id)
+        
+        # Remove jobs outside the lock to avoid deadlocks
+        for job_id in jobs_to_remove:
+            with self.lock:
+                self.jobs.pop(job_id, None)
+        
+        return len(jobs_to_remove)
