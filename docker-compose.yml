@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VERSION: latest
     container_name: graphrag
     ports:
       # Neo4j Browser (changed from 7474 to 7475)

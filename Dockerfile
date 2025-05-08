@@ -1,5 +1,9 @@
 FROM python:3.10-slim
 
+# Define build argument for version
+ARG VERSION=latest
+ENV APP_VERSION=$VERSION
+
 # Set working directory
 WORKDIR /app
 
@@ -13,6 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     htop \
     vim \
+    # Dependencies for PDF processing
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Java for Neo4j
