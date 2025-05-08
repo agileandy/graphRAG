@@ -242,8 +242,9 @@ flowchart TD
      ```
 
 3. **Embedding Generation**: Generate embeddings for each chunk
-   - Uses OpenAI's text-embedding-ada-002 model (1536 dimensions) by default
-   - Local embedding models supported via LM Studio integration
+   - Uses Ollama with "snowflake-arctic-embed2:latest" model (1024 dimensions) by default
+   - Optional reranking capability via Ollama with "qllama/bge-reranker-large:latest"
+   - Phi-4 model reserved for concept extraction and NLP processing tasks
    - Batch processing to optimize API calls
    - Caching to avoid re-embedding identical content
 
@@ -844,8 +845,11 @@ NEO4J_DATA_DIR=~/.graphrag/neo4j
 CHROMADB_PERSIST_DIRECTORY=./data/chromadb
 
 # LLM Configuration
-OPENAI_API_KEY=your_openai_api_key
-LLM_ENDPOINT=http://192.168.1.21:1234  # Local LM Studio endpoint
+LLM_ENDPOINT=http://192.168.1.21:1234  # Local LM Studio endpoint for Phi-4
+OLLAMA_ENDPOINT=http://localhost:11434  # Local Ollama endpoint
+EMBEDDING_MODEL=snowflake-arctic-embed2:latest  # Default embedding model
+RERANKER_MODEL=qllama/bge-reranker-large:latest  # Optional reranker model
+CONCEPT_MODEL=lmstudio-community/Phi-4-mini-reasoning-MLX-4bit  # Model for concept extraction
 USE_LOCAL_LLM=true
 
 # API Configuration
