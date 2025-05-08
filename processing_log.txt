@@ -1,0 +1,83 @@
+Traceback (most recent call last):
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_async_compat/network/_bolt_socket.py", line 409, in _connect_secure
+    s.connect(resolved_address)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionRefusedError: [Errno 61] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_bolt_socket.py", line 328, in connect
+    s = cls._connect_secure(
+        resolved_address, tcp_timeout, keep_alive, ssl_context
+    )
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_async_compat/network/_bolt_socket.py", line 426, in _connect_secure
+    raise ServiceUnavailable(
+    ...<2 lines>...
+    ) from error
+neo4j.exceptions.ServiceUnavailable: Failed to establish connection to ResolvedIPv6Address(('::1', 7688, 0, 0)) (reason [Errno 61] Connection refused)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/src/database/neo4j_db.py", line 71, in verify_connection
+    result = session.run("RETURN 1 AS result")
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/work/session.py", line 313, in run
+    self._connect(self._config.default_access_mode)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/work/session.py", line 136, in _connect
+    super()._connect(
+    ~~~~~~~~~~~~~~~~^
+        access_mode, auth=self._config.auth, **acquire_kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/work/workspace.py", line 199, in _connect
+    self._connection = self._pool.acquire(**acquire_kwargs_)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_pool.py", line 662, in acquire
+    return self._acquire(
+           ~~~~~~~~~~~~~^
+        self.address, auth, deadline, liveness_check_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_pool.py", line 408, in _acquire
+    return connection_creator()
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_pool.py", line 230, in connection_creator
+    connection = self.opener(
+        address, auth or self.pool_config.auth, deadline
+    )
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_pool.py", line 624, in opener
+    return Bolt.open(
+           ~~~~~~~~~^
+        addr,
+        ^^^^^
+    ...<3 lines>...
+        pool_config=pool_config,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_bolt.py", line 369, in open
+    s, protocol_version, handshake, data = BoltSocket.connect(
+                                           ~~~~~~~~~~~~~~~~~~^
+        address,
+        ^^^^^^^^
+    ...<4 lines>...
+        keep_alive=pool_config.keep_alive,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_bolt_socket.py", line 376, in connect
+    raise ServiceUnavailable(
+    ...<2 lines>...
+    ) from errors[0]
+neo4j.exceptions.ServiceUnavailable: Couldn't connect to localhost:7688 (resolved to ('[::1]:7688', '127.0.0.1:7688')):
+Failed to establish connection to ResolvedIPv6Address(('::1', 7688, 0, 0)) (reason [Errno 61] Connection refused)
+Failed to establish connection to ResolvedIPv4Address(('127.0.0.1', 7688)) (reason [Errno 61] Connection refused)
+Neo4j URI: bolt://localhost:7688 (from env: bolt://localhost:7688)
+Verifying Neo4j connection to bolt://localhost:7688 with username neo4j
+Neo4j connection error: Couldn't connect to localhost:7688 (resolved to ('[::1]:7688', '127.0.0.1:7688')):
+Failed to establish connection to ResolvedIPv6Address(('::1', 7688, 0, 0)) (reason [Errno 61] Connection refused)
+Failed to establish connection to ResolvedIPv4Address(('127.0.0.1', 7688)) (reason [Errno 61] Connection refused)
+❌ Neo4j connection failed!

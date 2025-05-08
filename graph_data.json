@@ -1,0 +1,1531 @@
+{
+  "books": [
+    {
+      "id": "book-9e47412b",
+      "title": "How to Become a Prompt God  Mastering Advanced Prompt Engineering For AI (Mark Austin) (Z-Library)",
+      "filename": "How to Become a Prompt God  Mastering Advanced Prompt Engineering For AI (Mark Austin) (Z-Library).pdf"
+    },
+    {
+      "id": "book-8ddbc479",
+      "title": "Building LLMs for Production Enhancing LLM Abilities and Reliability with Prompting Fine-Tuning and RAG Louis-Franc\u0327ois Bouchard",
+      "filename": "Building LLMs for Production Enhancing LLM Abilities and Reliability with Prompting Fine-Tuning and RAG Louis-Franc\u0327ois Bouchard.pdf"
+    },
+    {
+      "id": "book-6f164b83",
+      "title": "Smart Manufacturing Industrial AI and predictive analytics for smart manufacturing systems Lee Jay",
+      "filename": "Smart Manufacturing Industrial AI and predictive analytics for smart manufacturing systems Lee Jay.pdf"
+    },
+    {
+      "id": "book-a0654158",
+      "title": "Industry 40 to Industry 50 Explorations in the Transition from a Techno-economic to a Socio-technical Future Susu Nousal Gary Metcalf David Ing Editors",
+      "filename": "Industry 40 to Industry 50 Explorations in the Transition from a Techno-economic to a Socio-technical Future Susu Nousal Gary Metcalf David Ing Editors.pdf"
+    },
+    {
+      "id": "book-372dced6",
+      "title": "Smart Manufacturing Industrial AI and predictive analytics for smart manufacturing systems Lee Jay",
+      "filename": "Smart Manufacturing Industrial AI and predictive analytics for smart manufacturing systems Lee Jay.pdf"
+    },
+    {
+      "id": "book-6d8909a6",
+      "title": "Industry 40 to Industry 50 Explorations in the Transition from a Techno-economic to a Socio-technical Future Susu Nousal Gary Metcalf David Ing Editors",
+      "filename": "Industry 40 to Industry 50 Explorations in the Transition from a Techno-economic to a Socio-technical Future Susu Nousal Gary Metcalf David Ing Editors.pdf"
+    },
+    {
+      "id": "book-1b8f5868",
+      "title": "Smart Manufacturing Industrial AI and predictive analytics for smart manufacturing systems Lee Jay",
+      "filename": "Smart Manufacturing Industrial AI and predictive analytics for smart manufacturing systems Lee Jay.pdf"
+    },
+    {
+      "id": "book-78098a08",
+      "title": "Industry 40 to Industry 50 Explorations in the Transition from a Techno-economic to a Socio-technical Future Susu Nousal Gary Metcalf David Ing Editors",
+      "filename": "Industry 40 to Industry 50 Explorations in the Transition from a Techno-economic to a Socio-technical Future Susu Nousal Gary Metcalf David Ing Editors.pdf"
+    }
+  ],
+  "concepts": [
+    {
+      "id": "concept-pe",
+      "name": "Prompt Engineering",
+      "abbreviation": "PE"
+    },
+    {
+      "id": "concept-cb",
+      "name": "Chatbot",
+      "abbreviation": "CB"
+    },
+    {
+      "id": "concept-tr",
+      "name": "Transformer",
+      "abbreviation": "TR"
+    },
+    {
+      "id": "concept-tok",
+      "name": "Token",
+      "abbreviation": "TOK"
+    },
+    {
+      "id": "concept-tkz",
+      "name": "Tokenization",
+      "abbreviation": "TKZ"
+    },
+    {
+      "id": "concept-am",
+      "name": "Attention Mechanism",
+      "abbreviation": "AM"
+    },
+    {
+      "id": "concept-sbs",
+      "name": "Step-By-Step",
+      "abbreviation": "SBS"
+    },
+    {
+      "id": "concept-re",
+      "name": "Reasoning",
+      "abbreviation": "RE"
+    },
+    {
+      "id": "concept-temp",
+      "name": "Temperature",
+      "abbreviation": "TEMP"
+    },
+    {
+      "id": "concept-cai",
+      "name": "Conversational Ai",
+      "abbreviation": "CAI"
+    },
+    {
+      "id": "concept-pt",
+      "name": "Prompt Template",
+      "abbreviation": "PT"
+    },
+    {
+      "id": "concept-llm",
+      "name": "Large Language Model",
+      "abbreviation": "LLM"
+    },
+    {
+      "id": "concept-ph",
+      "name": "Prompt Hacking",
+      "abbreviation": "PH"
+    },
+    {
+      "id": "concept-hal",
+      "name": "Hallucination",
+      "abbreviation": "HAL"
+    },
+    {
+      "id": "concept-kg",
+      "name": "Knowledge Graph",
+      "abbreviation": "KG"
+    },
+    {
+      "id": "concept-emb",
+      "name": "Embedding",
+      "abbreviation": "EMB"
+    },
+    {
+      "id": "concept-kb",
+      "name": "Knowledge Base",
+      "abbreviation": "KB"
+    },
+    {
+      "id": "concept-ft",
+      "name": "Fine-Tuning",
+      "abbreviation": "FT"
+    },
+    {
+      "id": "concept-fsl",
+      "name": "Few-Shot Learning",
+      "abbreviation": "FSL"
+    },
+    {
+      "id": "concept-cot",
+      "name": "Chain Of Thought",
+      "abbreviation": "COT"
+    },
+    {
+      "id": "concept-sc",
+      "name": "Self-Consistency",
+      "abbreviation": "SC"
+    },
+    {
+      "id": "concept-nlp",
+      "name": "Natural Language Processing",
+      "abbreviation": "NLP"
+    },
+    {
+      "id": "concept-gai",
+      "name": "Generative Ai",
+      "abbreviation": "GAI"
+    },
+    {
+      "id": "concept-nlg",
+      "name": "Natural Language Generation",
+      "abbreviation": "NLG"
+    },
+    {
+      "id": "concept-ir",
+      "name": "Information Retrieval",
+      "abbreviation": "IR"
+    },
+    {
+      "id": "concept-cw",
+      "name": "Context Window",
+      "abbreviation": "CW"
+    },
+    {
+      "id": "concept-we",
+      "name": "Word Embedding",
+      "abbreviation": "WE"
+    },
+    {
+      "id": "concept-qa",
+      "name": "Question Answering",
+      "abbreviation": "QA"
+    },
+    {
+      "id": "concept-de",
+      "name": "Document Embedding",
+      "abbreviation": "DE"
+    },
+    {
+      "id": "concept-te",
+      "name": "Text Embedding",
+      "abbreviation": "TE"
+    },
+    {
+      "id": "concept-ss",
+      "name": "Semantic Search",
+      "abbreviation": "SS"
+    },
+    {
+      "id": "concept-bs",
+      "name": "Beam Search",
+      "abbreviation": "BS"
+    },
+    {
+      "id": "concept-tks",
+      "name": "Top-K Sampling",
+      "abbreviation": "TKS"
+    },
+    {
+      "id": "concept-lora",
+      "name": "Low-Rank Adaptation",
+      "abbreviation": "LORA"
+    },
+    {
+      "id": "concept-sp",
+      "name": "System Prompt",
+      "abbreviation": "SP"
+    },
+    {
+      "id": "concept-icl",
+      "name": "In-Context Learning",
+      "abbreviation": "ICL"
+    },
+    {
+      "id": "concept-rp",
+      "name": "Role Prompting",
+      "abbreviation": "RP"
+    },
+    {
+      "id": "concept-vdb",
+      "name": "Vector Database",
+      "abbreviation": "VDB"
+    },
+    {
+      "id": "concept-ve",
+      "name": "Vector Embedding",
+      "abbreviation": "VE"
+    },
+    {
+      "id": "concept-rag",
+      "name": "Retrieval Augmented Generation",
+      "abbreviation": "RAG"
+    },
+    {
+      "id": "concept-ner",
+      "name": "Named Entity Recognition",
+      "abbreviation": "NER"
+    },
+    {
+      "id": "concept-sis",
+      "name": "Similarity Search",
+      "abbreviation": "SIS"
+    },
+    {
+      "id": "concept-cs",
+      "name": "Cosine Similarity",
+      "abbreviation": "CS"
+    },
+    {
+      "id": "concept-up",
+      "name": "User Prompt",
+      "abbreviation": "UP"
+    },
+    {
+      "id": "concept-kd",
+      "name": "Knowledge Distillation",
+      "abbreviation": "KD"
+    }
+  ],
+  "book_concept_relationships": [
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-ph"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-llm"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-pt"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-cai"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-temp"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-re"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-sbs"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-am"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-tkz"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-tok"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-tr"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-cb"
+    },
+    {
+      "book_id": "book-9e47412b",
+      "concept_id": "concept-pe"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-kd"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-sbs"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-up"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-cs"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-sis"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-ner"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-rag"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-ve"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-vdb"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-pt"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-rp"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-icl"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-sp"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-ph"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-lora"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-temp"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-tks"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-bs"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-ss"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-te"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-de"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-cai"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-qa"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-we"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-re"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-cw"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-ir"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-nlg"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-am"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-tkz"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-tr"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-gai"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-nlp"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-sc"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-cot"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-tok"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-pe"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-fsl"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-llm"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-ft"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-cb"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-kb"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-emb"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-kg"
+    },
+    {
+      "book_id": "book-8ddbc479",
+      "concept_id": "concept-hal"
+    },
+    {
+      "book_id": "book-6f164b83",
+      "concept_id": "concept-emb"
+    },
+    {
+      "book_id": "book-6f164b83",
+      "concept_id": "concept-temp"
+    },
+    {
+      "book_id": "book-6f164b83",
+      "concept_id": "concept-sbs"
+    },
+    {
+      "book_id": "book-6f164b83",
+      "concept_id": "concept-nlp"
+    },
+    {
+      "book_id": "book-372dced6",
+      "concept_id": "concept-emb"
+    },
+    {
+      "book_id": "book-372dced6",
+      "concept_id": "concept-temp"
+    },
+    {
+      "book_id": "book-372dced6",
+      "concept_id": "concept-sbs"
+    },
+    {
+      "book_id": "book-372dced6",
+      "concept_id": "concept-nlp"
+    },
+    {
+      "book_id": "book-6d8909a6",
+      "concept_id": "concept-nlp"
+    },
+    {
+      "book_id": "book-6d8909a6",
+      "concept_id": "concept-llm"
+    },
+    {
+      "book_id": "book-6d8909a6",
+      "concept_id": "concept-cb"
+    },
+    {
+      "book_id": "book-6d8909a6",
+      "concept_id": "concept-tr"
+    },
+    {
+      "book_id": "book-6d8909a6",
+      "concept_id": "concept-tok"
+    },
+    {
+      "book_id": "book-6d8909a6",
+      "concept_id": "concept-re"
+    },
+    {
+      "book_id": "book-6d8909a6",
+      "concept_id": "concept-gai"
+    },
+    {
+      "book_id": "book-1b8f5868",
+      "concept_id": "concept-emb"
+    },
+    {
+      "book_id": "book-1b8f5868",
+      "concept_id": "concept-temp"
+    },
+    {
+      "book_id": "book-1b8f5868",
+      "concept_id": "concept-sbs"
+    },
+    {
+      "book_id": "book-1b8f5868",
+      "concept_id": "concept-nlp"
+    },
+    {
+      "book_id": "book-78098a08",
+      "concept_id": "concept-nlp"
+    },
+    {
+      "book_id": "book-78098a08",
+      "concept_id": "concept-llm"
+    },
+    {
+      "book_id": "book-78098a08",
+      "concept_id": "concept-cb"
+    },
+    {
+      "book_id": "book-78098a08",
+      "concept_id": "concept-tr"
+    },
+    {
+      "book_id": "book-78098a08",
+      "concept_id": "concept-tok"
+    },
+    {
+      "book_id": "book-78098a08",
+      "concept_id": "concept-re"
+    },
+    {
+      "book_id": "book-78098a08",
+      "concept_id": "concept-gai"
+    }
+  ],
+  "concept_relationships": [
+    {
+      "source_id": "concept-gai",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-qa",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-vdb",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ve",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ss",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-temp",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ir",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-hal",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-nlp",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kb",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kg",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tr",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ph",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-cb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-bs",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-up",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-sp",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-am",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tkz",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ph",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-tr",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-up",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-sp",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-vdb",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kg",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-cot",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-sbs",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ph",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-tok",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-tkz",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-tkz",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-tkz",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-am",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-am",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tkz",
+      "target_id": "concept-am",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-am",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-re",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ner",
+      "target_id": "concept-re",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kg",
+      "target_id": "concept-re",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-re",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-cot",
+      "target_id": "concept-re",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-rp",
+      "target_id": "concept-re",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-re",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-temp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-vdb",
+      "target_id": "concept-temp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-temp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-temp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-temp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-temp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kb",
+      "target_id": "concept-cai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ve",
+      "target_id": "concept-cai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-cai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-cai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-cai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-cai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-cai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-pt",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ph",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kg",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-cot",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-lora",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-hal",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tr",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tkz",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-am",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-llm",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-ph",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-up",
+      "target_id": "concept-hal",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-hal",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-hal",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-hal",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-hal",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-hal",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-kg",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-emb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-emb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-vdb",
+      "target_id": "concept-emb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-emb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-emb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kg",
+      "target_id": "concept-emb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-vdb",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ve",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-nlp",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-hal",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kg",
+      "target_id": "concept-kb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-ft",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-cot",
+      "target_id": "concept-ft",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-ft",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-cot",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tr",
+      "target_id": "concept-nlp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-nlp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-temp",
+      "target_id": "concept-nlp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-gai",
+      "target_id": "concept-nlp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-nlp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-nlp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-nlp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-gai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tr",
+      "target_id": "concept-gai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-gai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-gai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-gai",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-nlg",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-am",
+      "target_id": "concept-nlg",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tkz",
+      "target_id": "concept-nlg",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-nlg",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-vdb",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-cs",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-hal",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-nlg",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-am",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tkz",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-ir",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-fsl",
+      "target_id": "concept-cw",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-cw",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-cw",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-we",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-de",
+      "target_id": "concept-we",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-am",
+      "target_id": "concept-we",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-we",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-we",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ir",
+      "target_id": "concept-qa",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-qa",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-qa",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-re",
+      "target_id": "concept-qa",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-de",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-cs",
+      "target_id": "concept-de",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-de",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tr",
+      "target_id": "concept-te",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-te",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-te",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-nlp",
+      "target_id": "concept-ss",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-ss",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-bs",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tks",
+      "target_id": "concept-bs",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-bs",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-tks",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-tks",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-lora",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pe",
+      "target_id": "concept-rp",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ft",
+      "target_id": "concept-vdb",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tok",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-pt",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-cs",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-sis",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-ss",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-nlp",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-ve",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kb",
+      "target_id": "concept-ner",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-kg",
+      "target_id": "concept-ner",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-sis",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-vdb",
+      "target_id": "concept-cs",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-tr",
+      "target_id": "concept-cs",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-sis",
+      "target_id": "concept-cs",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-emb",
+      "target_id": "concept-cs",
+      "strength": 0.5
+    },
+    {
+      "source_id": "concept-llm",
+      "target_id": "concept-kd",
+      "strength": 0.5
+    }
+  ]
+}
