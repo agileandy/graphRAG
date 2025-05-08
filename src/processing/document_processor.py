@@ -5,12 +5,19 @@ This module provides optimized document processing functions for:
 1. Smart chunking strategies
 2. Batch processing
 3. Metadata optimization
+4. Adaptive chunk sizing
+5. Document hashing for deduplication
 """
 import os
 import re
 import uuid
+import logging
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Default chunking parameters
 DEFAULT_CHUNK_SIZE = 1000
@@ -164,23 +171,67 @@ def optimize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
 
     return optimized
 
-def optimize_chunk_size(document_text: str, default_size: int = DEFAULT_CHUNK_SIZE) -> int:
-    """Determine optimal chunk size based on document characteristics."""
-    # Simple heuristic: adjust chunk size based on document length
+def optimize_chunk_size(
+    document_text: str, 
+    default_size: int = DEFAULT_CHUNK_SIZE,
+    very_large_doc_threshold: int = VERY_LARGE_DOC_THRESHOLD,
+    large_doc_threshold: int = LARGE_DOC_THRESHOLD,
+    small_chunk_size: int = SMALL_CHUNK_SIZE,
+    medium_chunk_size: int = MEDIUM_CHUNK_SIZE
+) -> int:
+    """
+    Determine optimal chunk size based on document characteristics.
+    
+    This function implements adaptive chunk sizing based on:
+    1. Document length - longer documents get smaller chunks
+    2. Content complexity - more complex content gets smaller chunks
+    
+    Args:
+        document_text: The text content of the document
+        default_size: Default chunk size for normal documents
+        very_large_doc_threshold: Threshold for very large documents (chars)
+        large_doc_threshold: Threshold for large documents (chars)
+        small_chunk_size: Chunk size for very large documents
+        medium_chunk_size: Chunk size for large documents
+        
+    Returns:
+        Optimized chunk size in characters
+    """
+    # Get document length
     doc_length = len(document_text)
-
-    # Define thresholds and corresponding chunk sizes
-    VERY_LARGE_DOC_THRESHOLD = 1000000 # > 1MB
-    LARGE_DOC_THRESHOLD = 500000 # > 0.5MB
-    SMALL_CHUNK_SIZE = 500
-    MEDIUM_CHUNK_SIZE = 750
-
-    if doc_length > VERY_LARGE_DOC_THRESHOLD:
-        return SMALL_CHUNK_SIZE  # Smaller chunks for very large documents
-    elif doc_length > LARGE_DOC_THRESHOLD:
-        return MEDIUM_CHUNK_SIZE # Medium chunks for large documents
+    
+    # Base size adjustment on document length
+    if doc_length > very_large_doc_threshold:
+        base_size = small_chunk_size  # Smaller chunks for very large documents
+    elif doc_length > large_doc_threshold:
+        base_size = medium_chunk_size  # Medium chunks for large documents
     else:
-        return default_size # Use default for smaller documents
+        base_size = default_size  # Use default for smaller documents
+    
+    # Further adjust based on content complexity
+    # Check for complex content indicators
+    has_tables = bool(re.search(r'\|\s*-+\s*\|', document_text))  # Markdown tables
+    has_code_blocks = bool(re.search(r'```[\s\S]*?```', document_text))  # Code blocks
+    has_lists = bool(re.search(r'^\s*[*\-+]\s+', document_text, re.MULTILINE))  # Lists
+    
+    # Adjust size based on content complexity
+    complexity_factor = 1.0
+    if has_tables:
+        complexity_factor *= 0.8  # Reduce size for documents with tables
+    if has_code_blocks:
+        complexity_factor *= 0.9  # Reduce size for documents with code blocks
+    if has_lists:
+        complexity_factor *= 0.95  # Slight reduction for documents with lists
+    
+    # Apply complexity factor
+    adjusted_size = int(base_size * complexity_factor)
+    
+    # Ensure size is within reasonable bounds
+    min_size = 250
+    max_size = 2000
+    final_size = max(min_size, min(adjusted_size, max_size))
+    
+    return final_size
 
 def process_document_with_metadata(
     text: str,
@@ -213,17 +264,25 @@ def process_document_with_metadata(
     chunk_metadatas = []
     chunk_ids = []
 
+    # Add content hash to metadata if not already present
+    from src.processing.document_hash import generate_document_hash, enrich_metadata_with_hashes
+    
+    # Enrich the document metadata with hashes for deduplication
+    enriched_metadata = enrich_metadata_with_hashes(metadata, text)
+
     for i, chunk in enumerate(chunks):
         # Create a unique ID for the chunk
         chunk_id = f"{doc_id}-chunk-{i}"
 
         # Create metadata for the chunk
-        chunk_metadata = metadata.copy()
+        chunk_metadata = enriched_metadata.copy()
         chunk_metadata.update({
             'doc_id': doc_id,
             'chunk_id': chunk_id,
             'chunk_index': i,
-            'total_chunks': len(chunks)
+            'total_chunks': len(chunks),
+            'chunk_size': len(chunk),
+            'chunk_hash': generate_document_hash(chunk)
         })
 
         # Optimize metadata

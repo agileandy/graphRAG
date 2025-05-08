@@ -9,6 +9,7 @@ from src.processing.document_processor import (
     smart_chunk_text,
     batch_process_documents,
     optimize_metadata,
+    optimize_chunk_size,
     process_document_with_metadata,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,
@@ -25,11 +26,24 @@ from src.processing.duplicate_detector import (
     DuplicateDetector
 )
 
+from src.processing.document_hash import (
+    generate_document_hash,
+    generate_metadata_hash,
+    enrich_metadata_with_hashes,
+    calculate_title_similarity,
+    is_likely_duplicate
+)
+
+from src.processing.concept_extractor import (
+    ConceptExtractor
+)
+
 __all__ = [
     # Document processing
     'smart_chunk_text',
     'batch_process_documents',
     'optimize_metadata',
+    'optimize_chunk_size',
     'process_document_with_metadata',
     'DEFAULT_CHUNK_SIZE',
     'DEFAULT_OVERLAP',
@@ -41,5 +55,15 @@ __all__ = [
     'Job',
 
     # Duplicate detection
-    'DuplicateDetector'
+    'DuplicateDetector',
+    
+    # Document hashing
+    'generate_document_hash',
+    'generate_metadata_hash',
+    'enrich_metadata_with_hashes',
+    'calculate_title_similarity',
+    'is_likely_duplicate',
+    
+    # Concept extraction
+    'ConceptExtractor'
 ]
