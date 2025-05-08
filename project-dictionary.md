@@ -64,8 +64,6 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 
 - **scripts/clean_database.py**: **PRIMARY DATABASE CLEANING SCRIPT** - Clears both Neo4j and ChromaDB.
 - **scripts/reset_chromadb.py**: Resets only the ChromaDB vector database.
-- **scripts/reset_database.py**: Alternative script for resetting both databases.
-- **tools/reset_databases.py**: Another alternative for resetting databases.
 - **scripts/clear_neo4j.py**: Clears only the Neo4j database.
 - **scripts/initialize_database.py**: Initializes the databases with schema and indexes.
 - **scripts/verify_chromadb.py**: Verifies ChromaDB installation and connection.
@@ -79,7 +77,6 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **scripts/add_document_with_concepts.py**: Adds a document with manually specified concepts.
 - **scripts/batch_process.py**: Processes multiple documents in batch.
 - **scripts/process_ebooks.py**: Processes ebooks from a directory.
-- **scripts/optimized_add_document.py**: Optimized version of add_document.py.
 - **scripts/extract_concepts_from_documents.py**: Extracts concepts from documents.
 - **scripts/extract_concepts_with_llm.py**: Extracts concepts using LLM.
 - **scripts/cleanup_duplicates.py**: Identifies and removes duplicate entries.
@@ -111,8 +108,6 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **scripts/reset_neo4j_password.sh**: Resets Neo4j password.
 - **scripts/update_neo4j_config.sh**: Updates Neo4j configuration.
 - **scripts/download_nltk_data.py**: Downloads NLTK data.
-- **scripts/check_neo4j.py**: Checks Neo4j module.
-- **scripts/check_neo4j_connection.py**: Checks Neo4j connection.
 - **scripts/check_ports.sh**: Checks if required ports are available.
 
 ## Tools
@@ -125,7 +120,6 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **tools/list_documents.py**: Lists documents in the system.
 - **tools/query_neo4j.py**: Queries Neo4j directly.
 - **tools/test_async_processing.py**: Tests asynchronous processing.
-- **tools/test_mcp_client.py**: Tests MCP client.
 - **tools/test_mpc_connection.py**: Tests MPC connection.
 - **tools/test_mpc_search.py**: Tests MPC search functionality.
 
@@ -156,8 +150,6 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 
 1. **Database Reset Scripts**:
    - `scripts/clean_database.py` (primary)
-   - `scripts/reset_database.py` (duplicate)
-   - `tools/reset_databases.py` (duplicate)
    - `scripts/reset_chromadb.py` (partial duplicate)
    - `scripts/clear_neo4j.py` (partial duplicate)
 
@@ -166,22 +158,15 @@ This document provides a comprehensive overview of the GraphRAG project's file s
    - `scripts/start_all_services.sh` (alternative using tmux)
    - Individual start/stop scripts (partial duplicates)
 
-3. **Neo4j Connection Verification**:
-   - `scripts/verify_neo4j.py` (primary)
-   - `scripts/check_neo4j_connection.py` (duplicate)
-   - `scripts/check_neo4j.py` (partial duplicate)
-
-4. **Document Addition Scripts**:
+3. **Document Addition Scripts**:
    - `scripts/add_document.py` (primary)
-   - `scripts/optimized_add_document.py` (improved version)
    - `scripts/add_document_with_concepts.py` (specialized version)
    - `tools/add_pdf_documents.py` (specialized version)
    - `tools/add_all_ebooks.py` (specialized version)
    - `tools/add_prompting_ebooks.py` (specialized version)
 
-5. **MPC Testing Scripts**:
+4. **MPC Testing Scripts**:
    - `tools/test_mpc_connection.py` (primary)
-   - `tools/test_mcp_client.py` (duplicate)
    - `tools/test_mpc_search.py` (specialized version)
 
 ## Deprecated Files
@@ -196,17 +181,19 @@ This document provides a comprehensive overview of the GraphRAG project's file s
    - `test_mpc_search.py`
    - `test_mpc_search_graphrag.py`
 
-2. **Outdated Configuration**:
-   - `mcp_settings.json` (replaced by more specific configuration files)
-
-3. **Temporary Scripts**:
-   - `run-git.sh` (temporary utility)
-   - `test_lmstudio_direct.py` (test script)
-   - `test_lmstudio_spacy.py` (test script)
-
-4. **Removed Scripts**:
+2. **Removed Scripts**:
    - `scripts/start_api_local.sh` (removed - functionality covered by graphrag-service.sh)
    - `scripts/start_mpc_local.sh` (removed - functionality covered by graphrag-service.sh)
+   - `scripts/reset_database.py` (removed - functionality covered by clean_database.py)
+   - `tools/reset_databases.py` (removed - functionality covered by clean_database.py)
+   - `scripts/check_neo4j_connection.py` (removed - functionality covered by verify_neo4j.py)
+   - `scripts/check_neo4j.py` (removed - functionality covered by verify_neo4j.py)
+   - `scripts/optimized_add_document.py` (removed - optimizations should be merged into add_document.py)
+   - `tools/test_mcp_client.py` (removed - functionality covered by test_mpc_connection.py)
+   - `mcp_settings.json` (removed - replaced by more specific configuration files)
+   - `run-git.sh` (removed - temporary utility)
+   - `test_lmstudio_direct.py` (removed - test script)
+   - `test_lmstudio_spacy.py` (removed - test script)
 
 ## Recommended Files for Running Services Locally
 
