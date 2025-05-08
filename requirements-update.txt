@@ -1,9 +1,0 @@
-# Markdown processing
-markdown>=3.4.0
-
-# PDF processing
-PyMuPDF>=1.21.0  # More comprehensive than pypdf2
-pdf2image>=1.16.0  # Convert PDF pages to images
-pytesseract>=0.3.10  # OCR for scanned PDFs
-tabula-py>=2.7.0  # Extract tables from PDFs
-opencv-python>=4.7.0  # Image processing

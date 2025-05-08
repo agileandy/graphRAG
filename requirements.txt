@@ -10,6 +10,9 @@ sentence-transformers>=2.2.2
 # Utilities
 python-dotenv>=1.0.0
 pydantic>=2.5.0
+packaging>=23.0  # For version parsing
+psutil>=5.9.0  # For system monitoring
+tqdm>=4.65.0  # For progress bars
 
 # API Server
 flask>=2.0.0
@@ -32,9 +35,16 @@ markdown>=3.4.0
 
 # PDF processing
 PyMuPDF>=1.21.0  # More comprehensive than pypdf2
+PyPDF2>=3.0.0  # Used in some tools for PDF extraction
 pdf2image>=1.16.0  # Convert PDF pages to images
 pytesseract>=0.3.10  # OCR for scanned PDFs
 tabula-py>=2.7.0  # Extract tables from PDFs
 opencv-python>=4.7.0  # Image processing
-fuzzywuzzy>=0.18.0 # Fuzzy string matching
-python-Levenshtein>=0.25.0 # Required for fuzzywuzzy speedup
+fuzzywuzzy>=0.18.0  # Fuzzy string matching
+python-Levenshtein>=0.25.0  # Required for fuzzywuzzy speedup
+
+# Visualization
+pyvis>=0.3.2  # For graph visualization
+
+# NLP Processing
+spacy>=3.7.0  # For NLP tasks
