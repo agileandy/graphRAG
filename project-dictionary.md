@@ -58,8 +58,6 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **scripts/start_neo4j.sh**: Starts Neo4j server (used by start_all_services.sh).
 - **scripts/start_api_server.sh**: Starts API server (used by start_all_services.sh).
 - **scripts/start_mpc_server.sh**: Starts MPC server (used by start_all_services.sh).
-- **scripts/start_api_local.sh**: Simplified script for starting API server locally.
-- **scripts/start_mpc_local.sh**: Simplified script for starting MPC server locally.
 - **scripts/stop_neo4j.sh**: Stops Neo4j server.
 
 ### Database Management
@@ -205,6 +203,10 @@ This document provides a comprehensive overview of the GraphRAG project's file s
    - `run-git.sh` (temporary utility)
    - `test_lmstudio_direct.py` (test script)
    - `test_lmstudio_spacy.py` (test script)
+
+4. **Removed Scripts**:
+   - `scripts/start_api_local.sh` (removed - functionality covered by graphrag-service.sh)
+   - `scripts/start_mpc_local.sh` (removed - functionality covered by graphrag-service.sh)
 
 ## Recommended Files for Running Services Locally
 
