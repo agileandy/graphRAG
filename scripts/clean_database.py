@@ -96,7 +96,7 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
         neo4j_dir = neo4j_home
         neo4j_data_dir = os.path.join(neo4j_data_dir, 'data', 'databases')
         neo4j_tx_dir = os.path.join(neo4j_data_dir, 'data', 'transactions')
-        print(f"Using Neo4j installation from environment variables:")
+        print("Using Neo4j installation from environment variables:")
         print(f"  NEO4J_HOME: {neo4j_home}")
         print(f"  NEO4J_DATA_DIR: {neo4j_data_dir}")
     else:
@@ -119,7 +119,7 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
             neo4j_dir = local_neo4j_dir
             neo4j_data_dir = os.path.join(graphrag_neo4j_dir, 'data', 'databases')
             neo4j_tx_dir = os.path.join(graphrag_neo4j_dir, 'data', 'transactions')
-            print(f"Using Neo4j installation in ~/.local/neo4j with data in ~/.graphrag/neo4j")
+            print("Using Neo4j installation in ~/.local/neo4j with data in ~/.graphrag/neo4j")
         elif os.path.exists(project_neo4j_dir) and os.path.isdir(project_neo4j_dir):
             # Legacy installation in project directory
             neo4j_dir = project_neo4j_dir
