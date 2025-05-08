@@ -30,6 +30,13 @@ services:
       - NEO4J_USERNAME=neo4j
       - NEO4J_PASSWORD=graphrag
       - CHROMA_PERSIST_DIRECTORY=/app/data/chromadb
+      # LLM Configuration
+      - LLM_ENDPOINT=http://host.docker.internal:1234
+      - OLLAMA_ENDPOINT=http://host.docker.internal:11434
+      - EMBEDDING_MODEL=snowflake-arctic-embed2:latest
+      - RERANKER_MODEL=qllama/bge-reranker-large:latest
+      - CONCEPT_MODEL=lmstudio-community/Phi-4-mini-reasoning-MLX-4bit
+      - USE_LOCAL_LLM=true
       # Use 0.0.0.0 inside the container
       - GRAPHRAG_API_URL=http://0.0.0.0:5000
       # Add your OpenAI API key here if needed
