@@ -58,7 +58,7 @@ NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=graphrag
 CHROMA_PERSIST_DIRECTORY=$HOME/.graphrag/data/chromadb
-GRAPHRAG_API_PORT=5000
+GRAPHRAG_API_PORT=5001
 GRAPHRAG_MPC_PORT=8765
 GRAPHRAG_LOG_LEVEL=INFO
 EOF
@@ -165,7 +165,7 @@ python scripts/verify_chromadb.py
 
 ```bash
 # Check the API health endpoint
-curl http://localhost:5000/health
+curl http://localhost:5001/health
 
 # Should return: {"neo4j_connected":true,"status":"ok","vector_db_connected":true,"version":"1.0.0"}
 ```

@@ -19,7 +19,7 @@ NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=graphrag
 CHROMA_PERSIST_DIRECTORY=$HOME/.graphrag/data/chromadb
-GRAPHRAG_API_PORT=5000
+GRAPHRAG_API_PORT=5001
 GRAPHRAG_MPC_PORT=8765
 GRAPHRAG_LOG_LEVEL=INFO
 EOF
@@ -36,9 +36,9 @@ start_neo4j() {
         echo "Neo4j is already running."
         return 1
     fi
-    
+
     "$NEO4J_HOME/bin/neo4j" start
-    
+
     # Wait for Neo4j to start
     echo "Waiting for Neo4j to start..."
     for i in {1..30}; do
@@ -48,7 +48,7 @@ start_neo4j() {
         fi
         sleep 1
     done
-    
+
     echo "Failed to start Neo4j."
     return 1
 }
@@ -60,7 +60,7 @@ start_api() {
         echo "API server is already running."
         return 1
     fi
-    
+
     cd "$(dirname "$0")/.." && \
     gunicorn \
         --bind 0.0.0.0:$GRAPHRAG_API_PORT \
@@ -73,7 +73,7 @@ start_api() {
         --daemon \
         --pid "$PID_DIR/api.pid" \
         src.api.wsgi:app
-    
+
     # Wait for API server to start
     echo "Waiting for API server to start..."
     for i in {1..15}; do
@@ -83,7 +83,7 @@ start_api() {
         fi
         sleep 1
     done
-    
+
     echo "Failed to start API server."
     return 1
 }
@@ -95,15 +95,15 @@ start_mpc() {
         echo "MPC server is already running."
         return 1
     fi
-    
+
     cd "$(dirname "$0")/.." && \
     python -m src.mpc.server --host 0.0.0.0 --port $GRAPHRAG_MPC_PORT > "$LOG_DIR/mpc.log" 2>&1 &
     echo $! > "$PID_DIR/mpc.pid"
-    
+
     # Wait for MPC server to start
     echo "Waiting for MPC server to start..."
     sleep 3
-    
+
     if [ -f "$PID_DIR/mpc.pid" ]; then
         PID=$(cat "$PID_DIR/mpc.pid")
         if ps -p $PID > /dev/null; then
@@ -111,7 +111,7 @@ start_mpc() {
             return 0
         fi
     fi
-    
+
     echo "Failed to start MPC server."
     return 1
 }
@@ -153,14 +153,14 @@ stop_mpc() {
 # Function to check status
 status() {
     echo "GraphRAG Service Status:"
-    
+
     # Check Neo4j
     if curl -s http://localhost:7474 > /dev/null; then
         echo "Neo4j: Running"
     else
         echo "Neo4j: Stopped"
     fi
-    
+
     # Check API server
     if [ -f "$PID_DIR/api.pid" ]; then
         PID=$(cat "$PID_DIR/api.pid")
@@ -173,7 +173,7 @@ status() {
     else
         echo "API Server: Stopped"
     fi
-    
+
     # Check MPC server
     if [ -f "$PID_DIR/mpc.pid" ]; then
         PID=$(cat "$PID_DIR/mpc.pid")

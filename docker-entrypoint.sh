@@ -123,7 +123,7 @@ wait_for_service() {
 # Start the API server in the background with configurable workers
 echo "Starting API server..."
 cd /app && gunicorn \
-  --bind 0.0.0.0:5000 \
+  --bind 0.0.0.0:${GRAPHRAG_API_PORT:-5001} \
   --workers ${GUNICORN_WORKERS:-2} \
   --threads ${GUNICORN_THREADS:-4} \
   --timeout ${GUNICORN_TIMEOUT:-120} \
@@ -133,7 +133,7 @@ cd /app && gunicorn \
   src.api.wsgi:app --daemon
 
 # Wait for API server to be available
-if ! wait_for_service "API server" "http://0.0.0.0:5000/health" 15; then
+if ! wait_for_service "API server" "http://0.0.0.0:${GRAPHRAG_API_PORT:-5001}/health" 15; then
   echo "WARNING: API server may not have started correctly."
 else
   echo "✅ API server is running and responding to health checks."

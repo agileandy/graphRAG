@@ -92,7 +92,7 @@ This will:
 3. Access the services:
 
 - Neo4j Browser: http://localhost:7474 (username: neo4j, password: graphrag)
-- GraphRAG API: http://localhost:5000
+- GraphRAG API: http://localhost:5001
 - GraphRAG MPC Server: ws://localhost:8765
 
 4. Stop the container:
@@ -160,7 +160,7 @@ NEO4J_PASSWORD=graphrag
 CHROMA_PERSIST_DIRECTORY=./data/chromadb
 
 # API Configuration
-GRAPHRAG_API_URL=http://localhost:5000
+GRAPHRAG_API_URL=http://localhost:5001
 
 # OpenAI API Key (for agent examples)
 OPENAI_API_KEY=your_openai_api_key

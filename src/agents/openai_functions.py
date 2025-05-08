@@ -9,15 +9,15 @@ import requests
 from typing import Dict, List, Any, Optional, Callable
 
 # Default API URL
-DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", "http://localhost:5000")
+DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", "http://localhost:5001")
 
 def get_graphrag_functions(api_url: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Get a list of GraphRAG functions for use with OpenAI function calling.
-    
+
     Args:
-        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5000)
-    
+        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5001)
+
     Returns:
         List of function definitions
     """
@@ -106,15 +106,15 @@ def get_graphrag_functions(api_url: Optional[str] = None) -> List[Dict[str, Any]
 def get_graphrag_function_map(api_url: Optional[str] = None) -> Dict[str, Callable]:
     """
     Get a map of GraphRAG function names to their implementations.
-    
+
     Args:
-        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5000)
-    
+        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5001)
+
     Returns:
         Dictionary mapping function names to their implementations
     """
     url = api_url or DEFAULT_API_URL
-    
+
     def graphrag_search(query: str, n_results: int = 5, max_hops: int = 2) -> Dict[str, Any]:
         """Search the GraphRAG system with a query."""
         api_url = f"{url}/search"
@@ -123,58 +123,58 @@ def get_graphrag_function_map(api_url: Optional[str] = None) -> Dict[str, Callab
             "n_results": n_results,
             "max_hops": max_hops
         }
-        
+
         try:
             response = requests.post(api_url, json=data)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
-    
+
     def graphrag_concept(concept_name: str) -> Dict[str, Any]:
         """Explore a concept in the GraphRAG system."""
         api_url = f"{url}/concepts/{concept_name}"
-        
+
         try:
             response = requests.get(api_url)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
-    
+
     def graphrag_documents(concept_name: str, limit: int = 5) -> Dict[str, Any]:
         """Find documents related to a concept in the GraphRAG system."""
         api_url = f"{url}/documents/{concept_name}?limit={limit}"
-        
+
         try:
             response = requests.get(api_url)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
-    
+
     def graphrag_add_document(text: str, title: Optional[str] = None, source: Optional[str] = None) -> Dict[str, Any]:
         """Add a document to the GraphRAG system."""
         api_url = f"{url}/documents"
-        
+
         metadata = {}
         if title:
             metadata["title"] = title
         if source:
             metadata["source"] = source
-        
+
         data = {
             "text": text,
             "metadata": metadata
         }
-        
+
         try:
             response = requests.post(api_url, json=data)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
-    
+
     return {
         "graphrag_search": graphrag_search,
         "graphrag_concept": graphrag_concept,

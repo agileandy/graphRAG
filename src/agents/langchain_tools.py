@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from langchain.tools import BaseTool
 
 # Default API URL
-DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", "http://localhost:5000")
+DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", "http://localhost:5001")
 
 class GraphRAGSearchInput(BaseModel):
     """Input for GraphRAG search tool."""
@@ -43,7 +43,7 @@ class GraphRAGSearchTool(BaseTool):
     """
     args_schema = GraphRAGSearchInput
     api_url: str = DEFAULT_API_URL
-    
+
     def _run(self, query: str, n_results: int = 5, max_hops: int = 2) -> Dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/search"
@@ -52,7 +52,7 @@ class GraphRAGSearchTool(BaseTool):
             "n_results": n_results,
             "max_hops": max_hops
         }
-        
+
         try:
             response = requests.post(url, json=data)
             response.raise_for_status()
@@ -69,11 +69,11 @@ class GraphRAGConceptTool(BaseTool):
     """
     args_schema = GraphRAGConceptInput
     api_url: str = DEFAULT_API_URL
-    
+
     def _run(self, concept_name: str) -> Dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/concepts/{concept_name}"
-        
+
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -90,11 +90,11 @@ class GraphRAGDocumentTool(BaseTool):
     """
     args_schema = GraphRAGDocumentInput
     api_url: str = DEFAULT_API_URL
-    
+
     def _run(self, concept_name: str, limit: int = 5) -> Dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/documents/{concept_name}?limit={limit}"
-        
+
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -111,22 +111,22 @@ class GraphRAGAddDocumentTool(BaseTool):
     """
     args_schema = GraphRAGAddDocumentInput
     api_url: str = DEFAULT_API_URL
-    
+
     def _run(self, text: str, title: Optional[str] = None, source: Optional[str] = None) -> Dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/documents"
-        
+
         metadata = {}
         if title:
             metadata["title"] = title
         if source:
             metadata["source"] = source
-        
+
         data = {
             "text": text,
             "metadata": metadata
         }
-        
+
         try:
             response = requests.post(url, json=data)
             response.raise_for_status()
@@ -137,15 +137,15 @@ class GraphRAGAddDocumentTool(BaseTool):
 def get_graphrag_tools(api_url: Optional[str] = None) -> List[BaseTool]:
     """
     Get a list of GraphRAG tools for use with LangChain.
-    
+
     Args:
-        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5000)
-    
+        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5001)
+
     Returns:
         List of LangChain tools
     """
     url = api_url or DEFAULT_API_URL
-    
+
     return [
         GraphRAGSearchTool(api_url=url),
         GraphRAGConceptTool(api_url=url),

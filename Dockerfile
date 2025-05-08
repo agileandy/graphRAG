@@ -74,7 +74,8 @@ ENV NEO4J_URI=bolt://localhost:7687 \
     NEO4J_USERNAME=neo4j \
     NEO4J_PASSWORD=graphrag \
     CHROMA_PERSIST_DIRECTORY=/app/data/chromadb \
-    GRAPHRAG_API_URL=http://localhost:5000 \
+    GRAPHRAG_API_PORT=5001 \
+    GRAPHRAG_API_URL=http://localhost:5001 \
     PYTHONPATH=/app \
     GRAPHRAG_LOG_LEVEL=INFO \
     GRAPHRAG_LOG_DIR=/app/data/logs \
@@ -94,7 +95,7 @@ RUN chown -R graphrag:graphrag /app/data && \
 # Neo4j
 EXPOSE 7474 7687
 # API Server
-EXPOSE 5000
+EXPOSE 5001
 # MPC Server
 EXPOSE 8765
 
@@ -104,7 +105,7 @@ RUN chmod +x /app/docker-entrypoint.sh
 
 # Add a health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:${GRAPHRAG_API_PORT:-5001}/health || exit 1
 
 # Switch to non-root user for security
 USER graphrag

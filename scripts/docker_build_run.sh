@@ -28,7 +28,7 @@ docker-compose up -d
 if [ $? -eq 0 ]; then
     echo "✅ GraphRAG Docker container is now running!"
     echo "- Neo4j Browser: http://localhost:7474 (username: neo4j, password: graphrag)"
-    echo "- API Server: http://localhost:5000"
+    echo "- API Server: http://localhost:5001"
     echo "- MPC Server: ws://localhost:8765"
     echo ""
     echo "To stop the container, run: docker-compose down"
