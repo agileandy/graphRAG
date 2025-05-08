@@ -236,7 +236,7 @@ async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = N
 
     text = data['text']
     metadata = data.get('metadata', {})
-    process_async = data.get('async', False)
+    process_async = data.get('async_processing', data.get('async', False))
 
     try:
         # Ensure vector database is connected
@@ -360,8 +360,13 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
 
     folder_path = data['folder_path']
     recursive = data.get('recursive', False)
-    file_types = data.get('file_types', [".txt", ".json"])
-    process_async = data.get('async', True)  # Default to async for folders
+
+    # Import file handler to get supported extensions
+    from src.processing.file_handler import FileHandler
+    default_file_types = [".txt", ".json"] + FileHandler.get_supported_extensions()
+    file_types = data.get('file_types', default_file_types)
+
+    process_async = data.get('async_processing', data.get('async', True))  # Default to async for folders
 
     # Validate folder path
     if not os.path.isdir(folder_path):
@@ -445,6 +450,9 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
             file_ext = os.path.splitext(file_path)[1].lower()
 
             try:
+                # Import file handler
+                from src.processing.file_handler import FileHandler
+
                 if file_ext == '.txt':
                     # Read text file
                     with open(file_path, "r", encoding="utf-8") as f:
@@ -473,8 +481,22 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                     metadata["source"] = "JSON File"
                     metadata["file_path"] = file_path
 
+                elif FileHandler.can_handle_file(file_path):
+                    # Use the appropriate loader for this file type
+                    try:
+                        text, metadata = FileHandler.process_file(file_path)
+                        if not text:
+                            print(f"No text extracted from {file_path}")
+                            skipped_files += 1
+                            continue
+                    except Exception as e:
+                        print(f"Error processing file {file_path} with FileHandler: {e}")
+                        skipped_files += 1
+                        continue
+
                 else:
                     # Skip unsupported file types
+                    print(f"Skipping unsupported file type: {file_ext}")
                     skipped_files += 1
                     continue
 
@@ -546,6 +568,9 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
         file_ext = os.path.splitext(file_path)[1].lower()
 
         try:
+            # Import file handler
+            from src.processing.file_handler import FileHandler
+
             if file_ext == '.txt':
                 # Read text file
                 with open(file_path, "r", encoding="utf-8") as f:
@@ -574,8 +599,22 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
                 metadata["source"] = "JSON File"
                 metadata["file_path"] = file_path
 
+            elif FileHandler.can_handle_file(file_path):
+                # Use the appropriate loader for this file type
+                try:
+                    text, metadata = FileHandler.process_file(file_path)
+                    if not text:
+                        print(f"No text extracted from {file_path}")
+                        skipped_files += 1
+                        continue
+                except Exception as e:
+                    print(f"Error processing file {file_path} with FileHandler: {e}")
+                    skipped_files += 1
+                    continue
+
             else:
                 # Skip unsupported file types
+                print(f"Skipping unsupported file type: {file_ext}")
                 skipped_files += 1
                 continue
 

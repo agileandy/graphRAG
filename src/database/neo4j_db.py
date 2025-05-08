@@ -23,7 +23,15 @@ class Neo4jDatabase:
             username: Neo4j username (default: from environment variable)
             password: Neo4j password (default: from environment variable)
         """
-        self.uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        # Try different URIs for Neo4j connection
+        env_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        self.uri = uri or env_uri
+
+        # If URI contains 0.0.0.0, replace it with localhost for client connections
+        if "0.0.0.0" in self.uri:
+            self.uri = self.uri.replace("0.0.0.0", "localhost")
+
+        print(f"Neo4j URI: {self.uri} (from env: {env_uri})")
         self.username = username or os.getenv("NEO4J_USERNAME", "neo4j")
         self.password = password or os.getenv("NEO4J_PASSWORD", "graphrag")
         self.driver: Optional[Driver] = None
@@ -53,12 +61,19 @@ class Neo4jDatabase:
             True if connection is successful, False otherwise.
         """
         try:
+            print(f"Verifying Neo4j connection to {self.uri} with username {self.username}")
             self.connect()
+            if self.driver is None:
+                print("Driver is None after connect()")
+                return False
+
             with self.driver.session() as session:
                 result = session.run("RETURN 1 AS result")
                 return result.single()["result"] == 1
         except Exception as e:
             print(f"Neo4j connection error: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def run_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
