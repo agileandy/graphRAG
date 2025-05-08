@@ -11,7 +11,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
-from src.database.db_linkage import DatabaseLinkage
 
 def extract_entities_from_metadata(metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """

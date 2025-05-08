@@ -8,12 +8,10 @@ This module provides optimized document processing functions for:
 4. Adaptive chunk sizing
 5. Document hashing for deduplication
 """
-import os
 import re
 import uuid
 import logging
 from typing import List, Dict, Any, Tuple, Optional
-import numpy as np
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

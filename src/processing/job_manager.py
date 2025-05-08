@@ -4,15 +4,12 @@ Job management system for GraphRAG project.
 This module provides a job queue and management system for handling
 long-running background tasks in the GraphRAG system.
 """
-import os
-import time
 import uuid
 import asyncio
 import threading
 from typing import Dict, List, Any, Optional, Callable, Awaitable, Union
 from enum import Enum
 from datetime import datetime
-import json
 
 # Job status enum
 class JobStatus(str, Enum):

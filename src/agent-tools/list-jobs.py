@@ -20,7 +20,7 @@ Environment Variables:
 import sys
 import argparse
 from utils import connect_to_mpc, send_request, get_mpc_url, format_json
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 def display_jobs(result: Dict[str, Any]) -> None:
     """Display jobs in a readable format."""

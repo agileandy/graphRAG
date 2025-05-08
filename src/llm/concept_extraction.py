@@ -6,7 +6,7 @@ analyzing relationships between concepts, and enhancing the knowledge graph.
 """
 import json
 import logging
-from typing import List, Dict, Any, Optional, Set
+from typing import List, Dict, Any
 
 from src.llm.llm_provider import LLMManager
 

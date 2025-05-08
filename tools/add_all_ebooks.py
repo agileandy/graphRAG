@@ -11,7 +11,7 @@ import sys
 import json
 import argparse
 import websockets.sync.client as ws
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import time
 import glob
 
@@ -43,7 +43,7 @@ def send_request(conn, action: str, verbose=False, **kwargs) -> Dict[str, Any]:
     message = {"action": action, **kwargs}
 
     if verbose:
-        print(f"\n=== REQUEST ===")
+        print("\n=== REQUEST ===")
         print(f"Action: {action}")
         print(f"Parameters: {json.dumps(kwargs, indent=2)}")
 
@@ -56,7 +56,7 @@ def send_request(conn, action: str, verbose=False, **kwargs) -> Dict[str, Any]:
         response_data = json.loads(response)
         
         if verbose:
-            print(f"\n=== RESPONSE ===")
+            print("\n=== RESPONSE ===")
             print(json.dumps(response_data, indent=2))
             
         return response_data
@@ -232,7 +232,7 @@ def process_pdf_file(conn, file_path: str, category: str = None, verbose=False) 
         else:
             return {
                 "status": "error",
-                "message": f"Failed to add any chunks of the document"
+                "message": "Failed to add any chunks of the document"
             }
     else:
         # Add the document as a single chunk

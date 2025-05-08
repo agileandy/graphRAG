@@ -4,7 +4,7 @@ Database linkage module for GraphRAG project.
 This module provides utilities for linking between the Neo4j graph database
 and the vector database (ChromaDB).
 """
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Any
 from .neo4j_db import Neo4jDatabase
 from .vector_db import VectorDatabase
 

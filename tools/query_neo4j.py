@@ -3,7 +3,6 @@
 Script to directly query Neo4j in the GraphRAG system.
 """
 
-import sys
 import json
 import argparse
 from neo4j import GraphDatabase

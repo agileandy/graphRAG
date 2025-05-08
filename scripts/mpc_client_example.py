@@ -69,8 +69,8 @@ async def interactive_client(uri: str = "ws://localhost:8765"):
                     print("\nServer supports these actions:")
                     print(", ".join(response['available_actions']))
                     print()
-            except:
-                pass
+            except Exception as e:
+                print(f"Error retrieving available actions: {e}")
 
             while True:
                 action = input("Enter action (0-8): ")

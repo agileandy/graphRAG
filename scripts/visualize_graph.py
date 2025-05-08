@@ -9,7 +9,6 @@ This script:
 import sys
 import os
 import argparse
-from typing import List, Dict, Any
 import json
 
 # Add the project root directory to the Python path
@@ -89,7 +88,7 @@ def visualize_concepts(neo4j_db: Neo4jDatabase, limit: int = 50, output_file: st
     print(f"✅ Visualization saved to {output_file}")
     
     # Open in browser
-    print(f"Opening visualization in browser...")
+    print("Opening visualization in browser...")
     import webbrowser
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
@@ -196,7 +195,7 @@ def visualize_book_concepts(neo4j_db: Neo4jDatabase, book_title: str = None, out
     print(f"✅ Visualization saved to {output_file}")
     
     # Open in browser
-    print(f"Opening visualization in browser...")
+    print("Opening visualization in browser...")
     import webbrowser
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
@@ -274,7 +273,7 @@ def visualize_concept_neighborhood(neo4j_db: Neo4jDatabase, concept_name: str, m
     print(f"✅ Visualization saved to {output_file}")
     
     # Open in browser
-    print(f"Opening visualization in browser...")
+    print("Opening visualization in browser...")
     import webbrowser
     webbrowser.open(f"file://{os.path.abspath(output_file)}")
 
@@ -329,7 +328,7 @@ def export_graph_data(neo4j_db: Neo4jDatabase, output_file: str = "graph_data.js
         json.dump(graph_data, f, indent=2)
     
     print(f"✅ Graph data exported to {output_file}")
-    print(f"Summary:")
+    print("Summary:")
     print(f"  Books: {len(books)}")
     print(f"  Concepts: {len(concepts)}")
     print(f"  Book-Concept Relationships: {len(book_concept_rels)}")

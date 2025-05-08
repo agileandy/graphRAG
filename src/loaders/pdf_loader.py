@@ -8,10 +8,7 @@ This module provides comprehensive PDF processing capabilities including:
 - Image and diagram processing
 """
 import os
-import re
-import io
-import tempfile
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, Tuple, List
 import fitz  # PyMuPDF
 import numpy as np
 import cv2

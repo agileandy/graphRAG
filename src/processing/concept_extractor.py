@@ -9,9 +9,8 @@ This module provides utilities for extracting concepts from text using:
 import re
 import logging
 import json
-from typing import List, Dict, Any, Optional, Tuple, Set
+from typing import List, Dict, Any
 import os
-from collections import Counter
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -8,7 +8,7 @@ import sys
 import json
 import argparse
 import websockets.sync.client as ws
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 # Default MPC server URL (matching the Docker port mapping)
 DEFAULT_MPC_URL = "ws://localhost:8766"

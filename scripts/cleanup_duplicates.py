@@ -1,6 +1,5 @@
 import sys
 import os
-import json
 import logging
 from collections import defaultdict
 
@@ -9,7 +8,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../s
 
 from database.neo4j_db import Neo4jDatabase
 from database.vector_db import VectorDatabase
-from processing.duplicate_detector import DuplicateDetector
 # generate_document_hash is a method of DuplicateDetector, no need to import separately
 
 # Configure logging

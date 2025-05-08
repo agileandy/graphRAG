@@ -15,7 +15,7 @@ import logging
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.utils.db_utils import check_chromadb_version, check_database_directories
+from src.utils.db_utils import check_chromadb_version
 from src.database.vector_db import VectorDatabase
 
 # Configure logging
@@ -33,7 +33,7 @@ def reset_chromadb():
         try:
             # Delete directory
             shutil.rmtree(chroma_dir)
-            print(f"✅ Successfully deleted ChromaDB directory")
+            print("✅ Successfully deleted ChromaDB directory")
         except Exception as e:
             print(f"❌ Error deleting ChromaDB directory: {e}")
             return False
@@ -51,12 +51,12 @@ def reset_chromadb():
         print("Initializing new ChromaDB database...")
         vector_db = VectorDatabase()
         vector_db.connect()
-        print(f"✅ Successfully initialized new ChromaDB database")
+        print("✅ Successfully initialized new ChromaDB database")
         
         # Create dummy data
         print("Creating dummy data...")
         vector_db.create_dummy_data()
-        print(f"✅ Successfully created dummy data")
+        print("✅ Successfully created dummy data")
         
         return True
     except Exception as e:

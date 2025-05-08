@@ -48,7 +48,7 @@ def main():
         )
         
         if results and results.get("ids") and results["ids"][0]:
-            print(f"✅ Successfully queried for 'neural networks'!")
+            print("✅ Successfully queried for 'neural networks'!")
             print(f"   Top result: {results['documents'][0][0]}")
         else:
             print("❌ Query returned no results.")

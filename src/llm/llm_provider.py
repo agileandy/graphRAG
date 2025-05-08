@@ -4,10 +4,8 @@ LLM Provider module for GraphRAG project.
 This module provides a flexible architecture for integrating with various LLM endpoints,
 including local LLM servers (e.g., LM Studio, Ollama) and cloud APIs.
 """
-from typing import List, Dict, Any, Optional, Union, Callable
+from typing import List, Dict, Any, Optional
 import requests
-import json
-import os
 import logging
 from abc import ABC, abstractmethod
 

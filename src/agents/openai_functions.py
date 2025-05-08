@@ -5,10 +5,8 @@ This module provides functions that can be used with OpenAI's function calling
 feature, making it easy to integrate with AI agents.
 """
 import os
-import sys
-import json
 import requests
-from typing import Dict, List, Any, Optional, Union, Callable
+from typing import Dict, List, Any, Optional, Callable
 
 # Default API URL
 DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", "http://localhost:5000")

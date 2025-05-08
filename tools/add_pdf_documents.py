@@ -11,7 +11,7 @@ import sys
 import json
 import argparse
 import websockets.sync.client as ws
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 import time
 
 try:

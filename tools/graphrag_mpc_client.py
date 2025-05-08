@@ -10,7 +10,7 @@ import argparse
 import json
 import sys
 import websockets.sync.client as ws
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 
 # Default MPC server URL
 DEFAULT_MPC_URL = "ws://localhost:8766"

@@ -8,11 +8,9 @@ It can be run as a cron job or as a daemon.
 import os
 import sys
 import time
-import signal
 import logging
 import subprocess
 import psutil
-from datetime import datetime
 
 # Configuration
 LOG_FILE = os.path.expanduser("~/.graphrag/logs/monitor.log")

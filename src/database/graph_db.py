@@ -4,10 +4,9 @@ Graph database wrapper for GraphRAG project.
 This module provides a unified interface for graph database operations,
 currently implemented using Neo4j.
 """
-import os
 import uuid
 import logging
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 from src.database.neo4j_db import Neo4jDatabase

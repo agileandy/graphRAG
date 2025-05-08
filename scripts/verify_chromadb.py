@@ -37,7 +37,7 @@ def main():
     # Get ChromaDB info
     chromadb_info = get_chromadb_info()
     if chromadb_info:
-        print(f"\nChromaDB Information:")
+        print("\nChromaDB Information:")
         print(f"  Version: {chromadb_info['version']}")
         print(f"  Python Version: {chromadb_info['python_version']}")
         print(f"  Platform: {chromadb_info['platform']}")

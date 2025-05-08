@@ -10,17 +10,14 @@ import sys
 import os
 import argparse
 import time
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, Any
 import uuid
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.processing.document_processor import (
-    smart_chunk_text,
-    optimize_metadata,
     process_document_with_metadata,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,

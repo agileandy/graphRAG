@@ -389,18 +389,18 @@ def add_document_to_graphrag(
     # 5. Add relationships to Neo4j
     for source_id, target_id, strength in relationships:
         # Check if relationship already exists
-        query = f"""
-        MATCH (a:Concept {{id: $source_id}})-[r:RELATED_TO]->(b:Concept {{id: $target_id}})
+        query = """
+        MATCH (a:Concept {id: $source_id})-[r:RELATED_TO]->(b:Concept {id: $target_id})
         RETURN r
         """
         results = neo4j_db.run_query(query, {"source_id": source_id, "target_id": target_id})
 
         if not results:
             # Create the relationship
-            query = f"""
-            MATCH (a:Concept {{id: $source_id}})
-            MATCH (b:Concept {{id: $target_id}})
-            CREATE (a)-[r:RELATED_TO {{strength: $strength}}]->(b)
+            query = """
+            MATCH (a:Concept {id: $source_id})
+            MATCH (b:Concept {id: $target_id})
+            CREATE (a)-[r:RELATED_TO {strength: $strength}]->(b)
             RETURN r
             """
             neo4j_db.run_query(query, {

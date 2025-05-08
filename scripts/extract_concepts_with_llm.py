@@ -13,7 +13,7 @@ import os
 import json
 import logging
 import argparse
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any
 from tqdm import tqdm
 
 # Add the project root directory to the Python path
@@ -151,7 +151,7 @@ def process_documents_with_llm(
         
         for doc in tqdm(batch, desc=f"Batch {i//batch_size + 1}"):
             doc_id = doc.get("id")
-            doc_title = doc.get("metadata", {}).get("title", "Unknown")
+            doc.get("metadata", {}).get("title", "Unknown")
             doc_text = doc.get("text", "")
             
             if not doc_text or len(doc_text) < min_text_length:

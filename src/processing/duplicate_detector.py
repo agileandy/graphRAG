@@ -6,10 +6,9 @@ in the GraphRAG system, particularly for PDFs and other document types.
 """
 import os
 import hashlib
-from typing import Dict, List, Any, Optional, Tuple, Set
+from typing import Dict, Any, Optional, Tuple
 import re
 from fuzzywuzzy import fuzz
-from fuzzywuzzy import process # Import process for potential future use or if needed by fuzz.ratio internally
 
 from src.database.vector_db import VectorDatabase
 

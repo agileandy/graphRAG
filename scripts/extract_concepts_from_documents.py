@@ -12,7 +12,7 @@ import sys
 import os
 import logging
 import argparse
-from typing import List, Dict, Any, Optional, Set
+from typing import Dict, Any
 from tqdm import tqdm
 
 # Add the project root directory to the Python path
@@ -91,7 +91,7 @@ def extract_concepts_from_documents(
     # Process each document
     for doc in tqdm(documents, desc="Processing documents"):
         doc_id = doc.get("id")
-        doc_title = doc.get("metadata", {}).get("title", "Unknown")
+        doc.get("metadata", {}).get("title", "Unknown")
         doc_text = doc.get("text", "")
         
         if not doc_text:

@@ -24,7 +24,7 @@ import sys
 import os
 import argparse
 from utils import connect_to_mpc, send_request, get_mpc_url, format_json
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 def parse_metadata(metadata_args):
     """Parse metadata arguments into a dictionary."""

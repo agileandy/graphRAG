@@ -2,9 +2,9 @@
 Neo4j database connection and operations for GraphRAG project.
 """
 import os
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
-from neo4j import GraphDatabase, Driver, Session, Result
+from neo4j import GraphDatabase, Driver
 
 # Load environment variables
 load_dotenv()

@@ -6,8 +6,7 @@ to interact with the system programmatically.
 """
 import os
 import sys
-import json
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 

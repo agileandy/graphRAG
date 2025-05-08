@@ -4,7 +4,7 @@ File handler for GraphRAG project.
 This module provides a unified interface for handling different file types.
 """
 import os
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, Tuple, List
 
 # Import loaders
 from ..loaders.markdown_loader import MarkdownLoader
