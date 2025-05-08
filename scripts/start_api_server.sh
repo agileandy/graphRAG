@@ -11,6 +11,9 @@ if ! command -v gunicorn &> /dev/null; then
     exit 1
 fi
 
+# Get the API port from environment variable or use default
+API_PORT=${GRAPHRAG_API_PORT:-5001}
+
 # Start the API server
-echo "Starting GraphRAG API server..."
-gunicorn --bind 0.0.0.0:5000 src.api.wsgi:app
+echo "Starting GraphRAG API server on port $API_PORT..."
+gunicorn --bind 0.0.0.0:$API_PORT src.api.wsgi:app
