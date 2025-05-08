@@ -110,12 +110,14 @@ def find_related_concepts(concept_name: str, neo4j_db: Neo4jDatabase, max_hops: 
     concept_id = results[0]["id"]
     concept_name = results[0]["name"]
 
-    # Find related concepts within max_hops
+    # Find related concepts within max_hops with deduplication in the query
     query = f"""
     MATCH path = (c:Concept {{id: $concept_id}})-[r:RELATED_TO*1..{max_hops}]-(related:Concept)
+    WITH related, min(length(path) - 1) as distance, 
+         max(reduce(s = 0, rel IN relationships(path) | s + coalesce(rel.strength, 0.5))) as relevance_score
     RETURN related.id AS id, related.name AS name,
-           length(path) - 1 AS distance,
-           reduce(s = 0, rel IN relationships(path) | s + coalesce(rel.strength, 0.5)) AS relevance_score
+           distance,
+           relevance_score
     ORDER BY distance ASC, relevance_score DESC
     """
 
@@ -129,19 +131,9 @@ def find_related_concepts(concept_name: str, neo4j_db: Neo4jDatabase, max_hops: 
         print("No related concepts found.")
         return []
 
-    # Group by distance and de-duplicate by concept ID
+    # Group by distance (results are already deduplicated by the query)
     by_distance = {}
-    seen_concept_ids = set()
-
     for result in related:
-        # Skip if we've already seen this concept ID
-        if result["id"] in seen_concept_ids:
-            continue
-
-        # Mark this concept ID as seen
-        seen_concept_ids.add(result["id"])
-
-        # Add to the appropriate distance group
         distance = result["distance"]
         if distance not in by_distance:
             by_distance[distance] = []
@@ -153,12 +145,7 @@ def find_related_concepts(concept_name: str, neo4j_db: Neo4jDatabase, max_hops: 
         for i, result in enumerate(by_distance[distance]):
             print(f"{i+1}. {result['name']} (Score: {result['relevance_score']:.2f})")
 
-    # Return the de-duplicated results
-    deduped_results = []
-    for distance in sorted(by_distance.keys()):
-        deduped_results.extend(by_distance[distance])
-
-    return deduped_results
+    return related
 
 def find_passages_about_concept(concept_name: str, neo4j_db: Neo4jDatabase, vector_db: VectorDatabase, limit: int = 5) -> Dict[str, Any]:
     """

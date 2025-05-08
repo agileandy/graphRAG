@@ -11,6 +11,7 @@ import sys
 import os
 import uuid
 from typing import List, Dict, Any, Tuple, Optional
+import logging
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -18,6 +19,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.database.db_linkage import DatabaseLinkage
+from src.processing.duplicate_detector import DuplicateDetector
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def extract_entities_from_metadata(metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
@@ -269,20 +275,35 @@ def add_document_to_graphrag(
     text: str,
     metadata: Dict[str, Any],
     neo4j_db: Neo4jDatabase,
-    vector_db: VectorDatabase
-) -> Dict[str, Any]:
+    vector_db: VectorDatabase,
+    duplicate_detector: DuplicateDetector
+) -> Optional[Dict[str, Any]]:
     """
-    Add a document to the GraphRAG system.
+    Add a document to the GraphRAG system, with duplicate checking.
 
     Args:
         text: Document text
         metadata: Document metadata
         neo4j_db: Neo4j database instance
         vector_db: Vector database instance
+        duplicate_detector: DuplicateDetector instance
 
     Returns:
-        Dictionary with document ID and extracted entities
+        Dictionary with document ID and extracted entities, or None if duplicate
     """
+    # Calculate document hash and add to metadata
+    doc_hash = duplicate_detector.generate_document_hash(text)
+    metadata["hash"] = doc_hash
+
+    # Check for duplicates
+    is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(text, metadata)
+
+    if is_dup:
+        logger.info(f"Skipping duplicate document: {metadata.get('title', 'Unknown Title')} (ID: {existing_doc_id}, Method: {method})")
+        return None # Indicate that the document was a duplicate and not added
+
+    logger.info(f"Adding new document: {metadata.get('title', 'Unknown Title')}")
+
     # 1. Extract entities from the document and metadata
     entities = extract_entities(text, metadata)
 
@@ -306,7 +327,7 @@ def add_document_to_graphrag(
         if existing_concepts:
             # Use the existing concept ID instead of creating a new one
             existing_concept = existing_concepts[0]
-            print(f"Found existing concept with name '{entity['name']}' (ID: {existing_concept['c']['id']})")
+            logger.info(f"Found existing concept with name '{entity['name']}' (ID: {existing_concept['c']['id']})")
 
             # Update the entity ID to match the existing concept
             entity["id"] = existing_concept['c']['id']
@@ -323,7 +344,7 @@ def add_document_to_graphrag(
                 "name": entity["name"],
                 "abbreviation": entity.get("abbreviation", "")
             })
-            print(f"Updated existing concept: {entity['name']}")
+            logger.info(f"Updated existing concept: {entity['name']}")
         else:
             # Check if entity with this ID already exists
             query = """
@@ -348,7 +369,7 @@ def add_document_to_graphrag(
                     "abbreviation": entity.get("abbreviation", ""),
                     "domain": entity.get("domain", "")
                 })
-                print(f"Created new concept: {entity['name']}")
+                logger.info(f"Created new concept: {entity['name']}")
             else:
                 # Update the existing entity
                 query = """
@@ -363,7 +384,7 @@ def add_document_to_graphrag(
                     "abbreviation": entity.get("abbreviation", ""),
                     "domain": entity.get("domain", "")
                 })
-                print(f"Updated concept: {entity['name']}")
+                logger.info(f"Updated concept: {entity['name']}")
 
     # 5. Add relationships to Neo4j
     for source_id, target_id, strength in relationships:
@@ -387,9 +408,9 @@ def add_document_to_graphrag(
                 "target_id": target_id,
                 "strength": strength
             })
-            print(f"Created relationship: {source_id} -> {target_id}")
+            logger.info(f"Created relationship: {source_id} -> {target_id}")
         else:
-            print(f"Relationship already exists: {source_id} -> {target_id}")
+            logger.info(f"Relationship already exists: {source_id} -> {target_id}")
 
     # 6. Add document to vector database
     # Update metadata with entity IDs
@@ -408,7 +429,7 @@ def add_document_to_graphrag(
         metadatas=[doc_metadata],
         ids=[doc_id]
     )
-    print(f"Added document to vector database with ID: {doc_id}")
+    logger.info(f"Added document to vector database with ID: {doc_id}")
 
     return {
         "doc_id": doc_id,
@@ -420,23 +441,24 @@ def main():
     """
     Main function to demonstrate adding a document to the GraphRAG system.
     """
-    print("Initializing databases...")
+    logger.info("Initializing databases...")
 
     # Initialize databases
     neo4j_db = Neo4jDatabase()
     vector_db = VectorDatabase()
     db_linkage = DatabaseLinkage(neo4j_db, vector_db)
+    duplicate_detector = DuplicateDetector(vector_db)
 
     # Verify connections
     if not neo4j_db.verify_connection():
-        print("❌ Neo4j connection failed!")
+        logger.error("❌ Neo4j connection failed!")
         return
 
     if not vector_db.verify_connection():
-        print("❌ Vector database connection failed!")
+        logger.error("❌ Vector database connection failed!")
         return
 
-    print("✅ Database connections verified!")
+    logger.info("✅ Database connections verified!")
 
     # Example document
     document_text = """
@@ -483,35 +505,41 @@ def main():
     }
 
     # Add document to GraphRAG system
-    print("\nAdding document to GraphRAG system...")
+    logger.info("\nAdding document to GraphRAG system...")
     result = add_document_to_graphrag(
         text=document_text,
         metadata=document_metadata,
         neo4j_db=neo4j_db,
-        vector_db=vector_db
+        vector_db=vector_db,
+        duplicate_detector=duplicate_detector
     )
 
-    # Perform a hybrid search
-    print("\nPerforming hybrid search...")
-    search_results = db_linkage.hybrid_search(
-        query_text="How do transformers work in deep learning?",
-        n_vector_results=2,
-        max_graph_hops=2
-    )
+    if result:
+        # Perform a hybrid search
+        logger.info("\nPerforming hybrid search...")
+        search_results = db_linkage.hybrid_search(
+            query_text="How do transformers work in deep learning?",
+            n_vector_results=2,
+            max_graph_hops=2
+        )
 
-    # Display search results
-    print("\nVector results:")
-    for i, doc in enumerate(search_results["vector_results"]["documents"]):
-        print(f"  {i+1}. {doc[:100]}...")
+        # Display search results
+        logger.info("\nVector results:")
+        for i, doc in enumerate(search_results["vector_results"]["documents"]):
+            logger.info(f"  {i+1}. {doc[:100]}...")
 
-    print("\nGraph results:")
-    for i, result in enumerate(search_results["graph_results"]):
-        print(f"  {i+1}. {result['name']} (Score: {result['relevance_score']})")
+        logger.info("\nGraph results:")
+        for i, result in enumerate(search_results["graph_results"]):
+            logger.info(f"  {i+1}. {result['name']} (Score: {result['relevance_score']})")
+
+        logger.info("\n✅ Document added and search performed successfully!")
+    else:
+        logger.info("\nDocument was a duplicate and not added.")
+
 
     # Close Neo4j connection
     neo4j_db.close()
 
-    print("\n✅ Document added and search performed successfully!")
 
 if __name__ == "__main__":
     main()
