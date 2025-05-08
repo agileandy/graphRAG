@@ -4,13 +4,21 @@ Concept extraction utilities for GraphRAG project.
 This module provides utilities for extracting concepts from text using:
 1. Rule-based extraction
 2. NLP-based extraction
-3. LLM-based extraction (if available)
+3. LLM-based extraction (using the LLMManager from src.llm.llm_provider)
+
+Note: This module is being refactored to use the LLMManager from src.llm.llm_provider
+instead of direct OpenAI API calls. The old implementation is deprecated and will be
+removed in a future version.
 """
 import re
 import logging
 import json
-from typing import List, Dict, Any
 import os
+from typing import List, Dict, Any, Optional
+from pathlib import Path
+
+# Import LLM integration
+from src.llm.llm_provider import LLMManager, create_llm_provider
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,28 +28,111 @@ logger = logging.getLogger(__name__)
 SPACY_AVAILABLE = False
 nlp = None
 
-# Try to import OpenAI for LLM-based extraction
-try:
-    from openai import OpenAI
-    OPENAI_AVAILABLE = True
-    # Check if API key is available
-    if os.getenv("OPENAI_API_KEY"):
-        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    else:
-        logger.warning("OpenAI API key not found. LLM-based concept extraction will not be available.")
-        OPENAI_AVAILABLE = False
-        openai_client = None
-except ImportError:
-    logger.warning("OpenAI not available. LLM-based concept extraction will not be available.")
-    OPENAI_AVAILABLE = False
-    openai_client = None
-
 # Load domain-specific stopwords
 DOMAIN_STOPWORDS = {
     "general": {"the", "and", "a", "an", "in", "on", "at", "to", "for", "with", "by", "about", "like", "through", "over", "before", "after", "between", "under", "during", "without", "of", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "can", "could", "will", "would", "shall", "should", "may", "might", "must", "this", "that", "these", "those", "it", "they", "them", "their", "he", "she", "him", "her", "his", "hers", "its", "theirs", "we", "us", "our", "ours", "you", "your", "yours", "i", "me", "my", "mine"},
     "tech": {"use", "using", "used", "user", "users", "system", "systems", "data", "information", "process", "processes", "method", "methods", "function", "functions", "value", "values", "example", "examples", "result", "results", "figure", "figures", "table", "tables", "section", "sections", "chapter", "chapters", "page", "pages", "see", "shown", "show", "shows", "showing", "note", "notes", "describe", "describes", "described", "describing", "description", "represent", "represents", "represented", "representing", "representation"},
     "academic": {"paper", "papers", "study", "studies", "research", "researcher", "researchers", "analysis", "analyze", "analyzed", "analyzing", "experiment", "experiments", "experimental", "theory", "theories", "theoretical", "hypothesis", "hypotheses", "method", "methods", "methodology", "methodologies", "approach", "approaches", "framework", "frameworks", "model", "models", "modeling", "modelling", "simulation", "simulations", "algorithm", "algorithms", "implementation", "implementations", "evaluation", "evaluations", "evaluate", "evaluated", "evaluating", "performance", "performances", "result", "results", "conclusion", "conclusions", "future", "work"}
 }
+
+def load_llm_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Load LLM configuration from file.
+    
+    Args:
+        config_path: Path to configuration file
+        
+    Returns:
+        Configuration dictionary
+    """
+    # Default config path
+    if config_path is None:
+        # Get the project root directory
+        project_root = Path(__file__).parent.parent.parent
+        config_path = os.path.join(project_root, "config", "llm_config.json")
+    
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        return config
+    except Exception as e:
+        logger.error(f"Error loading LLM config: {e}")
+        # Return default config
+        return {
+            "primary_provider": {
+                "type": "openai-compatible",
+                "api_base": "http://192.168.1.21:1234/v1",
+                "api_key": "dummy-key",
+                "model": "lmstudio-community/Phi-4-mini-reasoning-MLX-4bit",
+                "temperature": 0.1,
+                "max_tokens": 1000,
+                "timeout": 60
+            }
+        }
+
+def setup_llm_manager(config: Dict[str, Any]) -> Optional[LLMManager]:
+    """
+    Set up LLM manager from configuration.
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        LLM manager instance or None if setup fails
+    """
+    # Create primary provider
+    primary_config = config.get("primary_provider", {})
+    try:
+        primary_provider = create_llm_provider(primary_config)
+        logger.info(f"Created primary provider: {primary_config.get('type')} with model {primary_config.get('model')}")
+    except Exception as e:
+        logger.error(f"Error creating primary provider: {e}")
+        return None
+    
+    # Create fallback provider if configured
+    fallback_provider = None
+    if "fallback_provider" in config:
+        fallback_config = config.get("fallback_provider", {})
+        try:
+            fallback_provider = create_llm_provider(fallback_config)
+            logger.info(f"Created fallback provider: {fallback_config.get('type')} with model {fallback_config.get('model')}")
+        except Exception as e:
+            logger.error(f"Error creating fallback provider: {e}")
+    
+    # Create LLM manager
+    return LLMManager(primary_provider, fallback_provider)
+
+# Initialize LLM manager
+llm_manager = None
+
+# Try to initialize LLM manager
+try:
+    config = load_llm_config()
+    llm_manager = setup_llm_manager(config)
+    if llm_manager:
+        logger.info("Initialized LLM manager for concept extraction")
+    else:
+        logger.warning("Failed to initialize LLM manager. LLM-based concept extraction will use fallback methods.")
+except Exception as e:
+    logger.warning(f"Error initializing LLM manager: {e}")
+
+# For backward compatibility - DEPRECATED
+# This will be removed in a future version
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+    # Check if API key is available
+    if os.getenv("OPENAI_API_KEY"):
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        logger.info("Initialized OpenAI client for concept extraction (DEPRECATED)")
+    else:
+        logger.info("OpenAI API key not found. Using LLMManager for concept extraction.")
+        OPENAI_AVAILABLE = False
+        openai_client = None
+except ImportError:
+    logger.warning("OpenAI not available. LLM-based concept extraction will use LLMManager.")
+    OPENAI_AVAILABLE = False
+    openai_client = None
 
 class ConceptExtractor:
     """
@@ -69,7 +160,8 @@ class ConceptExtractor:
             max_concept_length: Maximum concept length in words
         """
         self.use_nlp = use_nlp and SPACY_AVAILABLE
-        self.use_llm = use_llm and OPENAI_AVAILABLE
+        # Check if LLM is available through either method
+        self.use_llm = use_llm and (llm_manager is not None or OPENAI_AVAILABLE)
         self.domain = domain
         self.min_concept_length = min_concept_length
         self.max_concept_length = max_concept_length
@@ -180,8 +272,111 @@ class ConceptExtractor:
         Returns:
             List of extracted concepts with metadata
         """
-        if not self.use_llm or openai_client is None:
-            logger.warning("LLM-based extraction not available. Using NLP-based extraction instead.")
+        # First try using the LLMManager if available
+        if llm_manager is not None:
+            try:
+                return self._extract_concepts_with_llm_manager(text, max_concepts)
+            except Exception as e:
+                logger.warning(f"Error using LLMManager for concept extraction: {e}")
+                # Fall back to OpenAI client if available
+                if self.use_llm and openai_client is not None:
+                    logger.info("Falling back to OpenAI client for concept extraction (DEPRECATED)")
+                    return self._extract_concepts_with_openai(text, max_concepts)
+        
+        # If LLMManager is not available, try using OpenAI client
+        if self.use_llm and openai_client is not None:
+            logger.warning("Using OpenAI client for concept extraction (DEPRECATED)")
+            return self._extract_concepts_with_openai(text, max_concepts)
+        
+        # If neither is available, fall back to NLP-based extraction
+        logger.warning("LLM-based extraction not available. Using NLP-based extraction instead.")
+        nlp_concepts = self.extract_concepts_nlp(text)
+        return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in nlp_concepts[:max_concepts]]
+    
+    def _extract_concepts_with_llm_manager(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
+        """
+        Extract concepts using LLMManager.
+        
+        Args:
+            text: Input text
+            max_concepts: Maximum number of concepts to extract
+            
+        Returns:
+            List of extracted concepts with metadata
+        """
+        # Truncate text if too long
+        max_text_length = 4000
+        if len(text) > max_text_length:
+            truncated_text = text[:max_text_length] + "..."
+            logger.info(f"Text truncated from {len(text)} to {max_text_length} characters")
+        else:
+            truncated_text = text
+        
+        # Prepare prompt for concept extraction
+        prompt = f"""
+        Extract the most important domain-specific concepts from the following text.
+        Return the result as a JSON array of objects, each with the following properties:
+        - concept: The concept name
+        - relevance: A score from 0.0 to 1.0 indicating the relevance of the concept to the text
+        - definition: A brief definition of the concept based on the text
+        
+        Text:
+        {truncated_text}
+        
+        Format:
+        [
+            {{"concept": "Concept 1", "relevance": 0.95, "definition": "Definition 1"}},
+            {{"concept": "Concept 2", "relevance": 0.85, "definition": "Definition 2"}},
+            ...
+        ]
+        
+        Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts.
+        """
+        
+        # Generate response
+        response = llm_manager.generate(
+            prompt, 
+            system_prompt="You are a concept extraction assistant that identifies key technical and domain-specific concepts from text.",
+            max_tokens=1000,
+            temperature=0.2
+        )
+        
+        # Parse JSON from response
+        try:
+            # Find JSON in the response
+            json_start = response.find('[')
+            json_end = response.rfind(']') + 1
+            
+            if json_start >= 0 and json_end > json_start:
+                json_str = response[json_start:json_end]
+                concepts = json.loads(json_str)
+                # Add source field
+                for concept in concepts:
+                    concept["source"] = "llm"
+                return concepts
+            else:
+                logger.warning("Could not find JSON array in LLM response")
+                return []
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse JSON from LLM response")
+            logger.debug(f"LLM response: {response}")
+            return []
+    
+    def _extract_concepts_with_openai(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
+        """
+        Extract concepts using OpenAI API (DEPRECATED).
+        
+        Args:
+            text: Input text
+            max_concepts: Maximum number of concepts to extract
+            
+        Returns:
+            List of extracted concepts with metadata
+        """
+        logger.warning("Using deprecated OpenAI API for concept extraction. This will be removed in a future version.")
+        
+        if openai_client is None:
+            logger.warning("OpenAI client not available. Using NLP-based extraction instead.")
             nlp_concepts = self.extract_concepts_nlp(text)
             return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in nlp_concepts[:max_concepts]]
         
@@ -247,7 +442,7 @@ class ConceptExtractor:
         """
         # Determine method based on availability
         if method == "auto":
-            if self.use_llm and openai_client is not None:
+            if self.use_llm and (llm_manager is not None or openai_client is not None):
                 method = "llm"
             elif self.use_nlp and nlp is not None:
                 method = "nlp"
@@ -255,7 +450,7 @@ class ConceptExtractor:
                 method = "rule"
         
         # Extract concepts using the specified method
-        if method == "llm" and self.use_llm and openai_client is not None:
+        if method == "llm" and self.use_llm:
             return self.extract_concepts_llm(text, max_concepts)
         elif method == "nlp" and self.use_nlp and nlp is not None:
             concepts = self.extract_concepts_nlp(text)
@@ -348,7 +543,7 @@ class ConceptExtractor:
 
 if __name__ == "__main__":
     # Example usage
-    extractor = ConceptExtractor(use_nlp=True, use_llm=False)
+    extractor = ConceptExtractor(use_nlp=True, use_llm=True)
     
     text = """
     Industry 4.0 is the ongoing automation of traditional manufacturing and industrial practices, 
