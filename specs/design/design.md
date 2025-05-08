@@ -90,7 +90,34 @@ classDiagram
     DatabaseLinkage --> VectorDatabase
 ```
 
-#### 2.1.1 Neo4j Schema
+#### 2.1.1 Technology Selection Rationale
+
+The choice of database technologies was driven by the following considerations:
+
+**Neo4j**:
+
+- **Explicit Relationship Modeling**: Neo4j's property graph model allows for explicit representation of complex relationships between concepts, documents, and sections.
+- **Cypher Query Language**: Provides a powerful and intuitive way to traverse and query graph relationships.
+- **Scalability**: Supports horizontal scaling for large knowledge graphs.
+- **Community Support**: Strong community and extensive documentation.
+- **Alternatives Considered**:
+  - ArangoDB: While offering multi-model capabilities, Neo4j's specialized graph capabilities were preferred.
+  - Amazon Neptune: Avoided due to cloud vendor lock-in concerns.
+  - TigerGraph: Less mature ecosystem and community support at the time of selection.
+
+**ChromaDB**:
+
+- **Embedding Storage**: Purpose-built for storing and querying vector embeddings.
+- **Similarity Search**: Efficient approximate nearest neighbor (ANN) search capabilities.
+- **Local Deployment**: Can be deployed locally without external dependencies.
+- **Python Integration**: Native Python API with simple integration.
+- **Alternatives Considered**:
+  - Pinecone: Cloud-only solution with potential cost implications for large datasets.
+  - Milvus: More complex deployment requirements.
+  - FAISS: Lower-level library requiring more custom code for persistence and management.
+  - Qdrant: Promising alternative, but ChromaDB had better Python integration at the time.
+
+#### 2.1.2 Neo4j Schema
 
 ```mermaid
 erDiagram
@@ -127,6 +154,54 @@ erDiagram
     }
 ```
 
+#### 2.1.3 ChromaDB Collection Structure
+
+ChromaDB stores document chunks with their embeddings and metadata:
+
+```python
+# Example of adding documents to ChromaDB
+collection.add_documents(
+    documents=[
+        "Neural networks are a fundamental component of deep learning...",
+        "The architecture of neural networks consists of layers..."
+    ],
+    embeddings=[
+        [0.1, 0.2, 0.3, ...],  # 1536-dimensional embedding vector
+        [0.2, 0.3, 0.4, ...]   # 1536-dimensional embedding vector
+    ],
+    metadatas=[
+        {
+            "document_id": "doc123",
+            "title": "Deep Learning Fundamentals",
+            "page": 42,
+            "chunk_id": "chunk1",
+            "section_id": "section1",
+            "chapter_id": "chapter1",
+            "book_id": "book1",
+            "concepts": ["neural networks", "deep learning"]
+        },
+        {
+            "document_id": "doc456",
+            "title": "Machine Learning Handbook",
+            "page": 78,
+            "chunk_id": "chunk2",
+            "section_id": "section2",
+            "chapter_id": "chapter2",
+            "book_id": "book2",
+            "concepts": ["neural networks", "architecture", "layers"]
+        }
+    ],
+    ids=["chunk1", "chunk2"]
+)
+```
+
+The metadata structure enables:
+
+- **Document Tracing**: Linking chunks back to their source documents
+- **Hierarchical Navigation**: Traversing from books to chapters to sections
+- **Concept Linkage**: Connecting chunks to the concepts they mention
+- **Filtering**: Performing targeted searches based on metadata attributes
+
 ### 2.2 Processing Layer
 
 The processing layer handles document ingestion, chunking, concept extraction, and relationship building:
@@ -145,11 +220,136 @@ flowchart TD
 #### 2.2.1 Document Processing Pipeline
 
 1. **Document Loading**: Parse documents from various formats (PDF, TXT, MD)
+   - PDF processing uses PyMuPDF (fitz) for text extraction and layout analysis
+   - Table extraction uses Camelot for structured data
+   - Image extraction and OCR via Tesseract when needed
+   - Markdown processing preserves structure and formatting
+
 2. **Chunking**: Split documents into semantic chunks
+   - **Strategy**: Hybrid approach combining multiple methods:
+     - **Semantic Chunking**: Uses sentence transformers to identify natural semantic boundaries
+     - **Structure-aware**: Respects document structure (headings, paragraphs, sections)
+     - **Size-constrained**: Ensures chunks stay within token limits (default: 512 tokens)
+   - **Configuration**: Chunking parameters are configurable:
+
+     ```python
+     chunker = DocumentChunker(
+         chunk_size=512,
+         chunk_overlap=50,
+         respect_sections=True,
+         split_on_headings=True
+     )
+     ```
+
 3. **Embedding Generation**: Generate embeddings for each chunk
+   - Uses OpenAI's text-embedding-ada-002 model (1536 dimensions) by default
+   - Local embedding models supported via LM Studio integration
+   - Batch processing to optimize API calls
+   - Caching to avoid re-embedding identical content
+
 4. **Concept Extraction**: Extract key concepts using NLP and/or LLM
+   - **NLP-based extraction**:
+     - spaCy for named entity recognition and noun phrase extraction
+     - TF-IDF for statistical importance scoring
+     - Domain-specific entity recognition for specialized fields
+   - **LLM-based extraction**:
+     - Structured prompting to identify key concepts
+     - Example prompt template:
+
+       ```text
+       Identify the 5-10 most important concepts in the following text.
+       For each concept, provide:
+       1. The concept name
+       2. A category (e.g., technique, theory, tool, person)
+       3. A confidence score (0-1)
+
+       Text: {chunk_text}
+       ```
+
+   - **Concept Disambiguation**:
+     - Fuzzy matching to identify similar concepts
+     - Embedding similarity to group related concepts
+     - Manual curation interface for reviewing and merging concepts
+
 5. **Relationship Building**: Create relationships between concepts and documents
+   - **Explicit Relationships**:
+     - MENTIONS: Links sections to concepts they contain
+     - CONTAINS: Hierarchical document structure (book → chapter → section)
+   - **Derived Relationships**:
+     - RELATED_TO: Between concepts, based on:
+       - Co-occurrence frequency in the same sections
+       - Embedding similarity
+       - LLM-generated relationship suggestions
+     - Relationship strength scoring (0-1) based on evidence
+   - **Relationship Types**:
+     - Basic RELATED_TO for general connections
+     - Specialized relationships (IS_A, PART_OF, USES, etc.) for domain-specific knowledge
+
 6. **Storage**: Store chunks in ChromaDB and concepts/relationships in Neo4j
+   - Transactional processing ensures consistency across both databases
+   - Rollback mechanisms for failed processing
+   - Idempotent operations to prevent duplicates
+
+#### 2.2.2 Job Management and Persistence
+
+The job management system handles asynchronous processing of documents and provides status tracking:
+
+```mermaid
+classDiagram
+    class JobManager {
+        -jobs_db
+        +create_job(job_type, params, created_by)
+        +get_job(job_id)
+        +get_jobs_by_status(status)
+        +get_jobs_by_client(client_id)
+        +run_job_async(job, task_func)
+        +cancel_job(job_id)
+    }
+
+    class Job {
+        +job_id: string
+        +job_type: string
+        +params: dict
+        +status: string
+        +progress: float
+        +created_at: datetime
+        +started_at: datetime
+        +completed_at: datetime
+        +result: dict
+        +error: string
+        +update_progress(processed_items, total_items)
+        +start()
+        +complete(result)
+        +fail(error)
+        +cancel()
+    }
+
+    class JobsDatabase {
+        +save_job(job)
+        +get_job(job_id)
+        +update_job(job)
+        +delete_job(job_id)
+        +list_jobs(filters)
+    }
+
+    JobManager --> Job
+    JobManager --> JobsDatabase
+```
+
+**Job Persistence**:
+
+- Jobs are persisted in SQLite database by default
+- Schema includes all job metadata and status information
+- Configurable to use other databases (PostgreSQL, MySQL) for production
+- Regular cleanup of completed jobs (configurable retention period)
+
+**Job Types**:
+
+- `process_document`: Process a single document
+- `process_folder`: Process all documents in a folder
+- `extract_concepts`: Extract concepts from existing chunks
+- `build_relationships`: Build or update concept relationships
+- `reindex`: Rebuild indexes for faster querying
 
 ### 2.3 API Layer
 
@@ -264,9 +464,144 @@ classDiagram
     JobManager --> Job
 ```
 
-## 3. Deployment Architecture
+## 3. System Architecture Details
 
-### 3.1 Docker Deployment
+### 3.1 Data Flow Diagrams
+
+#### 3.1.1 Document Ingestion Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as API Server
+    participant JobMgr as Job Manager
+    participant DocProc as Document Processor
+    participant Neo4j
+    participant ChromaDB
+    participant LLM
+
+    Client->>API: POST /documents (document.pdf)
+    API->>JobMgr: Create processing job
+    JobMgr-->>Client: Return job_id
+
+    JobMgr->>DocProc: Process document (async)
+    DocProc->>DocProc: Parse document
+    DocProc->>DocProc: Create chunks
+
+    par Embedding Generation
+        DocProc->>LLM: Generate embeddings
+        LLM-->>DocProc: Return embeddings
+        DocProc->>ChromaDB: Store chunks with embeddings
+        ChromaDB-->>DocProc: Confirm storage
+    and Concept Extraction
+        DocProc->>LLM: Extract concepts
+        LLM-->>DocProc: Return concepts
+        DocProc->>Neo4j: Create concept nodes
+        Neo4j-->>DocProc: Confirm creation
+    end
+
+    DocProc->>Neo4j: Create document structure
+    Neo4j-->>DocProc: Confirm creation
+    DocProc->>Neo4j: Create relationships
+    Neo4j-->>DocProc: Confirm creation
+
+    DocProc->>JobMgr: Update job status (completed)
+    Client->>API: GET /jobs/{job_id}
+    API->>JobMgr: Get job status
+    JobMgr-->>API: Return job details
+    API-->>Client: Return job status
+```
+
+#### 3.1.2 Search Query Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as API Server
+    participant Search as Search Engine
+    participant Neo4j
+    participant ChromaDB
+
+    Client->>API: POST /search (query)
+    API->>Search: Perform hybrid search
+
+    par Vector Search
+        Search->>ChromaDB: Find similar chunks
+        ChromaDB-->>Search: Return vector results
+    and Graph Search
+        Search->>Neo4j: Find related concepts
+        Neo4j-->>Search: Return concept graph
+        Search->>Neo4j: Find documents for concepts
+        Neo4j-->>Search: Return document references
+    end
+
+    Search->>Search: Merge and rank results
+    Search-->>API: Return combined results
+    API-->>Client: Return search results
+```
+
+### 3.2 Non-Functional Requirements
+
+#### 3.2.1 Performance
+
+- **Response Time**:
+  - Search queries: < 500ms for 95% of queries
+  - Document addition acknowledgment: < 200ms
+  - Job status queries: < 100ms
+- **Throughput**:
+  - Support 50+ concurrent search queries
+  - Process 10+ documents simultaneously
+- **Scalability**:
+  - Support up to 100,000 documents (approximately 10 million chunks)
+  - Support up to 500,000 concepts and 2 million relationships
+
+#### 3.2.2 Availability and Reliability
+
+- **Uptime**: 99.9% availability target (less than 9 hours of downtime per year)
+- **Data Durability**: Zero data loss for committed transactions
+- **Fault Tolerance**:
+  - Graceful degradation when components fail
+  - Automatic recovery from transient failures
+  - Job resumption after system restart
+
+#### 3.2.3 Security
+
+- **Authentication**: API key-based authentication for production deployments
+- **Authorization**: Role-based access control for administrative functions
+- **Data Protection**: TLS encryption for all network communications
+- **Input Validation**: Strict validation of all API inputs to prevent injection attacks
+
+#### 3.2.4 Maintainability
+
+- **Code Quality**:
+  - Minimum 80% test coverage
+  - Adherence to PEP 8 style guidelines
+  - Comprehensive documentation
+- **Modularity**:
+  - Clear separation of concerns
+  - Well-defined interfaces between components
+  - Pluggable architecture for key components (e.g., embedding models, databases)
+
+#### 3.2.5 Error Handling and Resilience
+
+- **Retry Mechanism**:
+  - Automatic retry for transient failures (e.g., network issues, rate limiting)
+  - Exponential backoff strategy
+  - Maximum retry attempts configurable
+- **Circuit Breaker Pattern**:
+  - Prevent cascading failures when external services are unavailable
+  - Automatic service restoration when dependencies recover
+- **Graceful Degradation**:
+  - Fall back to vector-only search if graph database is unavailable
+  - Continue processing other documents if one document fails
+- **Comprehensive Logging**:
+  - Structured logging with correlation IDs
+  - Error details captured for troubleshooting
+  - Performance metrics for monitoring
+
+### 3.3 Deployment Architecture
+
+#### 3.3.1 Docker Deployment
 
 The system can be deployed as a Docker container with all necessary components:
 
@@ -287,7 +622,7 @@ graph TD
     MPC --> ChromaDB
 ```
 
-#### 3.1.1 Port Mappings
+##### Port Mappings
 
 | Service | Container Port | Host Port |
 |---------|----------------|-----------|
@@ -296,7 +631,7 @@ graph TD
 | API Server | 5000 | 5001 |
 | MPC Server | 8765 | 8766 |
 
-### 3.2 Local Deployment
+#### 3.3.2 Local Deployment
 
 The system can also be run locally with Neo4j installed in `~/.local/neo4j/` and data stored in `~/.graphrag/neo4j/`:
 
@@ -309,6 +644,71 @@ graph TD
     Neo4j --> Neo4jData[~/.graphrag/neo4j/]
     ChromaDB --> ChromaDBData[./data/chromadb]
 ```
+
+#### 3.3.3 Production Deployment Topology
+
+For production environments, a more robust deployment architecture is recommended:
+
+```mermaid
+graph TD
+    subgraph Load Balancer
+        LB[NGINX/HAProxy]
+    end
+
+    subgraph Application Servers
+        API1[API Server 1]
+        API2[API Server 2]
+        MPC1[MPC Server 1]
+        MPC2[MPC Server 2]
+    end
+
+    subgraph Database Servers
+        Neo4j[Neo4j Cluster]
+        ChromaDB[ChromaDB]
+    end
+
+    subgraph Job Workers
+        Worker1[Worker 1]
+        Worker2[Worker 2]
+        Worker3[Worker 3]
+    end
+
+    Client[Client] --> LB
+    LB --> API1
+    LB --> API2
+    LB --> MPC1
+    LB --> MPC2
+
+    API1 --> Neo4j
+    API2 --> Neo4j
+    MPC1 --> Neo4j
+    MPC2 --> Neo4j
+
+    API1 --> ChromaDB
+    API2 --> ChromaDB
+    MPC1 --> ChromaDB
+    MPC2 --> ChromaDB
+
+    API1 -.-> |Job Queue| Worker1
+    API2 -.-> |Job Queue| Worker2
+    MPC1 -.-> |Job Queue| Worker3
+    MPC2 -.-> |Job Queue| Worker1
+
+    Worker1 --> Neo4j
+    Worker2 --> Neo4j
+    Worker3 --> Neo4j
+    Worker1 --> ChromaDB
+    Worker2 --> ChromaDB
+    Worker3 --> ChromaDB
+```
+
+This production topology includes:
+
+- Load balancing for horizontal scaling
+- Multiple application server instances for high availability
+- Dedicated job workers for processing-intensive tasks
+- Neo4j in cluster mode for redundancy
+- Shared job queue for distributed processing
 
 ## 4. Integration with AI Agents
 
@@ -518,10 +918,107 @@ Common issues and solutions:
 
 ## 8. Security Considerations
 
-- **Authentication**: The API and MPC servers do not currently implement authentication. For production use, implement API keys or OAuth.
-- **Data Privacy**: Documents are stored in plain text. Consider encryption for sensitive data.
-- **Network Security**: Use HTTPS/WSS for production deployments.
-- **Access Control**: Neo4j uses basic authentication. Ensure strong passwords in production.
+### 8.1 Authentication and Authorization
+
+- **API Authentication**:
+  - API key-based authentication for all endpoints
+  - JWT tokens for session management
+  - Rate limiting to prevent abuse
+  - Configuration example:
+
+    ```python
+    # API key validation middleware
+    @app.before_request
+    def validate_api_key():
+        api_key = request.headers.get('X-API-Key')
+        if not api_key or not is_valid_api_key(api_key):
+            return jsonify({"error": "Invalid or missing API key"}), 401
+    ```
+
+- **MPC Server Authentication**:
+  - WebSocket connection requires initial authentication handshake
+  - Session tokens for persistent connections
+  - Automatic session expiration after inactivity
+
+- **Role-Based Access Control**:
+  - Admin role: Full system access
+  - Editor role: Add/modify documents and concepts
+  - Reader role: Search and retrieve information only
+  - Implementation via middleware that checks permissions for each request
+
+### 8.2 Threat Modeling
+
+The system has been analyzed for potential security threats using the STRIDE model:
+
+| Threat Type | Potential Threats | Mitigation Strategies |
+|-------------|-------------------|------------------------|
+| Spoofing | Unauthorized API access | API key authentication, TLS, IP restrictions |
+| Tampering | Modification of document content | Input validation, data integrity checks |
+| Repudiation | Denial of document submission | Comprehensive audit logging with timestamps |
+| Information Disclosure | Exposure of sensitive document content | Access controls, data classification |
+| Denial of Service | Overwhelming system with requests | Rate limiting, resource quotas, monitoring |
+| Elevation of Privilege | Gaining unauthorized admin access | Principle of least privilege, role separation |
+
+### 8.3 Data Protection
+
+- **Data at Rest**:
+  - Database encryption for sensitive content
+  - Secure storage of API keys and credentials
+  - Regular security audits and vulnerability scanning
+
+- **Data in Transit**:
+  - TLS 1.3 for all HTTP/WebSocket communications
+  - Certificate validation to prevent MITM attacks
+  - Secure headers (HSTS, CSP, X-Content-Type-Options)
+
+- **Input Validation**:
+  - Strict schema validation for all API inputs
+  - Content type verification for uploaded documents
+  - Sanitization of text inputs to prevent injection attacks
+
+### 8.4 Secrets Management
+
+- **Environment Variables**:
+  - Sensitive configuration stored in environment variables
+  - No hardcoded secrets in source code
+  - Different credentials for development/staging/production
+
+- **Credential Rotation**:
+  - Regular rotation of API keys and database credentials
+  - Automated credential rotation process
+  - Immediate revocation capabilities for compromised credentials
+
+- **Production Secrets**:
+  - Integration with vault systems (HashiCorp Vault, AWS Secrets Manager)
+  - Just-in-time access to production credentials
+  - Audit trail for all secret access
+
+### 8.5 Inter-Service Communication
+
+- **Internal Network Security**:
+  - Service-to-service authentication
+  - Network segmentation to isolate components
+  - Mutual TLS for service communication
+  - Example configuration:
+
+    ```yaml
+    # Docker Compose network configuration
+    services:
+      api:
+        networks:
+          - frontend
+          - backend
+      neo4j:
+        networks:
+          - backend
+
+    networks:
+      frontend:
+        # External-facing network
+      backend:
+        # Internal services only
+        internal: true
+    ```
 
 ## 9. Performance Optimization
 
@@ -968,6 +1465,142 @@ The GraphRAG system has been benchmarked on various datasets and hardware config
   - Neo4j database: ~20% of original document size
   - ChromaDB: ~30% of original document size
 
-## 12. Conclusion
+## 12. Supporting Documentation
+
+### 12.1 Glossary of Terms
+
+| Term | Definition |
+|------|------------|
+| **GraphRAG** | Hybrid Retrieval-Augmented Generation system combining vector embeddings with knowledge graphs |
+| **Hybrid Search** | Search technique that combines vector similarity with graph traversal |
+| **Concept Extraction** | Process of identifying key concepts from document text |
+| **Chunk** | A segment of a document, typically a paragraph or section |
+| **Embedding** | A vector representation of text that captures semantic meaning |
+| **MPC Server** | Message Passing Communication server for AI agent integration |
+| **Vector Database** | Database optimized for storing and querying vector embeddings |
+| **Graph Database** | Database that represents data as nodes and relationships |
+| **Job Manager** | System component that handles asynchronous processing tasks |
+| **Deduplication** | Process of identifying and removing duplicate documents or concepts |
+
+### 12.2 Key Use Cases
+
+1. **Knowledge Discovery**:
+   - Users can explore connections between concepts across multiple documents
+   - Example: "Show me all books that discuss neural networks and their relationship to deep learning"
+
+2. **Contextual Search**:
+   - Users can find information with rich context beyond keyword matching
+   - Example: "Find passages about transformer architecture in the context of natural language processing"
+
+3. **Document Organization**:
+   - System automatically organizes documents by extracting concepts and relationships
+   - Example: "Categorize my technical library by main topics and show connections between subjects"
+
+4. **AI Agent Knowledge Base**:
+   - AI agents can access and reason over structured knowledge
+   - Example: "Answer questions about machine learning techniques using my document collection"
+
+5. **Research Synthesis**:
+   - Researchers can identify patterns and connections across multiple sources
+   - Example: "Summarize the evolution of reinforcement learning across my research papers"
+
+### 12.3 Architecture Decision Records (ADRs)
+
+#### ADR-001: Choice of Neo4j for Graph Database
+
+**Context**: The system needs a database to store and query complex relationships between concepts and documents.
+
+**Decision**: Use Neo4j as the graph database.
+
+**Alternatives Considered**:
+
+- ArangoDB: Multi-model database with graph capabilities
+- Amazon Neptune: Cloud-based graph database
+- TigerGraph: Distributed graph database
+
+**Rationale**:
+
+- Neo4j's Cypher query language provides an intuitive way to express complex graph traversals
+- Strong community support and extensive documentation
+- Native Python drivers with good performance
+- Can be deployed locally or in the cloud
+- Property graph model aligns well with our concept-document relationship structure
+
+**Consequences**:
+
+- Positive: Simplified relationship modeling and querying
+- Negative: Requires specific knowledge of Cypher
+- Negative: Vertical scaling limitations for very large graphs
+
+#### ADR-002: Hybrid Chunking Strategy
+
+**Context**: Documents need to be split into chunks for embedding and storage in the vector database.
+
+**Decision**: Implement a hybrid chunking strategy that combines semantic boundaries, document structure, and size constraints.
+
+**Alternatives Considered**:
+
+- Fixed-size chunking: Split documents into chunks of a fixed number of tokens
+- Sentence-based chunking: Use sentence boundaries as chunk delimiters
+- Paragraph-based chunking: Use paragraph boundaries as chunk delimiters
+
+**Rationale**:
+
+- Semantic boundaries preserve the meaning of content
+- Respecting document structure (headings, sections) maintains context
+- Size constraints ensure compatibility with embedding models
+- Hybrid approach provides the best balance of semantic coherence and practical constraints
+
+**Consequences**:
+
+- Positive: More meaningful chunks that preserve context
+- Positive: Better search results due to coherent chunks
+- Negative: More complex implementation
+- Negative: Variable chunk sizes may require additional handling
+
+#### ADR-003: Asynchronous Processing Architecture
+
+**Context**: Processing large documents or batches of documents can be time-consuming and should not block the user interface.
+
+**Decision**: Implement an asynchronous job processing system with persistent job tracking.
+
+**Alternatives Considered**:
+
+- Synchronous processing: Process documents in the request thread
+- Simple background threads: Use threading without persistent job tracking
+- External job queue: Use a separate service like RabbitMQ or Redis for job queuing
+
+**Rationale**:
+
+- Asynchronous processing provides better user experience for long-running tasks
+- Persistent job tracking allows users to monitor progress and resume after interruptions
+- SQLite-based job storage provides simplicity while maintaining persistence
+- Design allows for future migration to more robust job queues if needed
+
+**Consequences**:
+
+- Positive: Improved user experience for long-running tasks
+- Positive: Ability to handle large batches of documents
+- Positive: Resilience to system restarts
+- Negative: Increased system complexity
+- Negative: Need for additional error handling and recovery mechanisms
+
+## 13. Conclusion
 
 The GraphRAG system provides a powerful hybrid approach to information retrieval and synthesis by combining vector embeddings with knowledge graphs. Its modular architecture allows for easy integration with AI agents and scalable processing of large document collections.
+
+The system's key strengths include:
+
+- Hybrid search combining vector similarity with graph traversal
+- Rich concept extraction and relationship building
+- Asynchronous processing for handling large document collections
+- Flexible deployment options (Docker, local)
+- Comprehensive API and MPC interfaces for integration
+
+Future development will focus on:
+
+- Enhancing the concept extraction capabilities
+- Improving performance for very large document collections
+- Adding more sophisticated relationship types
+- Expanding the AI agent integration options
+- Implementing the security features outlined in this document
