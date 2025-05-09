@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphRAG"
+version = "0.1.0"
+description = "A project for graph-based RAG (Retrieval Augmented Generation)."
+authors = [
+  { name="Andy Spamer", email="andy.spamer@example.com" }, # Please update with actual email
+]
+license = { text="MIT" } # Or use { file="LICENSE" } if you have a LICENSE file
+readme = "README.md"
+requires-python = ">=3.12" # Based on .venv-py312 usage
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License", # Adjust if your license is different
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "python-dotenv",
+    "chromadb",       # Consider pinning version, e.g., "chromadb>=0.4.0,<0.5.0"
+    "neo4j",          # Python driver for Neo4j, e.g., "neo4j>=5.0.0,<6.0.0"
+    "gunicorn",       # For serving the API
+    "Flask",          # Assuming Flask for the API server, e.g., "Flask>=2.0.0,<3.0.0"
+    "requests",       # For making HTTP requests (e.g., in tests or client scripts)
+    # Add other core dependencies here, e.g.:
+    # "pydantic",
+    # "fastapi", "uvicorn[standard]", # if using FastAPI instead of Flask
+    # "langchain", # or other LLM/RAG specific libraries
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",           # For linting and formatting
+    "pre-commit",     # For git hooks
+    # "ipython",
+    # "ipdb",
+]
+test = [
+    "pytest",
+    "requests", # Often useful for testing API endpoints
+]
+
+[project.scripts]
+# If you have command-line entry points, define them here. For example:
+# graphrag-cli = "graphrag.cli:main_cli_function"
+
+[project.urls]
+Homepage = "https://github.com/your_username/graphRAG"  # Replace with your project's URL
+Repository = "https://github.com/your_username/graphRAG" # Replace
+
+[tool.pytest.ini_options]
+pythonpath = [".", "src", "tests"] # Add project root, src and tests to pythonpath
+testpaths = ["tests"]
+addopts = "-ra -vv --cov=src --cov-report=term-missing" # Example options: verbose, show reasons for skips/xfails, coverage
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "I", "UP", "C90", "N", "D", "ANN"] # A good default set of rules
+ignore = ["D100", "D104", "D107", "ANN101", "ANN102"] # Example ignores, adjust as needed
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
