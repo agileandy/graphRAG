@@ -52,6 +52,10 @@ def check_database_directories() -> bool:
     # Check ChromaDB directory
     chroma_dir = os.getenv("CHROMA_PERSIST_DIRECTORY", "./data/chromadb")
     
+    # Convert to absolute path if it's a relative path
+    if not os.path.isabs(chroma_dir):
+        chroma_dir = os.path.abspath(chroma_dir)
+    
     try:
         # Create directory if it doesn't exist
         if not os.path.exists(chroma_dir):

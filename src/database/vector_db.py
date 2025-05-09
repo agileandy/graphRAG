@@ -46,6 +46,11 @@ class VectorDatabase:
         self.persist_directory = persist_directory or os.getenv(
             "CHROMA_PERSIST_DIRECTORY", "./data/chromadb"
         )
+        
+        # Convert to absolute path if it's a relative path
+        if not os.path.isabs(self.persist_directory):
+            self.persist_directory = os.path.abspath(self.persist_directory)
+            
         self.client = None
         self.collection = None
         self.duplicate_detector = None
