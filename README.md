@@ -373,6 +373,35 @@ The MPC server supports the following actions:
 - `documents` - Find documents related to a concept
 - `add_document` - Add a document to the system
 
+### MCP Server Integration
+
+GraphRAG also provides an MCP (Model Context Protocol) server for AI agents like Claude:
+
+```bash
+# Start the MCP server
+./tools/graphrag-mcp
+
+# Run the MCP client example
+uv run scripts/mcp_client_example.py
+```
+
+The MCP server implements the JSON-RPC 2.0 protocol and provides the following tools:
+
+- `ping` - Simple ping for connection testing
+- `search` - Perform hybrid search across the GraphRAG system
+- `concept` - Get information about a concept
+- `documents` - Get documents for a concept
+- `books-by-concept` - Find books mentioning a concept
+- `related-concepts` - Find concepts related to a concept
+- `passages-about-concept` - Find passages about a concept
+- `add-document` - Add a single document to the system
+- `add-folder` - Add a folder of documents to the system
+- `job-status` - Get status of a job
+- `list-jobs` - List all jobs
+- `cancel-job` - Cancel a job
+
+For detailed information about the MCP server, see the [MCP Server Setup Guide](docs/mcp_server_setup.md).
+
 ## Docker Development
 
 For detailed information about developing with Docker, see the [Docker Development Guide](docs/docker_development.md).

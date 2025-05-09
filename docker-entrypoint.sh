@@ -142,10 +142,20 @@ fi
 # Start the MPC server in the background
 echo "Starting MPC server..."
 cd /app && python -m src.mpc.server --host 0.0.0.0 --port 8765 &
+MPC_PID=$!
 
 # Give the MPC server a moment to start
 sleep 3
-echo "✅ MPC server started."
+echo "✅ MPC server started (PID: $MPC_PID)."
+
+# Start the MCP server in the background
+echo "Starting MCP server..."
+cd /app && python -m src.mpc.mcp_server --host 0.0.0.0 --port 8766 &
+MCP_PID=$!
+
+# Give the MCP server a moment to start
+sleep 3
+echo "✅ MCP server started (PID: $MCP_PID)."
 
 # Print system information
 echo "========================================================"
@@ -162,15 +172,18 @@ echo "Service Endpoints:"
 echo "- Neo4j Browser: http://localhost:7475"
 echo "- API Server: http://localhost:5001"
 echo "- MPC Server: ws://localhost:8766"
+echo "- MCP Server: ws://localhost:8767"
 echo ""
 echo "Health Status:"
 echo "- Neo4j: Running"
 echo "- API Server: Running"
 echo "- MPC Server: Running"
+echo "- MCP Server: Running"
 echo ""
 echo "Use the following commands to interact with the system:"
 echo "- API: curl http://localhost:5001/health"
 echo "- MPC: python scripts/mpc_client_example.py --port 8766"
+echo "- MCP: python scripts/mcp_client_example.py --port 8767"
 echo ""
 echo "Log Files:"
 echo "- Neo4j Logs: /app/neo4j/logs/"

@@ -1,0 +1,55 @@
+#!/bin/bash
+# GraphRAG MCP Server Wrapper Script
+
+# Change to the project root directory
+cd "$(dirname "$0")/.."
+
+# Default values
+HOST="0.0.0.0"
+PORT="8766"
+LOG_LEVEL="INFO"
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --host)
+            HOST="$2"
+            shift 2
+            ;;
+        --port)
+            PORT="$2"
+            shift 2
+            ;;
+        --log-level)
+            LOG_LEVEL="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Set PYTHONPATH
+export PYTHONPATH="$(pwd):$PYTHONPATH"
+
+# Check if required packages are installed
+REQUIRED_PACKAGES=("websockets" "neo4j" "chromadb")
+MISSING_PACKAGES=()
+
+for package in "${REQUIRED_PACKAGES[@]}"; do
+    if ! python -c "import $package" &>/dev/null; then
+        MISSING_PACKAGES+=("$package")
+    fi
+done
+
+if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
+    echo "Missing required packages: ${MISSING_PACKAGES[*]}"
+    echo "Installing missing packages..."
+    uv pip install "${MISSING_PACKAGES[@]}"
+fi
+
+# Start the MCP server
+echo "Starting GraphRAG MCP server on $HOST:$PORT..."
+python -m src.mpc.mcp_server --host "$HOST" --port "$PORT" --log-level "$LOG_LEVEL"
