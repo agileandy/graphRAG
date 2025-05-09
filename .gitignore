@@ -43,8 +43,12 @@ activeDevelopment.md
 systemDesign.md
 specs/next-steps-*.md
 
-# Test files
-test_*.py
+# Temporary test files
+# We want to track actual test files, but may want to ignore temporary test files
+# or specific test output files
+temp_test_*.py
+test_output/
+.pytest_cache/
 
 # IDE
 .idea/
