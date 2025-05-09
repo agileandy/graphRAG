@@ -14,6 +14,8 @@ The tests are:
 4. **Test 4: NLP Processing** - Verifies that NLP processing works correctly, extracting concepts and relationships from documents.
 5. **Test 5: Search Functionality** - Verifies that search functionality works correctly, using both vector and graph approaches.
 6. **Test 6: Deduplication** - Verifies that deduplication works correctly, preventing duplicate documents and concepts.
+7. **Test 7: MPC Server** - Verifies that the MPC server works correctly, handling requests and returning appropriate responses.
+8. **Test 8: MCP Server** - Verifies that the MCP server works correctly, implementing the Model Context Protocol for AI agent integration.
 
 ## Running the Tests
 

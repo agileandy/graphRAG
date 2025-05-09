@@ -7,6 +7,8 @@ import time
 import json
 import requests
 import subprocess
+import asyncio
+import websockets
 from typing import Dict, Any, Tuple, List, Optional
 
 # Add the project root directory to the Python path
@@ -308,3 +310,231 @@ def get_test_document_metadata() -> Dict[str, Any]:
         "category": "AI",
         "source": "Regression Test"
     }
+
+# MPC server functions
+def test_mpc_connection(host="localhost", port=8766, timeout=5) -> Tuple[bool, str]:
+    """
+    Test connection to the MPC server.
+
+    Args:
+        host: MPC server host
+        port: MPC server port
+        timeout: Connection timeout in seconds
+
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        async def test_connection():
+            uri = f"ws://{host}:{port}"
+            try:
+                async with websockets.connect(uri, timeout=timeout) as websocket:
+                    # Send a ping message
+                    await websocket.send(json.dumps({"action": "ping"}))
+                    response = await websocket.recv()
+                    response_data = json.loads(response)
+                    return True, f"Connected to MPC server at {uri}. Response: {response_data}"
+            except Exception as e:
+                return False, f"Failed to connect to MPC server at {uri}: {e}"
+
+        return asyncio.run(test_connection())
+    except ImportError as e:
+        return False, f"Failed to import required modules: {e}"
+    except Exception as e:
+        return False, f"Unexpected error testing MPC connection: {e}"
+
+async def mpc_search(host="localhost", port=8766, query="What is RAG?", n_results=3, max_hops=2) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Perform a search using the MPC server.
+
+    Args:
+        host: MPC server host
+        port: MPC server port
+        query: Search query
+        n_results: Number of results to return
+        max_hops: Maximum number of hops in the graph
+
+    Returns:
+        Tuple of (success, response)
+    """
+    uri = f"ws://{host}:{port}"
+    try:
+        async with websockets.connect(uri) as websocket:
+            # Prepare search message
+            message = {
+                'action': 'search',
+                'query': query,
+                'n_results': n_results,
+                'max_hops': max_hops
+            }
+
+            # Send search query
+            await websocket.send(json.dumps(message))
+
+            # Receive response
+            response = await websocket.recv()
+            response_data = json.loads(response)
+
+            return True, response_data
+    except Exception as e:
+        return False, {"error": str(e)}
+
+# MCP server functions
+def test_mcp_connection(host="localhost", port=8767, timeout=5) -> Tuple[bool, str]:
+    """
+    Test connection to the MCP server.
+
+    Args:
+        host: MCP server host
+        port: MCP server port
+        timeout: Connection timeout in seconds
+
+    Returns:
+        Tuple of (success, message)
+    """
+    try:
+        async def test_connection():
+            uri = f"ws://{host}:{port}"
+            try:
+                async with websockets.connect(uri, timeout=timeout) as websocket:
+                    # Send initialize request
+                    await websocket.send(json.dumps({
+                        "jsonrpc": "2.0",
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {
+                                "name": "test-client",
+                                "version": "0.1.0"
+                            }
+                        },
+                        "id": 0
+                    }))
+
+                    # Receive response
+                    response = await websocket.recv()
+                    response_data = json.loads(response)
+
+                    if "result" in response_data:
+                        return True, f"Connected to MCP server at {uri}. Server info: {response_data['result'].get('serverInfo', {})}"
+                    else:
+                        return False, f"Failed to initialize MCP server at {uri}: {response_data.get('error', {})}"
+            except Exception as e:
+                return False, f"Failed to connect to MCP server at {uri}: {e}"
+
+        return asyncio.run(test_connection())
+    except ImportError as e:
+        return False, f"Failed to import required modules: {e}"
+    except Exception as e:
+        return False, f"Unexpected error testing MCP connection: {e}"
+
+async def mcp_get_tools(host="localhost", port=8767) -> Tuple[bool, List[Dict[str, Any]]]:
+    """
+    Get available tools from the MCP server.
+
+    Args:
+        host: MCP server host
+        port: MCP server port
+
+    Returns:
+        Tuple of (success, tools)
+    """
+    uri = f"ws://{host}:{port}"
+    try:
+        async with websockets.connect(uri) as websocket:
+            # Initialize connection
+            await websocket.send(json.dumps({
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "test-client",
+                        "version": "0.1.0"
+                    }
+                },
+                "id": 0
+            }))
+
+            # Receive initialize response
+            await websocket.recv()
+
+            # Get tools
+            await websocket.send(json.dumps({
+                "jsonrpc": "2.0",
+                "method": "getTools",
+                "params": {},
+                "id": 1
+            }))
+
+            # Receive getTools response
+            response = await websocket.recv()
+            response_data = json.loads(response)
+
+            if "result" in response_data and "tools" in response_data["result"]:
+                return True, response_data["result"]["tools"]
+            else:
+                return False, []
+    except Exception as e:
+        return False, []
+
+async def mcp_invoke_tool(host="localhost", port=8767, tool_name="search", parameters=None) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Invoke a tool on the MCP server.
+
+    Args:
+        host: MCP server host
+        port: MCP server port
+        tool_name: Tool name
+        parameters: Tool parameters
+
+    Returns:
+        Tuple of (success, response)
+    """
+    if parameters is None:
+        parameters = {}
+
+    uri = f"ws://{host}:{port}"
+    try:
+        async with websockets.connect(uri) as websocket:
+            # Initialize connection
+            await websocket.send(json.dumps({
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "test-client",
+                        "version": "0.1.0"
+                    }
+                },
+                "id": 0
+            }))
+
+            # Receive initialize response
+            await websocket.recv()
+
+            # Invoke tool
+            await websocket.send(json.dumps({
+                "jsonrpc": "2.0",
+                "method": "invokeTool",
+                "params": {
+                    "name": tool_name,
+                    "parameters": parameters
+                },
+                "id": 1
+            }))
+
+            # Receive invokeTool response
+            response = await websocket.recv()
+            response_data = json.loads(response)
+
+            if "result" in response_data:
+                return True, response_data["result"]
+            else:
+                return False, {"error": response_data.get("error", {})}
+    except Exception as e:
+        return False, {"error": str(e)}
