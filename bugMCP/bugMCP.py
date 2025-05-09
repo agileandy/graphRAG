@@ -1,11 +1,43 @@
 import socket
 import json
 import re
+import os
+import atexit
+
+# File to store bugs
+DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bugs.json")
 
 # Global storage
 bugs = []
 next_id = 1
 VALID_STATUSES = {'open', 'fixed'}
+
+def save_bugs():
+    """Save bugs to a JSON file."""
+    try:
+        with open(DATA_FILE, 'w') as f:
+            json.dump({
+                'bugs': bugs,
+                'next_id': next_id
+            }, f, indent=2)
+        print(f"Bugs saved to {DATA_FILE}")
+    except Exception as e:
+        print(f"Error saving bugs: {e}")
+
+def load_bugs():
+    """Load bugs from a JSON file."""
+    global bugs, next_id
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, 'r') as f:
+                data = json.load(f)
+                bugs = data.get('bugs', [])
+                next_id = data.get('next_id', 1)
+            print(f"Loaded {len(bugs)} bugs from {DATA_FILE}")
+        else:
+            print(f"No data file found at {DATA_FILE}, starting with empty bug list")
+    except Exception as e:
+        print(f"Error loading bugs: {e}")
 
 def parse_action(data):
     try:
@@ -49,28 +81,33 @@ def add_bug(description, cause):
     }
     bugs.append(new_bug)
     next_id += 1
+    save_bugs()  # Save after adding a bug
     return new_bug
 
-def update_bug(attend_id, updates):
-    attendee = next((a for a in attendees if a['id'] == attendee_id), None)
-    if not attendee:
-        return {'status': 'error', 'message': 'Attendee not found'}
+def update_bug(bug_id, updates):
+    bug = next((b for b in bugs if b['id'] == bug_id), None)
+    if not bug:
+        return {'status': 'error', 'message': 'Bug not found'}
     
-    valid_fields = {'name', 'email', 'status'}
+    valid_fields = {'status', 'resolution'}
     for field, value in updates.items():
         if field not in valid_fields:
             continue
-        if field == 'email' and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', value):
-            return {'status': 'error', 'message': 'Invalid email format'}
-        attendee[field] = value
+        if field == 'status' and value not in VALID_STATUSES:
+            return {'status': 'error', 'message': f'Invalid status. Allowed values: {VALID_STATUSES}'}
+        bug[field] = value
     
+    save_bugs()  # Save after updating a bug
     return {'status': 'success', 'updated': True}
 
-def delete_attendee(attendee_id):
-    global attendees
-    original_length = len(attendees)
-    attendees = [a for a in attendees if a['id'] != attendee_id]
-    return {'status': 'success', 'deleted': original_length > len(attendees)}
+def delete_bug(bug_id):
+    global bugs
+    original_length = len(bugs)
+    bugs = [b for b in bugs if b['id'] != bug_id]
+    result = {'status': 'success', 'deleted': original_length > len(bugs)}
+    if result['deleted']:
+        save_bugs()  # Save after deleting a bug
+    return result
 
 def handle_client_request(payload):
     action = payload.get('action')
@@ -108,6 +145,7 @@ def handle_client_request(payload):
                         'message': f'Updated bug {bug_id}',
                         'updated_fields': [k for k in payload.keys() if k != 'id']
                     }
+                    save_bugs()  # Save after updating a bug
                     break
             else:
                 raise ValueError(f"Bug ID {bug_id} not found")
@@ -116,28 +154,28 @@ def handle_client_request(payload):
             required = ['id']
             if not all(field in payload for field in required):
                 raise ValueError("Missing required fields for delete")
-            deleted_count = len(bugs) - len([b for b in bugs if b['id'] != payload['id']])
+            result = delete_bug(payload['id'])
             response = {
-                'status': 'success' if deleted_count > 0 else 'error',
-                'message': f"Deleted {deleted_count} bugs" if deleted_count > 0 else "No bugs found with that ID"
+                'status': 'success' if result['deleted'] else 'error',
+                'message': f"Deleted {1 if result['deleted'] else 0} bugs" if result['deleted'] else "No bugs found with that ID"
             }
 
         elif action == 'list':
             response = {
                 'status': 'success',
-                'total_records': len(attendees),
-                'attendees': attendees
+                'total_records': len(bugs),
+                'bugs': bugs
             }
 
         elif action == 'get':
             if 'id' not in payload:
                 raise ValueError("Missing ID field for get operation")
-            attendee_id = payload['id']
-            result = next((a for a in attendees if a['id'] == attendee_id), None)
+            bug_id = payload['id']
+            result = next((b for b in bugs if b['id'] == bug_id), None)
             if result:
-                response = {'status': 'success', 'attendee': result}
+                response = {'status': 'success', 'bug': result}
             else:
-                response = {'status': 'error', 'message': f"Attendee ID {attendee_id} not found"}
+                response = {'status': 'error', 'message': f"Bug ID {bug_id} not found"}
 
         else:
             response = {'status': 'error', 'message': 'Invalid action'}
@@ -149,11 +187,18 @@ def handle_client_request(payload):
 
     return response
 
+# Register save_bugs to be called when the program exits
+atexit.register(save_bugs)
+
+# Load bugs from file when starting
+load_bugs()
+
 # TCP Server setup
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(('', 5005))
 server.listen(1)
-print("Server listening on port 5000...")
+print("Server listening on port 5005...")
+print(f"Data file: {DATA_FILE}")
 
 try:
     while True:
@@ -186,3 +231,5 @@ except KeyboardInterrupt:
 finally:
     server.close()
     print("Server closed")
+    # Save bugs one last time before exiting
+    save_bugs()
