@@ -1,0 +1,3 @@
+"""
+GraphRAG regression tests package.
+"""
