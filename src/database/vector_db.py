@@ -22,8 +22,14 @@ ChromaDuplicateDetector = None
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv()
+# Explicitly load environment variables from the config file
+config_env_path = os.path.expanduser("~/.graphrag/config.env")
+if os.path.exists(config_env_path):
+    logger.info(f"Loading environment variables from {config_env_path}")
+    load_dotenv(config_env_path)
+else:
+    logger.warning(f"Config file not found at {config_env_path}, falling back to default .env")
+    load_dotenv()
 
 # Default batch size for adding documents
 DEFAULT_BATCH_SIZE = 100
@@ -43,14 +49,24 @@ class VectorDatabase:
             persist_directory: Directory to persist vector database
                 (default: from environment variable)
         """
+        # Explicitly load environment variables again to ensure they're available in this instance
+        config_env_path = os.path.expanduser("~/.graphrag/config.env")
+        if os.path.exists(config_env_path):
+            logger.info(f"Loading environment variables from {config_env_path} in VectorDatabase.__init__")
+            load_dotenv(config_env_path)
+
+        # Get the persist directory from the environment or use the provided value
         self.persist_directory = persist_directory or os.getenv(
             "CHROMA_PERSIST_DIRECTORY", "./data/chromadb"
         )
-        
+
         # Convert to absolute path if it's a relative path
         if not os.path.isabs(self.persist_directory):
             self.persist_directory = os.path.abspath(self.persist_directory)
-            
+
+        # Log the directory being used for debugging
+        logger.info(f"Using ChromaDB directory: {self.persist_directory}")
+
         self.client = None
         self.collection = None
         self.duplicate_detector = None
@@ -115,9 +131,9 @@ class VectorDatabase:
                 metadata=collection_metadata
             )
 
-            # Import ChromaDuplicateDetector here to avoid circular imports
-            from src.processing.duplicate_detector import ChromaDuplicateDetector
-            self.duplicate_detector = ChromaDuplicateDetector(self.collection)
+            # Initialize duplicate detector to None
+            # We'll initialize it properly when needed to avoid circular imports
+            self.duplicate_detector = None
 
             logger.info(f"Successfully connected to collection: {collection_name}")
         except Exception as e:
@@ -132,13 +148,17 @@ class VectorDatabase:
             True if connection is successful, False otherwise.
         """
         try:
+            logger.info(f"Verifying connection to ChromaDB at {self.persist_directory}")
             self.connect()
+
             # Check if we can get collection info
             assert self.collection is not None, "Collection is None after connect()"
-            self.collection.count()
+            count = self.collection.count()
+
+            logger.info(f"Successfully connected to ChromaDB. Collection contains {count} documents.")
             return True
         except Exception as e:
-            print(f"Vector database connection error: {e}")
+            logger.error(f"Vector database connection error: {e}")
             return False
 
     def add_documents(self,
@@ -242,14 +262,16 @@ class VectorDatabase:
             # Make sure duplicate detector is initialized
             if self.duplicate_detector is None and self.collection is not None:
                 # Import here to avoid circular imports
-                from src.processing.duplicate_detector import ChromaDuplicateDetector
-                self.duplicate_detector = ChromaDuplicateDetector(self.collection)
+                from src.processing.duplicate_detector import DuplicateDetector
+                self.duplicate_detector = DuplicateDetector(self)
 
             if self.duplicate_detector is not None:
                 # Filter out duplicates
                 non_duplicate_indices = []
                 for i, metadata in enumerate(metadatas):
-                    is_duplicate, _ = self.duplicate_detector.is_duplicate(metadata)
+                    # Get the document text
+                    doc_text = documents[i] if i < len(documents) else ""
+                    is_duplicate, _, _ = self.duplicate_detector.is_duplicate(doc_text, metadata)
                     if not is_duplicate:
                         non_duplicate_indices.append(i)
 

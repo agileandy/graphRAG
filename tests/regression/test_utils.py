@@ -23,16 +23,16 @@ BOOKS_ENDPOINT = f"{API_BASE_URL}/books"
 def wait_for_api_ready(max_retries: int = 30, retry_interval: int = 2) -> bool:
     """
     Wait for the API to be ready by checking the health endpoint.
-    
+
     Args:
         max_retries: Maximum number of retries
         retry_interval: Interval between retries in seconds
-        
+
     Returns:
         True if the API is ready, False otherwise
     """
     print(f"Waiting for API to be ready at {HEALTH_ENDPOINT}...")
-    
+
     for i in range(max_retries):
         try:
             response = requests.get(HEALTH_ENDPOINT, timeout=5)
@@ -43,17 +43,17 @@ def wait_for_api_ready(max_retries: int = 30, retry_interval: int = 2) -> bool:
                     return True
         except requests.RequestException:
             pass
-        
+
         print(f"API not ready yet. Retrying in {retry_interval} seconds... ({i+1}/{max_retries})")
         time.sleep(retry_interval)
-    
+
     print("Failed to connect to API after maximum retries.")
     return False
 
 def check_api_health() -> Tuple[bool, Dict[str, Any]]:
     """
     Check the health of the API.
-    
+
     Returns:
         Tuple of (success, health_data)
     """
@@ -70,11 +70,11 @@ def check_api_health() -> Tuple[bool, Dict[str, Any]]:
 def add_test_document(document_text: str, metadata: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
     """
     Add a test document to the GraphRAG system via the API.
-    
+
     Args:
         document_text: Document text
         metadata: Document metadata
-        
+
     Returns:
         Tuple of (success, response_data)
     """
@@ -82,7 +82,7 @@ def add_test_document(document_text: str, metadata: Dict[str, Any]) -> Tuple[boo
         "text": document_text,
         "metadata": metadata
     }
-    
+
     try:
         response = requests.post(DOCUMENTS_ENDPOINT, json=document, timeout=30)
         if response.status_code in [200, 201]:
@@ -94,12 +94,12 @@ def add_test_document(document_text: str, metadata: Dict[str, Any]) -> Tuple[boo
 def search_documents(query: str, n_results: int = 5, max_hops: int = 2) -> Tuple[bool, Dict[str, Any]]:
     """
     Search for documents using the GraphRAG API.
-    
+
     Args:
         query: Search query
         n_results: Number of vector results to return
         max_hops: Maximum number of hops in the graph
-        
+
     Returns:
         Tuple of (success, response_data)
     """
@@ -108,7 +108,7 @@ def search_documents(query: str, n_results: int = 5, max_hops: int = 2) -> Tuple
         "n_results": n_results,
         "max_hops": max_hops
     }
-    
+
     try:
         response = requests.post(SEARCH_ENDPOINT, json=search_data, timeout=30)
         if response.status_code == 200:
@@ -120,10 +120,10 @@ def search_documents(query: str, n_results: int = 5, max_hops: int = 2) -> Tuple
 def get_concept(concept_name: str) -> Tuple[bool, Dict[str, Any]]:
     """
     Get information about a specific concept.
-    
+
     Args:
         concept_name: Name of the concept
-        
+
     Returns:
         Tuple of (success, response_data)
     """
@@ -138,7 +138,7 @@ def get_concept(concept_name: str) -> Tuple[bool, Dict[str, Any]]:
 def get_all_concepts() -> Tuple[bool, Dict[str, Any]]:
     """
     Get all concepts in the system.
-    
+
     Returns:
         Tuple of (success, response_data)
     """
@@ -153,10 +153,10 @@ def get_all_concepts() -> Tuple[bool, Dict[str, Any]]:
 def get_documents_for_concept(concept_name: str) -> Tuple[bool, Dict[str, Any]]:
     """
     Get documents related to a specific concept.
-    
+
     Args:
         concept_name: Name of the concept
-        
+
     Returns:
         Tuple of (success, response_data)
     """
@@ -171,7 +171,7 @@ def get_documents_for_concept(concept_name: str) -> Tuple[bool, Dict[str, Any]]:
 def start_services() -> Tuple[bool, Optional[subprocess.Popen]]:
     """
     Start the GraphRAG services.
-    
+
     Returns:
         Tuple of (success, process)
     """
@@ -184,11 +184,11 @@ def start_services() -> Tuple[bool, Optional[subprocess.Popen]]:
             text=True,
             shell=True
         )
-        
+
         # Wait for the API to be ready
         if wait_for_api_ready():
             return True, process
-        
+
         # If the API is not ready, kill the process
         process.terminate()
         return False, None
@@ -199,10 +199,10 @@ def start_services() -> Tuple[bool, Optional[subprocess.Popen]]:
 def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
     """
     Stop the GraphRAG services.
-    
+
     Args:
         process: Process object returned by start_services
-        
+
     Returns:
         True if successful, False otherwise
     """
@@ -215,15 +215,34 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
             except subprocess.TimeoutExpired:
                 # Force kill if it doesn't terminate
                 process.kill()
-        
+
         # Use the stop script to ensure all services are stopped
-        result = subprocess.run(
+        subprocess.run(
+            ["./tools/graphrag-service.sh stop"],
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+
+        # Also kill any gunicorn processes
+        subprocess.run(
+            ["pkill -f gunicorn"],
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+
+        # And any python server processes
+        subprocess.run(
             ["pkill -f 'python.*server.py'"],
             shell=True,
             capture_output=True,
             text=True
         )
-        
+
+        # Wait for processes to terminate
+        time.sleep(3)
+
         return True
     except Exception as e:
         print(f"Error stopping services: {e}")
@@ -232,40 +251,40 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
 def get_test_document_text() -> str:
     """
     Get the text for a test document.
-    
+
     Returns:
         Document text
     """
     return """
     GraphRAG: Enhancing Large Language Models with Knowledge Graphs
-    
-    GraphRAG is an innovative approach that combines Retrieval-Augmented Generation (RAG) 
+
+    GraphRAG is an innovative approach that combines Retrieval-Augmented Generation (RAG)
     with knowledge graphs to enhance the capabilities of Large Language Models (LLMs).
-    
-    Traditional RAG systems use vector databases to retrieve relevant information based on 
-    semantic similarity. While effective, this approach lacks the ability to capture 
+
+    Traditional RAG systems use vector databases to retrieve relevant information based on
+    semantic similarity. While effective, this approach lacks the ability to capture
     relationships between concepts.
-    
-    GraphRAG addresses this limitation by integrating a knowledge graph (Neo4j) with a 
+
+    GraphRAG addresses this limitation by integrating a knowledge graph (Neo4j) with a
     vector database (ChromaDB). This hybrid approach enables:
-    
+
     1. Semantic search through vector embeddings
     2. Relationship-aware retrieval through graph traversal
     3. Enhanced context by combining both retrieval methods
-    
-    The system extracts entities and relationships from documents, stores them in both 
-    databases, and provides a unified query interface that leverages the strengths of both 
+
+    The system extracts entities and relationships from documents, stores them in both
+    databases, and provides a unified query interface that leverages the strengths of both
     approaches.
-    
-    GraphRAG can significantly improve the accuracy and relevance of LLM responses by 
-    providing both textual context and structural knowledge about the relationships 
+
+    GraphRAG can significantly improve the accuracy and relevance of LLM responses by
+    providing both textual context and structural knowledge about the relationships
     between concepts.
     """
 
 def get_test_document_metadata() -> Dict[str, Any]:
     """
     Get the metadata for a test document.
-    
+
     Returns:
         Document metadata
     """

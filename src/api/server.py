@@ -6,8 +6,23 @@ to interact with the system programmatically.
 """
 import os
 import sys
+import logging
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Explicitly load environment variables from the config file
+config_env_path = os.path.expanduser("~/.graphrag/config.env")
+if os.path.exists(config_env_path):
+    logger.info(f"Loading environment variables from {config_env_path}")
+    load_dotenv(config_env_path)
+else:
+    logger.warning(f"Config file not found at {config_env_path}, falling back to default .env")
+    load_dotenv()
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -27,11 +42,12 @@ db_linkage = DatabaseLinkage(neo4j_db, vector_db)
 
 # Verify database connections on startup
 if not neo4j_db.verify_connection():
-    print("❌ Neo4j connection failed!")
+    logger.error("❌ Neo4j connection failed!")
     # Continue anyway, as the connection might be established later
 
 if not vector_db.verify_connection():
-    print("❌ Vector database connection failed!")
+    logger.error("❌ Vector database connection failed!")
+    logger.info(f"ChromaDB directory: {vector_db.persist_directory}")
     # Continue anyway, as the connection might be established later
 
 @app.route('/health', methods=['GET'])
@@ -42,8 +58,14 @@ def health_check():
     Returns:
         Health status of the API and database connections
     """
+    logger.info("Health check requested")
+    logger.info(f"ChromaDB directory: {vector_db.persist_directory}")
+
     neo4j_status = neo4j_db.verify_connection()
+    logger.info(f"Neo4j connection status: {neo4j_status}")
+
     vector_db_status = vector_db.verify_connection()
+    logger.info(f"Vector DB connection status: {vector_db_status}")
 
     return jsonify({
         'status': 'ok' if neo4j_status and vector_db_status else 'degraded',
