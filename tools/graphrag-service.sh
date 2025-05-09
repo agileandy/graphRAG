@@ -62,7 +62,7 @@ start_api() {
     fi
 
     cd "$(dirname "$0")/.." && \
-    gunicorn \
+    .venv-py312/bin/gunicorn \
         --bind 0.0.0.0:$GRAPHRAG_API_PORT \
         --workers 2 \
         --threads 4 \
@@ -97,7 +97,7 @@ start_mpc() {
     fi
 
     cd "$(dirname "$0")/.." && \
-    python -m src.mpc.server --host 0.0.0.0 --port $GRAPHRAG_MPC_PORT > "$LOG_DIR/mpc.log" 2>&1 &
+    .venv-py312/bin/python -m src.mpc.server --host 0.0.0.0 --port $GRAPHRAG_MPC_PORT > "$LOG_DIR/mpc.log" 2>&1 &
     echo $! > "$PID_DIR/mpc.pid"
 
     # Wait for MPC server to start
