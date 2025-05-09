@@ -7,7 +7,7 @@ import sys
 
 def test_api_add_document():
     """Test adding a document via the API."""
-    api_url = "http://localhost:5001/api/documents"
+    api_url = "http://localhost:5001/documents"
     
     # Prepare document to add with explicit concepts
     document = {
