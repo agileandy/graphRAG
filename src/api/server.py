@@ -6,7 +6,6 @@ to interact with the system programmatically.
 """
 import os
 import sys
-from typing import Dict, Any
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -36,7 +35,7 @@ if not vector_db.verify_connection():
     # Continue anyway, as the connection might be established later
 
 @app.route('/health', methods=['GET'])
-def health_check() -> Dict[str, Any]:
+def health_check():
     """
     Health check endpoint.
 
@@ -53,7 +52,7 @@ def health_check() -> Dict[str, Any]:
         'version': '1.0.0'
     })
 @app.route('/version', methods=['GET'])
-def get_version() -> Dict[str, str]:
+def get_version():
     """
     Endpoint to get the application version.
 
@@ -64,7 +63,7 @@ def get_version() -> Dict[str, str]:
     return jsonify({'version': app_version})
 
 @app.route('/search', methods=['POST'])
-def search() -> Dict[str, Any]:
+def search():
     """
     Perform a hybrid search using both vector and graph databases.
 
@@ -72,6 +71,7 @@ def search() -> Dict[str, Any]:
         query (str): Search query
         n_results (int, optional): Number of vector results to return (default: 5)
         max_hops (int, optional): Maximum number of hops in the graph (default: 2)
+        repair_index (bool, optional): Whether to attempt to repair the index if it's unhealthy (default: True)
 
     Returns:
         Search results
@@ -84,6 +84,25 @@ def search() -> Dict[str, Any]:
     query = data['query']
     n_results = data.get('n_results', 5)
     max_hops = data.get('max_hops', 2)
+    repair_index = data.get('repair_index', True)
+
+    # Check vector database index health if repair_index is True
+    if repair_index:
+        is_healthy, health_message = vector_db.check_index_health()
+        if not is_healthy:
+            # Try to repair the index
+            success, repair_message = vector_db.repair_index()
+            if not success:
+                return jsonify({
+                    'error': f"Vector database index is unhealthy and repair failed: {repair_message}",
+                    'vector_results': {
+                        'ids': [],
+                        'documents': [],
+                        'metadatas': [],
+                        'distances': []
+                    },
+                    'graph_results': []
+                }), 500
 
     try:
         results = db_linkage.hybrid_search(
@@ -92,12 +111,31 @@ def search() -> Dict[str, Any]:
             max_graph_hops=max_hops
         )
 
+        # Check if there's an error in the results
+        if 'error' in results:
+            return jsonify(results), 500
+
         return jsonify(results)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_message = str(e)
+        print(f"Error during search: {error_message}")
+
+        # Create a fallback response with empty results
+        fallback_response = {
+            'error': error_message,
+            'vector_results': {
+                'ids': [],
+                'documents': [],
+                'metadatas': [],
+                'distances': []
+            },
+            'graph_results': []
+        }
+
+        return jsonify(fallback_response), 500
 
 @app.route('/concepts/<concept_name>', methods=['GET'])
-def get_concept(concept_name: str) -> Dict[str, Any]:
+def get_concept(concept_name: str):
     """
     Get information about a specific concept.
 
@@ -151,7 +189,7 @@ def get_concept(concept_name: str) -> Dict[str, Any]:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/documents', methods=['POST'])
-def add_document() -> Dict[str, Any]:
+def add_document():
     """
     Add a document to the GraphRAG system.
 
@@ -192,7 +230,7 @@ def add_document() -> Dict[str, Any]:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/documents/<concept_name>', methods=['GET'])
-def get_documents_for_concept(concept_name: str) -> Dict[str, Any]:
+def get_documents_for_concept(concept_name: str):
     """
     Get documents related to a specific concept.
 
@@ -272,7 +310,7 @@ def get_documents_for_concept(concept_name: str) -> Dict[str, Any]:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/books', methods=['GET'])
-def get_books() -> Dict[str, Any]:
+def get_books():
     """
     Get all books in the system.
 
@@ -293,7 +331,7 @@ def get_books() -> Dict[str, Any]:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/books/<book_title>', methods=['GET'])
-def get_book_concepts(book_title: str) -> Dict[str, Any]:
+def get_book_concepts(book_title: str):
     """
     Get concepts mentioned in a specific book.
 
@@ -339,7 +377,7 @@ def get_book_concepts(book_title: str) -> Dict[str, Any]:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/concepts', methods=['GET'])
-def get_all_concepts() -> Dict[str, Any]:
+def get_all_concepts():
     """
     Get all concepts in the system.
 
@@ -367,5 +405,13 @@ def close_db_connections(error=None):
     neo4j_db.close()
 
 if __name__ == '__main__':
-    # Run the Flask app in debug mode
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Parse command line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description='Start the GraphRAG API server')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host to bind to')
+    parser.add_argument('--port', type=int, default=5001, help='Port to bind to')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    args = parser.parse_args()
+
+    # Start the server
+    app.run(host=args.host, port=args.port, debug=True)

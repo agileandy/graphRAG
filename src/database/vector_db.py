@@ -5,7 +5,8 @@ import logging
 import os
 import time
 import uuid
-from typing import Dict, List, Optional, Any, cast
+import shutil
+from typing import Dict, List, Optional, Any, cast, Tuple
 
 import chromadb
 from chromadb.config import Settings
@@ -369,13 +370,46 @@ class VectorDatabase:
         # If reranking is requested, we need to get more results initially
         initial_n_results = n_results * 3 if rerank else n_results
 
-        # Use type casting to handle type compatibility issues
-        result = self.collection.query(
-            query_texts=query_texts,
-            query_embeddings=cast(Any, query_embeddings),
-            n_results=initial_n_results,
-            where=where
-        )
+        try:
+            # Use type casting to handle type compatibility issues
+            result = self.collection.query(
+                query_texts=query_texts,
+                query_embeddings=cast(Any, query_embeddings),
+                n_results=initial_n_results,
+                where=where
+            )
+        except Exception as e:
+            error_message = str(e)
+            logger.error(f"Error during vector search: {error_message}")
+
+            # Check if this is an HNSW index error
+            if "hnsw" in error_message.lower() or "index" in error_message.lower():
+                logger.warning("Detected HNSW index error, attempting to repair...")
+
+                # Try to repair the index
+                success, repair_message = self.repair_index()
+                if success:
+                    logger.info(f"Index repair successful: {repair_message}")
+
+                    # Try the query again
+                    try:
+                        result = self.collection.query(
+                            query_texts=query_texts,
+                            query_embeddings=cast(Any, query_embeddings),
+                            n_results=initial_n_results,
+                            where=where
+                        )
+                        logger.info("Query successful after index repair")
+                    except Exception as e2:
+                        # Still failed, return empty results
+                        logger.error(f"Query still failed after index repair: {e2}")
+                        return self._create_empty_result()
+                else:
+                    logger.error(f"Index repair failed: {repair_message}")
+                    return self._create_empty_result()
+            else:
+                # Not an index error, return empty results
+                return self._create_empty_result()
 
         # Apply reranking if requested
         if rerank and query_texts and len(query_texts) > 0 and "documents" in result and result["documents"] and len(result["documents"]) > 0:
@@ -475,6 +509,20 @@ class VectorDatabase:
         # Convert the result to a dictionary
         return cast(Dict[str, Any], result)
 
+    def _create_empty_result(self) -> Dict[str, Any]:
+        """
+        Create an empty result structure for when queries fail.
+
+        Returns:
+            Empty result dictionary with the same structure as a normal query result
+        """
+        return {
+            "ids": [[]],
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]]
+        }
+
     def count(self) -> int:
         """
         Count documents in vector database.
@@ -528,6 +576,168 @@ class VectorDatabase:
             ids=ids,
             batch_size=batch_size
         )
+
+    def check_index_health(self) -> Tuple[bool, str]:
+        """
+        Check the health of the vector database index.
+
+        This method attempts to perform a simple query to verify that the HNSW index
+        is functioning correctly.
+
+        Returns:
+            Tuple of (is_healthy, message)
+        """
+        if self.collection is None:
+            try:
+                self.connect()
+            except Exception as e:
+                return False, f"Failed to connect to vector database: {e}"
+
+        try:
+            # Try to get the count of documents
+            count = self.collection.count()
+            logger.info(f"Vector database contains {count} documents")
+
+            if count == 0:
+                # No documents to query
+                return True, "Vector database is empty but healthy"
+
+            # Try a simple query to verify index functionality
+            result = self.collection.query(
+                query_texts=["test query to verify index health"],
+                n_results=1
+            )
+
+            # If we get here, the query was successful
+            return True, f"Vector database index is healthy, contains {count} documents"
+
+        except Exception as e:
+            error_message = str(e)
+            logger.error(f"Vector database index health check failed: {error_message}")
+
+            # Check for specific HNSW index errors
+            if "hnsw" in error_message.lower() or "index" in error_message.lower():
+                return False, f"HNSW index appears to be corrupted: {error_message}"
+
+            return False, f"Vector database health check failed: {error_message}"
+
+    def repair_index(self) -> Tuple[bool, str]:
+        """
+        Attempt to repair the vector database index.
+
+        This method tries to repair the index by:
+        1. Backing up the current database
+        2. Creating a new collection with the same settings
+        3. Migrating data from the backup if possible
+
+        Returns:
+            Tuple of (success, message)
+        """
+        if self.collection is None:
+            try:
+                self.connect()
+            except Exception as e:
+                return False, f"Failed to connect to vector database: {e}"
+
+        collection_name = self.collection.name
+        logger.info(f"Attempting to repair index for collection: {collection_name}")
+
+        # Step 1: Create a backup of the current database
+        backup_dir = f"{self.persist_directory}_backup_{int(time.time())}"
+        try:
+            logger.info(f"Creating backup of vector database at {backup_dir}")
+            shutil.copytree(self.persist_directory, backup_dir)
+            logger.info("Backup created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create backup: {e}")
+            return False, f"Failed to create backup: {e}"
+
+        # Step 2: Try to get existing data
+        documents = []
+        metadatas = []
+        ids = []
+        embeddings = []
+        has_data = False
+
+        try:
+            # Get all documents from the collection
+            if self.collection is not None:
+                all_docs = self.collection.get()
+                if all_docs:
+                    documents = all_docs.get("documents", [])
+                    metadatas = all_docs.get("metadatas", [])
+                    ids = all_docs.get("ids", [])
+                    embeddings = all_docs.get("embeddings", [])
+
+                    has_data = len(documents) > 0
+                    logger.info(f"Retrieved {len(documents)} documents from existing collection")
+        except Exception as e:
+            logger.error(f"Failed to retrieve documents from collection: {e}")
+            has_data = False
+
+        # Step 3: Reset the collection
+        try:
+            if collection_name:
+                logger.info(f"Resetting collection: {collection_name}")
+                if self.client is not None:
+                    self.client.delete_collection(collection_name)
+                else:
+                    # Reconnect if client is None
+                    self.connect()
+                    if self.client is not None:
+                        self.client.delete_collection(collection_name)
+
+                # Reconnect to create a new collection
+                self.collection = None
+                self.connect(collection_name=collection_name)
+
+                logger.info(f"Collection {collection_name} reset successfully")
+            else:
+                logger.error("Collection name is None or empty")
+                return False, "Collection name is None or empty"
+        except Exception as e:
+            logger.error(f"Failed to reset collection: {e}")
+            return False, f"Failed to reset collection: {e}"
+
+        # Step 4: Restore data if we have it
+        if has_data and documents:
+            try:
+                doc_count = len(documents)
+                logger.info(f"Restoring {doc_count} documents to the new collection")
+
+                # Add documents in batches
+                batch_size = 100
+                for i in range(0, doc_count, batch_size):
+                    end_idx = min(i + batch_size, doc_count)
+
+                    batch_docs = documents[i:end_idx]
+                    batch_ids = ids[i:end_idx] if ids else None
+
+                    # Handle metadatas and embeddings safely
+                    batch_metadatas = None
+                    if metadatas and i < len(metadatas):
+                        batch_metadatas = metadatas[i:end_idx]
+
+                    batch_embeddings = None
+                    if embeddings and i < len(embeddings):
+                        batch_embeddings = embeddings[i:end_idx]
+
+                    # Cast to appropriate types to satisfy type checker
+                    self.add_documents(
+                        documents=batch_docs,
+                        embeddings=cast(Optional[List[List[float]]], batch_embeddings),
+                        metadatas=cast(Optional[List[Dict[str, Any]]], batch_metadatas),
+                        ids=batch_ids,
+                        check_duplicates=False  # Skip duplicate check since we're restoring
+                    )
+
+                logger.info("Data restoration completed successfully")
+                return True, f"Index repaired and {doc_count} documents restored"
+            except Exception as e:
+                logger.error(f"Failed to restore data: {e}")
+                return False, f"Index repaired but failed to restore data: {e}"
+
+        return True, "Index repaired (no data to restore)"
 
     def create_dummy_data(self) -> None:
         """
