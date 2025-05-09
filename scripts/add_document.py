@@ -432,7 +432,7 @@ def add_document_to_graphrag(
     logger.info(f"Added document to vector database with ID: {doc_id}")
 
     return {
-        "doc_id": doc_id,
+        "document_id": doc_id,
         "entities": entities,
         "relationships": relationships
     }
