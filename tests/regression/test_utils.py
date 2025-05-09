@@ -217,31 +217,45 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
                 process.kill()
 
         # Use the stop script to ensure all services are stopped
-        subprocess.run(
-            ["./tools/graphrag-service.sh stop"],
-            shell=True,
+        result = subprocess.run(
+            ["./tools/graphrag-service.sh", "stop"],
+            capture_output=True,
+            text=True
+        )
+        print(f"Stop script output: {result.stdout}")
+
+        # Additional cleanup to make sure all processes are stopped
+        subprocess.run(["pkill", "-f", "gunicorn"], check=False)
+        subprocess.run(["pkill", "-f", "src.mpc.server"], check=False)
+        subprocess.run(["pkill", "-f", "python.*server.py"], check=False)
+
+        # Check if any GraphRAG processes are still running
+        ps_result = subprocess.run(
+            ["ps", "aux"],
             capture_output=True,
             text=True
         )
 
-        # Also kill any gunicorn processes
-        subprocess.run(
-            ["pkill -f gunicorn"],
-            shell=True,
-            capture_output=True,
-            text=True
-        )
+        # Look for any remaining GraphRAG processes
+        if "gunicorn" in ps_result.stdout or "src.mpc.server" in ps_result.stdout:
+            print("Warning: Some GraphRAG processes are still running. Attempting to force kill...")
+            subprocess.run(["pkill", "-9", "-f", "gunicorn"], check=False)
+            subprocess.run(["pkill", "-9", "-f", "src.mpc.server"], check=False)
 
-        # And any python server processes
-        subprocess.run(
-            ["pkill -f 'python.*server.py'"],
-            shell=True,
-            capture_output=True,
-            text=True
-        )
+        # Wait a moment for processes to terminate
+        time.sleep(2)
 
-        # Wait for processes to terminate
-        time.sleep(3)
+        # Verify that services are actually stopped by checking if the API is accessible
+        try:
+            requests.get(HEALTH_ENDPOINT, timeout=1)
+            print("Warning: API is still accessible after stopping services")
+            # One last attempt to kill everything
+            subprocess.run(["pkill", "-9", "-f", "gunicorn"], check=False)
+            subprocess.run(["pkill", "-9", "-f", "python"], check=False)
+            time.sleep(2)
+        except requests.RequestException:
+            # This is actually good - it means the API is not accessible
+            pass
 
         return True
     except Exception as e:
