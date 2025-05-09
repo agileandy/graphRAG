@@ -1,0 +1,68 @@
+{
+  "bugs": [
+    {
+      "id": 1,
+      "description": "GraphRAG Service Script Python Path Issue",
+      "cause": "The graphrag-service.sh script was using the system's default python and gunicorn commands instead of the ones from the virtual environment.",
+      "status": "fixed",
+      "resolution": "Modified tools/graphrag-service.sh to use the Python interpreter and gunicorn from the virtual environment."
+    },
+    {
+      "id": 2,
+      "description": "Port Configuration Mismatch",
+      "cause": "There was a mismatch between the port configured in the .graphrag/config.env file (5000) and the port expected by the test suite (5001).",
+      "status": "fixed",
+      "resolution": "Updated the config file to use port 5001: GRAPHRAG_API_PORT=5001. Killed the process that was using port 5000."
+    },
+    {
+      "id": 3,
+      "description": "Neo4j Path Configuration",
+      "cause": "The GraphRAG service script is configured to use Neo4j from ~/.graphrag/neo4j, but Neo4j is actually installed via Homebrew at /opt/homebrew/bin/neo4j.",
+      "status": "fixed",
+      "resolution": "Updated the config file to use the correct Neo4j home directory: NEO4J_HOME=/opt/homebrew"
+    },
+    {
+      "id": 4,
+      "description": "Vector Database Connection Issue (CRITICAL)",
+      "cause": "The vector database (ChromaDB) is not connecting properly due to path resolution issues and environment variable mismatches.",
+      "status": "fixed",
+      "resolution": "Updated path resolution in check_database_directories function to use absolute paths. Updated VectorDatabase class to properly load environment variables. Added more detailed logging for diagnostics."
+    },
+    {
+      "id": 5,
+      "description": "Add Document API Endpoint",
+      "cause": "The /documents API endpoint is failing with a 500 error because the add_document_to_graphrag function signature in the API server doesn't match the actual function in the scripts/add_document.py file.",
+      "status": "fixed",
+      "resolution": "Updated the add_document function in src/api/server.py to initialize a DuplicateDetector instance and pass it to the add_document_to_graphrag function."
+    },
+    {
+      "id": 6,
+      "description": "Services Not Stopping Properly",
+      "cause": "The GraphRAG services are not stopping properly when the stop_services function is called in the regression tests.",
+      "status": "fixed",
+      "resolution": "Updated the stop_services function in tests/regression/test_utils.py to be more thorough in stopping all services, including using pkill to ensure all processes are terminated."
+    },
+    {
+      "id": 7,
+      "description": "Document ID Not Returned in API Response",
+      "cause": "The /documents API endpoint is successfully adding documents to the GraphRAG system, but it's not returning the document ID in the response.",
+      "status": "fixed",
+      "resolution": "Updated the add_document function in src/api/server.py to handle the case when a document is a duplicate, ensuring that a document ID is always returned in the response."
+    },
+    {
+      "id": 8,
+      "description": "NLP Processing Test Error",
+      "cause": "Test 4 (NLP Processing) is failing with the error 'name 'expected' is not defined'. This appears to be a reference to an undefined variable in the test script.",
+      "status": "fixed",
+      "resolution": "Fixed the reference to the undefined variable 'expected' in the test_04_nlp_processing.py file."
+    },
+    {
+      "id": 9,
+      "description": "ChromaDB Directory Mismatch",
+      "cause": "There is a mismatch between the ChromaDB directory specified in the environment variable and the directory used by the code.",
+      "status": "fixed",
+      "resolution": "Ensured the environment variable is properly loaded in the API server. Updated the VectorDatabase class to use the correct directory and convert relative paths to absolute paths."
+    }
+  ],
+  "next_id": 10
+}

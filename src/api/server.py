@@ -238,6 +238,14 @@ def add_document():
         # Initialize duplicate detector
         duplicate_detector = DuplicateDetector(vector_db)
 
+        # Calculate document hash for duplicate checking
+        doc_hash = duplicate_detector.generate_document_hash(text)
+        metadata_with_hash = metadata.copy()
+        metadata_with_hash["hash"] = doc_hash
+
+        # Check for duplicates before adding
+        is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(text, metadata_with_hash)
+
         result = add_document_to_graphrag(
             text=text,
             metadata=metadata,
@@ -246,13 +254,25 @@ def add_document():
             duplicate_detector=duplicate_detector
         )
 
-        return jsonify({
-            'status': 'success',
-            'message': 'Document added successfully',
-            'document_id': result.get('document_id'),
-            'entities': result.get('entities', []),
-            'relationships': result.get('relationships', [])
-        })
+        if result:
+            # Document was added successfully
+            return jsonify({
+                'status': 'success',
+                'message': 'Document added successfully',
+                'document_id': result.get('document_id'),
+                'entities': result.get('entities', []),
+                'relationships': result.get('relationships', [])
+            })
+        else:
+            # Document was a duplicate
+            return jsonify({
+                'status': 'duplicate',
+                'message': 'Document is a duplicate and was not added',
+                'document_id': existing_doc_id,
+                'duplicate_detection_method': method,
+                'entities': [],
+                'relationships': []
+            })
     except Exception as e:
         import traceback
         traceback.print_exc()
