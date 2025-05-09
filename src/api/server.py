@@ -211,12 +211,17 @@ def add_document():
     try:
         # Import here to avoid circular imports
         from scripts.add_document import add_document_to_graphrag
+        from src.processing.duplicate_detector import DuplicateDetector
+
+        # Initialize duplicate detector
+        duplicate_detector = DuplicateDetector(vector_db)
 
         result = add_document_to_graphrag(
             text=text,
             metadata=metadata,
             neo4j_db=neo4j_db,
-            vector_db=vector_db
+            vector_db=vector_db,
+            duplicate_detector=duplicate_detector
         )
 
         return jsonify({
@@ -227,6 +232,8 @@ def add_document():
             'relationships': result.get('relationships', [])
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/documents/<concept_name>', methods=['GET'])
