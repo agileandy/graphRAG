@@ -5,7 +5,7 @@ import logging
 import os
 import time
 import uuid
-from typing import Dict, List, Optional, Any, cast, Tuple
+from typing import Dict, List, Optional, Any, cast
 
 import chromadb
 from chromadb.config import Settings
