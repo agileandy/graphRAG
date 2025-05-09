@@ -166,8 +166,8 @@ collection.add_documents(
         "The architecture of neural networks consists of layers..."
     ],
     embeddings=[
-        [0.1, 0.2, 0.3, ...],  # 1536-dimensional embedding vector
-        [0.2, 0.3, 0.4, ...]   # 1536-dimensional embedding vector
+        [0.1, 0.2, 0.3, ...],  # 1024-dimensional embedding vector
+        [0.2, 0.3, 0.4, ...]   # 1024-dimensional embedding vector
     ],
     metadatas=[
         {
