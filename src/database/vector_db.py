@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 config_env_path = os.path.expanduser("~/.graphrag/config.env")
 if os.path.exists(config_env_path):
     logger.info(f"Loading environment variables from {config_env_path}")
-    load_dotenv(config_env_path)
+    load_dotenv(config_env_path, override=True)
 else:
     logger.warning(f"Config file not found at {config_env_path}, falling back to default .env")
     load_dotenv()
@@ -53,7 +53,11 @@ class VectorDatabase:
         config_env_path = os.path.expanduser("~/.graphrag/config.env")
         if os.path.exists(config_env_path):
             logger.info(f"Loading environment variables from {config_env_path} in VectorDatabase.__init__")
-            load_dotenv(config_env_path)
+            load_dotenv(config_env_path, override=True)
+
+            # Log the environment variable for debugging
+            chroma_dir_env = os.getenv("CHROMA_PERSIST_DIRECTORY")
+            logger.info(f"CHROMA_PERSIST_DIRECTORY from environment: {chroma_dir_env}")
 
         # Get the persist directory from the environment or use the provided value
         self.persist_directory = persist_directory or os.getenv(

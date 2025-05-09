@@ -288,15 +288,16 @@ async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = N
             text=text,
             metadata=metadata,
             neo4j_db=neo4j_db,
-            vector_db=vector_db
+            vector_db=vector_db,
+            duplicate_detector=duplicate_detector
         )
 
         return {
             'status': 'success',
             'message': 'Document added successfully',
-            'document_id': result.get('document_id'),
-            'entities': result.get('entities', []),
-            'relationships': result.get('relationships', [])
+            'document_id': result.get('document_id') if result else None,
+            'entities': result.get('entities', []) if result else [],
+            'relationships': result.get('relationships', []) if result else []
         }
     except Exception as e:
         return {'error': str(e)}
@@ -326,16 +327,17 @@ async def _process_add_document_job(job) -> Dict[str, Any]:
         text=text,
         metadata=metadata,
         neo4j_db=neo4j_db,
-        vector_db=vector_db
+        vector_db=vector_db,
+        duplicate_detector=duplicate_detector
     )
 
     # Update job progress
     job.update_progress(1, 1)
 
     return {
-        'document_id': result.get('document_id'),
-        'entities': result.get('entities', []),
-        'relationships': result.get('relationships', [])
+        'document_id': result.get('document_id') if result else None,
+        'entities': result.get('entities', []) if result else [],
+        'relationships': result.get('relationships', []) if result else []
     }
 
 async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = None) -> Dict[str, Any]:
@@ -499,7 +501,7 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                     continue
 
                 # Check for duplicates
-                is_duplicate, existing_id, method = duplicate_detector.is_duplicate(text, metadata)
+                is_duplicate, _, method = duplicate_detector.is_duplicate(text, metadata)
                 if is_duplicate:
                     print(f"Skipping duplicate file: {file_path} (detected by {method})")
                     duplicate_files += 1
@@ -510,12 +512,13 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                     text=text,
                     metadata=metadata,
                     neo4j_db=neo4j_db,
-                    vector_db=vector_db
+                    vector_db=vector_db,
+                    duplicate_detector=duplicate_detector
                 )
 
                 processed_files += 1
-                all_entities.extend(result.get('entities', []))
-                all_relationships.extend(result.get('relationships', []))
+                all_entities.extend(result.get('entities', []) if result else [])
+                all_relationships.extend(result.get('relationships', []) if result else [])
 
             except Exception as e:
                 print(f"Error processing file {file_path}: {e}")
@@ -617,7 +620,7 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
                 continue
 
             # Check for duplicates
-            is_duplicate, existing_id, method = duplicate_detector.is_duplicate(text, metadata)
+            is_duplicate, _, method = duplicate_detector.is_duplicate(text, metadata)
             if is_duplicate:
                 print(f"Skipping duplicate file: {file_path} (detected by {method})")
                 duplicate_files += 1
@@ -628,12 +631,13 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
                 text=text,
                 metadata=metadata,
                 neo4j_db=neo4j_db,
-                vector_db=vector_db
+                vector_db=vector_db,
+                duplicate_detector=duplicate_detector
             )
 
             processed_files += 1
-            all_entities.extend(result.get('entities', []))
-            all_relationships.extend(result.get('relationships', []))
+            all_entities.extend(result.get('entities', []) if result else [])
+            all_relationships.extend(result.get('relationships', []) if result else [])
 
         except Exception as e:
             print(f"Error processing file {file_path}: {e}")
@@ -747,12 +751,12 @@ async def handle_passages_about_concept(data: Dict[str, Any]) -> Dict[str, Any]:
         return {'error': str(e)}
 
 # Simple ping handler for connection testing
-async def handle_ping(data: Dict[str, Any]) -> Dict[str, Any]:
+async def handle_ping(_: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle ping request.
 
     Args:
-        data: Request data
+        _: Request data (unused)
 
     Returns:
         Ping response
