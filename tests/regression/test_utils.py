@@ -311,14 +311,14 @@ def get_test_document_metadata() -> Dict[str, Any]:
         "source": "Regression Test"
     }
 
-# MPC server functions
+# Message Passing Communication (MPC) server functions
 def test_mpc_connection(host="localhost", port=8766, timeout=5) -> Tuple[bool, str]:
     """
-    Test connection to the MPC server.
+    Test connection to the Message Passing Communication server.
 
     Args:
-        host: MPC server host
-        port: MPC server port
+        host: Message Passing server host
+        port: Message Passing server port
         timeout: Connection timeout in seconds
 
     Returns:
@@ -333,23 +333,23 @@ def test_mpc_connection(host="localhost", port=8766, timeout=5) -> Tuple[bool, s
                     await websocket.send(json.dumps({"action": "ping"}))
                     response = await websocket.recv()
                     response_data = json.loads(response)
-                    return True, f"Connected to MPC server at {uri}. Response: {response_data}"
+                    return True, f"Connected to Message Passing server at {uri}. Response: {response_data}"
             except Exception as e:
-                return False, f"Failed to connect to MPC server at {uri}: {e}"
+                return False, f"Failed to connect to Message Passing server at {uri}: {e}"
 
         return asyncio.run(test_connection())
     except ImportError as e:
         return False, f"Failed to import required modules: {e}"
     except Exception as e:
-        return False, f"Unexpected error testing MPC connection: {e}"
+        return False, f"Unexpected error testing Message Passing connection: {e}"
 
 async def mpc_search(host="localhost", port=8766, query="What is RAG?", n_results=3, max_hops=2) -> Tuple[bool, Dict[str, Any]]:
     """
-    Perform a search using the MPC server.
+    Perform a search using the Message Passing Communication server.
 
     Args:
-        host: MPC server host
-        port: MPC server port
+        host: Message Passing server host
+        port: Message Passing server port
         query: Search query
         n_results: Number of results to return
         max_hops: Maximum number of hops in the graph
@@ -379,14 +379,14 @@ async def mpc_search(host="localhost", port=8766, query="What is RAG?", n_result
     except Exception as e:
         return False, {"error": str(e)}
 
-# MCP server functions
+# Model Context Protocol (MCP) server functions
 def test_mcp_connection(host="localhost", port=8767, timeout=5) -> Tuple[bool, str]:
     """
-    Test connection to the MCP server.
+    Test connection to the Model Context Protocol server.
 
     Args:
-        host: MCP server host
-        port: MCP server port
+        host: Model Context Protocol server host
+        port: Model Context Protocol server port
         timeout: Connection timeout in seconds
 
     Returns:
@@ -417,25 +417,25 @@ def test_mcp_connection(host="localhost", port=8767, timeout=5) -> Tuple[bool, s
                     response_data = json.loads(response)
 
                     if "result" in response_data:
-                        return True, f"Connected to MCP server at {uri}. Server info: {response_data['result'].get('serverInfo', {})}"
+                        return True, f"Connected to Model Context Protocol server at {uri}. Server info: {response_data['result'].get('serverInfo', {})}"
                     else:
-                        return False, f"Failed to initialize MCP server at {uri}: {response_data.get('error', {})}"
+                        return False, f"Failed to initialize Model Context Protocol server at {uri}: {response_data.get('error', {})}"
             except Exception as e:
-                return False, f"Failed to connect to MCP server at {uri}: {e}"
+                return False, f"Failed to connect to Model Context Protocol server at {uri}: {e}"
 
         return asyncio.run(test_connection())
     except ImportError as e:
         return False, f"Failed to import required modules: {e}"
     except Exception as e:
-        return False, f"Unexpected error testing MCP connection: {e}"
+        return False, f"Unexpected error testing Model Context Protocol connection: {e}"
 
 async def mcp_get_tools(host="localhost", port=8767) -> Tuple[bool, List[Dict[str, Any]]]:
     """
-    Get available tools from the MCP server.
+    Get available tools from the Model Context Protocol server.
 
     Args:
-        host: MCP server host
-        port: MCP server port
+        host: Model Context Protocol server host
+        port: Model Context Protocol server port
 
     Returns:
         Tuple of (success, tools)
@@ -482,11 +482,11 @@ async def mcp_get_tools(host="localhost", port=8767) -> Tuple[bool, List[Dict[st
 
 async def mcp_invoke_tool(host="localhost", port=8767, tool_name="search", parameters=None) -> Tuple[bool, Dict[str, Any]]:
     """
-    Invoke a tool on the MCP server.
+    Invoke a tool on the Model Context Protocol server.
 
     Args:
-        host: MCP server host
-        port: MCP server port
+        host: Model Context Protocol server host
+        port: Model Context Protocol server port
         tool_name: Tool name
         parameters: Tool parameters
 
