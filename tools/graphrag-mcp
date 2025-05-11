@@ -39,7 +39,7 @@ REQUIRED_PACKAGES=("websockets" "neo4j" "chromadb")
 MISSING_PACKAGES=()
 
 for package in "${REQUIRED_PACKAGES[@]}"; do
-    if ! python -c "import $package" &>/dev/null; then
+    if ! python3 -c "import $package" &>/dev/null; then
         MISSING_PACKAGES+=("$package")
     fi
 done
@@ -47,9 +47,10 @@ done
 if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
     echo "Missing required packages: ${MISSING_PACKAGES[*]}"
     echo "Installing missing packages..."
-    uv pip install "${MISSING_PACKAGES[@]}"
+    pip3 install "${MISSING_PACKAGES[@]}"
 fi
 
 # Start the MCP server
 echo "Starting GraphRAG MCP server on $HOST:$PORT..."
-python -m src.mpc.mcp_server --host "$HOST" --port "$PORT" --log-level "$LOG_LEVEL"
+cd "$(dirname "$0")/.."
+PYTHONPATH=$(pwd) .venv-py312/bin/python -m src.mpc.mcp_server --host "$HOST" --port "$PORT" --log-level "$LOG_LEVEL"
