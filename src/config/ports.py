@@ -22,7 +22,7 @@ DEFAULT_PORTS = {
     "mpc": 8765,                # Message Passing Communication server
     
     # MCP Services
-    "mcp": 8766,                # Model Context Protocol server
+    "mcp": 8767,                # Model Context Protocol server
     "bug_mcp": 5005,            # Bug tracking MCP server
     
     # Database Services

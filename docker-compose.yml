@@ -13,10 +13,10 @@ services:
       - "7688:7687"
       # API Server (changed from 5000 to 5001)
       - "5001:5000"
-      # MPC Server (changed from 8765 to 8766)
-      - "8766:8765"
+      # MPC Server
+      - "8765:8765"
       # MCP Server
-      - "8767:8766"
+      - "8767:8767"
     volumes:
       # Persist data
       - ./data:/app/data

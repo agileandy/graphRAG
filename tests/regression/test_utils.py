@@ -11,6 +11,26 @@ import asyncio
 import websockets
 from typing import Dict, Any, Tuple, List, Optional
 
+# Terminal colors
+RESET = "\033[0m"
+BOLD = "\033[1m"
+RED = "\033[31m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+BLUE = "\033[34m"
+
+def print_section(title: str) -> None:
+    """Print a section header."""
+    print("\n" + "-" * 80)
+    print(f"{BOLD}{title}{RESET}")
+    print("-" * 80)
+
+def print_header(title: str) -> None:
+    """Print a main header."""
+    print("\n" + "=" * 80)
+    print(f"{BOLD}{title.center(80)}{RESET}")
+    print("=" * 80)
+
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
@@ -312,7 +332,7 @@ def get_test_document_metadata() -> Dict[str, Any]:
     }
 
 # Message Passing Communication (MPC) server functions
-def test_mpc_connection(host="localhost", port=8766, timeout=5) -> Tuple[bool, str]:
+def test_mpc_connection(host="localhost", port=8765, timeout=5) -> Tuple[bool, str]:
     """
     Test connection to the Message Passing Communication server.
 
@@ -328,7 +348,13 @@ def test_mpc_connection(host="localhost", port=8766, timeout=5) -> Tuple[bool, s
         async def test_connection():
             uri = f"ws://{host}:{port}"
             try:
-                async with websockets.connect(uri, timeout=timeout) as websocket:
+                # Create a connection with a timeout
+                try:
+                    websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
+                except asyncio.TimeoutError:
+                    return False, f"Connection to Message Passing server at {uri} timed out after {timeout} seconds"
+                
+                async with websocket:
                     # Send a ping message
                     await websocket.send(json.dumps({"action": "ping"}))
                     response = await websocket.recv()
@@ -343,7 +369,7 @@ def test_mpc_connection(host="localhost", port=8766, timeout=5) -> Tuple[bool, s
     except Exception as e:
         return False, f"Unexpected error testing Message Passing connection: {e}"
 
-async def mpc_search(host="localhost", port=8766, query="What is RAG?", n_results=3, max_hops=2) -> Tuple[bool, Dict[str, Any]]:
+async def mpc_search(host="localhost", port=8765, query="What is RAG?", n_results=3, max_hops=2, timeout=5) -> Tuple[bool, Dict[str, Any]]:
     """
     Perform a search using the Message Passing Communication server.
 
@@ -353,13 +379,20 @@ async def mpc_search(host="localhost", port=8766, query="What is RAG?", n_result
         query: Search query
         n_results: Number of results to return
         max_hops: Maximum number of hops in the graph
+        timeout: Connection timeout in seconds
 
     Returns:
         Tuple of (success, response)
     """
     uri = f"ws://{host}:{port}"
     try:
-        async with websockets.connect(uri) as websocket:
+        # Create a connection with a timeout
+        try:
+            websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
+        except asyncio.TimeoutError:
+            return False, {"error": f"Connection to Message Passing server at {uri} timed out after {timeout} seconds"}
+        
+        async with websocket:
             # Prepare search message
             message = {
                 'action': 'search',
@@ -396,7 +429,13 @@ def test_mcp_connection(host="localhost", port=8767, timeout=5) -> Tuple[bool, s
         async def test_connection():
             uri = f"ws://{host}:{port}"
             try:
-                async with websockets.connect(uri, timeout=timeout) as websocket:
+                # Create a connection with a timeout
+                try:
+                    websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
+                except asyncio.TimeoutError:
+                    return False, f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"
+                
+                async with websocket:
                     # Send initialize request
                     await websocket.send(json.dumps({
                         "jsonrpc": "2.0",
@@ -429,20 +468,27 @@ def test_mcp_connection(host="localhost", port=8767, timeout=5) -> Tuple[bool, s
     except Exception as e:
         return False, f"Unexpected error testing Model Context Protocol connection: {e}"
 
-async def mcp_get_tools(host="localhost", port=8767) -> Tuple[bool, List[Dict[str, Any]]]:
+async def mcp_get_tools(host="localhost", port=8767, timeout=5) -> Tuple[bool, List[Dict[str, Any]]]:
     """
     Get available tools from the Model Context Protocol server.
 
     Args:
         host: Model Context Protocol server host
         port: Model Context Protocol server port
+        timeout: Connection timeout in seconds
 
     Returns:
         Tuple of (success, tools)
     """
     uri = f"ws://{host}:{port}"
     try:
-        async with websockets.connect(uri) as websocket:
+        # Create a connection with a timeout
+        try:
+            websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
+        except asyncio.TimeoutError:
+            return False, []
+        
+        async with websocket:
             # Initialize connection
             await websocket.send(json.dumps({
                 "jsonrpc": "2.0",
@@ -480,7 +526,7 @@ async def mcp_get_tools(host="localhost", port=8767) -> Tuple[bool, List[Dict[st
     except Exception as e:
         return False, []
 
-async def mcp_invoke_tool(host="localhost", port=8767, tool_name="search", parameters=None) -> Tuple[bool, Dict[str, Any]]:
+async def mcp_invoke_tool(host="localhost", port=8767, tool_name="search", parameters=None, timeout=5) -> Tuple[bool, Dict[str, Any]]:
     """
     Invoke a tool on the Model Context Protocol server.
 
@@ -489,6 +535,7 @@ async def mcp_invoke_tool(host="localhost", port=8767, tool_name="search", param
         port: Model Context Protocol server port
         tool_name: Tool name
         parameters: Tool parameters
+        timeout: Connection timeout in seconds
 
     Returns:
         Tuple of (success, response)
@@ -498,7 +545,13 @@ async def mcp_invoke_tool(host="localhost", port=8767, tool_name="search", param
 
     uri = f"ws://{host}:{port}"
     try:
-        async with websockets.connect(uri) as websocket:
+        # Create a connection with a timeout
+        try:
+            websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
+        except asyncio.TimeoutError:
+            return False, {"error": f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"}
+        
+        async with websocket:
             # Initialize connection
             await websocket.send(json.dumps({
                 "jsonrpc": "2.0",
@@ -538,3 +591,13 @@ async def mcp_invoke_tool(host="localhost", port=8767, tool_name="search", param
                 return False, {"error": response_data.get("error", {})}
     except Exception as e:
         return False, {"error": str(e)}
+
+def print_test_result(test_name: str, success: bool, message: str = None) -> None:
+    """Print a test result."""
+    if success:
+        print(f"{GREEN}✅ {test_name}: PASSED{RESET}")
+    else:
+        print(f"{RED}❌ {test_name}: FAILED{RESET}")
+    
+    if message:
+        print(f"   {message}")

@@ -1,29 +1,29 @@
-"""
-MCP (Model Context Protocol) server for GraphRAG project.
+"""MCP (Model Context Protocol) server for GraphRAG project.
 
 This module implements the Model Context Protocol server that allows AI agents
 to interact with the GraphRAG system through standardized tools.
 
 The server follows the JSON-RPC 2.0 protocol and implements the MCP specification.
 """
+import asyncio
+import glob
+import json
+import logging
 import os
 import sys
-import json
-import asyncio
-import logging
-import websockets
 import time
-import glob
-from typing import Dict, Any, List, Optional, Callable
+from typing import Any
+
+import websockets
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
+from src.database.db_linkage import DatabaseLinkage
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
-from src.database.db_linkage import DatabaseLinkage
-from src.processing.job_manager import JobManager
 from src.processing.duplicate_detector import DuplicateDetector
+from src.processing.job_manager import JobManager
 
 # Configure logging
 logging.basicConfig(
@@ -282,15 +282,15 @@ TOOLS = [
 ]
 
 # Tool handlers
-async def handle_ping(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle ping request.
+async def handle_ping(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle ping request.
 
     Args:
         parameters: Request parameters (empty for ping)
 
     Returns:
         Ping response
+
     """
     # Ensure vector database is connected
     vector_db.connect()
@@ -306,9 +306,8 @@ async def handle_ping(parameters: Dict[str, Any]) -> Dict[str, Any]:
         "status": "success"
     }
 
-async def handle_search(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle search request.
+async def handle_search(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle search request.
 
     Args:
         parameters: Request parameters:
@@ -318,6 +317,7 @@ async def handle_search(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Search results
+
     """
     query = parameters.get("query")
     n_results = parameters.get("n_results", 5)
@@ -342,9 +342,8 @@ async def handle_search(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_concept(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle concept request.
+async def handle_concept(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle concept request.
 
     Args:
         parameters: Request parameters:
@@ -352,6 +351,7 @@ async def handle_concept(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Concept information
+
     """
     concept_name = parameters.get("concept_name")
 
@@ -399,9 +399,8 @@ async def handle_concept(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_documents(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle documents request.
+async def handle_documents(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle documents request.
 
     Args:
         parameters: Request parameters:
@@ -410,6 +409,7 @@ async def handle_documents(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Documents mentioning the concept
+
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 5)
@@ -447,9 +447,8 @@ async def handle_documents(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_books_by_concept(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle books-by-concept request.
+async def handle_books_by_concept(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle books-by-concept request.
 
     Args:
         parameters: Request parameters:
@@ -458,6 +457,7 @@ async def handle_books_by_concept(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Books mentioning the concept
+
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 5)
@@ -495,9 +495,8 @@ async def handle_books_by_concept(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_related_concepts(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle related-concepts request.
+async def handle_related_concepts(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle related-concepts request.
 
     Args:
         parameters: Request parameters:
@@ -506,6 +505,7 @@ async def handle_related_concepts(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Concepts related to the given concept
+
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 10)
@@ -542,9 +542,8 @@ async def handle_related_concepts(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_passages_about_concept(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle passages-about-concept request.
+async def handle_passages_about_concept(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle passages-about-concept request.
 
     Args:
         parameters: Request parameters:
@@ -553,6 +552,7 @@ async def handle_passages_about_concept(parameters: Dict[str, Any]) -> Dict[str,
 
     Returns:
         Passages about the concept
+
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 5)
@@ -602,9 +602,8 @@ async def handle_passages_about_concept(parameters: Dict[str, Any]) -> Dict[str,
             "error": str(e)
         }
 
-async def handle_add_document(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle add-document request.
+async def handle_add_document(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle add-document request.
 
     Args:
         parameters: Request parameters:
@@ -615,6 +614,7 @@ async def handle_add_document(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Result of adding the document
+
     """
     text = parameters.get("text")
     file_path = parameters.get("file_path")
@@ -634,7 +634,7 @@ async def handle_add_document(parameters: Dict[str, Any]) -> Dict[str, Any]:
                     "error": f"File not found: {file_path}"
                 }
 
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 text = f.read()
 
         # Import here to avoid circular imports
@@ -691,9 +691,8 @@ async def handle_add_document(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_add_folder(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle add-folder request.
+async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle add-folder request.
 
     Args:
         parameters: Request parameters:
@@ -703,6 +702,7 @@ async def handle_add_folder(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Result of adding the folder
+
     """
     folder_path = parameters.get("folder_path")
     metadata = parameters.get("metadata", {})
@@ -752,7 +752,7 @@ async def handle_add_folder(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
                 for file_path in document_files:
                     try:
-                        with open(file_path, "r") as f:
+                        with open(file_path) as f:
                             text = f.read()
 
                         file_metadata = metadata.copy()
@@ -791,7 +791,7 @@ async def handle_add_folder(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
             for file_path in document_files:
                 try:
-                    with open(file_path, "r") as f:
+                    with open(file_path) as f:
                         text = f.read()
 
                     file_metadata = metadata.copy()
@@ -828,9 +828,8 @@ async def handle_add_folder(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_job_status(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle job-status request.
+async def handle_job_status(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle job-status request.
 
     Args:
         parameters: Request parameters:
@@ -838,6 +837,7 @@ async def handle_job_status(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Job status
+
     """
     job_id = parameters.get("job_id")
 
@@ -871,9 +871,8 @@ async def handle_job_status(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_list_jobs(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle list-jobs request.
+async def handle_list_jobs(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle list-jobs request.
 
     Args:
         parameters: Request parameters:
@@ -882,6 +881,7 @@ async def handle_list_jobs(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         List of jobs
+
     """
     status = parameters.get("status")
     limit = parameters.get("limit", 10)
@@ -920,9 +920,8 @@ async def handle_list_jobs(parameters: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def handle_cancel_job(parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle cancel-job request.
+async def handle_cancel_job(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle cancel-job request.
 
     Args:
         parameters: Request parameters:
@@ -930,6 +929,7 @@ async def handle_cancel_job(parameters: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Result of cancelling the job
+
     """
     job_id = parameters.get("job_id")
 
@@ -972,15 +972,15 @@ TOOL_HANDLERS = {
     "cancel-job": handle_cancel_job
 }
 
-async def handle_initialize(params: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle initialize request.
+async def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle initialize request.
 
     Args:
         params: Initialize parameters
 
     Returns:
         Initialize response
+
     """
     client_protocol_version = params.get("protocolVersion")
     client_info = params.get("clientInfo", {})
@@ -997,29 +997,29 @@ async def handle_initialize(params: Dict[str, Any]) -> Dict[str, Any]:
         "capabilities": {}
     }
 
-async def handle_get_tools(_: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle getTools request.
+async def handle_get_tools(_: dict[str, Any]) -> dict[str, Any]:
+    """Handle getTools request.
 
     Args:
         _: GetTools parameters (unused)
 
     Returns:
         GetTools response with tool definitions
+
     """
     return {
         "tools": TOOLS
     }
 
-async def handle_invoke_tool(params: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle invokeTool request.
+async def handle_invoke_tool(params: dict[str, Any]) -> dict[str, Any]:
+    """Handle invokeTool request.
 
     Args:
         params: InvokeTool parameters
 
     Returns:
         InvokeTool response with tool result
+
     """
     tool_name = params.get("name")
     tool_parameters = params.get("parameters", {})
@@ -1051,11 +1051,11 @@ async def handle_invoke_tool(params: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 async def handle_connection(websocket):
-    """
-    Handle WebSocket connection.
+    """Handle WebSocket connection.
 
     Args:
         websocket: WebSocket connection
+
     """
     client_id = id(websocket)
     logger.info(f"Client connected: {client_id}")
@@ -1140,16 +1140,16 @@ async def handle_connection(websocket):
                 await websocket.send(json.dumps(response))
     except websockets.exceptions.ConnectionClosed:
         logger.info(f"Client disconnected: {client_id}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Error handling connection for client {client_id}")
 
-async def start_server(host: str = 'localhost', port: int = 8766):
-    """
-    Start the MCP server.
+async def start_server(host: str = 'localhost', port: int = 8767):
+    """Start the MCP server.
 
     Args:
         host: Server host
         port: Server port
+
     """
     server = await websockets.serve(handle_connection, host, port)
     logger.info(f"MCP server started on ws://{host}:{port}")
@@ -1159,15 +1159,14 @@ async def start_server(host: str = 'localhost', port: int = 8766):
     await server.wait_closed()
 
 def main():
-    """
-    Main function to start the MCP server.
+    """Main function to start the MCP server.
     """
     import argparse
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Start the GraphRAG MCP server")
     parser.add_argument("--host", type=str, default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=8766, help="Server port")
+    parser.add_argument("--port", type=int, default=8767, help="Server port")
     parser.add_argument("--log-level", type=str, default="INFO",
                         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                         help="Logging level")

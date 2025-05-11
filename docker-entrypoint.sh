@@ -150,7 +150,7 @@ echo "✅ MPC server started (PID: $MPC_PID)."
 
 # Start the MCP server in the background
 echo "Starting MCP server..."
-cd /app && python -m src.mpc.mcp_server --host 0.0.0.0 --port 8766 &
+cd /app && python -m src.mpc.mcp_server --host 0.0.0.0 --port 8767 &
 MCP_PID=$!
 
 # Give the MCP server a moment to start

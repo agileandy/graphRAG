@@ -40,7 +40,7 @@ Create an `mcp_settings.json` file in Claude's configuration directory with the 
   "mcpServers": {
     "GraphRAG": {
       "command": "/path/to/graphRAG/tools/graphrag-mcp",
-      "args": ["--host", "0.0.0.0", "--port", "8766"],
+      "args": ["--host", "0.0.0.0", "--port", "8767"],
       "env": {
         "PYTHONPATH": "/path/to/graphRAG",
         "NEO4J_URI": "bolt://localhost:7688",
@@ -74,7 +74,7 @@ This script will:
 1. Set the correct PYTHONPATH
 2. Install required dependencies if missing
 3. Verify Neo4j driver installation
-4. Start the MCP server on port 8766
+4. Start the MCP server on port 8767
 
 ### Option 2: Using Docker
 
@@ -88,7 +88,7 @@ docker-compose logs -f
 
 ```bash
 export PYTHONPATH=/path/to/graphRAG
-python -m src.mpc.mcp_server --host 0.0.0.0 --port 8766
+python -m src.mpc.mcp_server --host 0.0.0.0 --port 8767
 ```
 
 ## Testing the MCP Server
@@ -153,13 +153,13 @@ For production environments:
 The MCP server logs to the console by default. To save logs to a file:
 
 ```bash
-python -m src.mpc.mcp_server --host 0.0.0.0 --port 8766 > mcp_server.log 2>&1
+python -m src.mpc.mcp_server --host 0.0.0.0 --port 8767 > mcp_server.log 2>&1
 ```
 
 For more verbose logging, use the `--log-level` option:
 
 ```bash
-python -m src.mpc.mcp_server --host 0.0.0.0 --port 8766 --log-level DEBUG
+python -m src.mpc.mcp_server --host 0.0.0.0 --port 8767 --log-level DEBUG
 ```
 
 ## Troubleshooting
