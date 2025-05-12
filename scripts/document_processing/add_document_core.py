@@ -10,7 +10,8 @@ This script demonstrates how to:
 import sys
 import os
 import uuid
-from typing import List, Dict, Any, Tuple, Optional
+from datetime import datetime
+from typing import List, Dict, Any, Optional
 import logging
 
 # Add the project root directory to the Python path
@@ -20,6 +21,7 @@ from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.database.db_linkage import DatabaseLinkage
 from src.processing.duplicate_detector import DuplicateDetector
+from src.processing.concept_extractor import ConceptExtractor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -215,8 +217,44 @@ def extract_entities(text: str, metadata: Optional[Dict[str, Any]] = None) -> Li
     # Extract domain from metadata if available
     domain = metadata.get("category") if metadata else None
 
-    # Extract entities from text with domain awareness
-    text_entities = extract_entities_from_text(text, domain)
+    # Initialize the concept extractor with LLM support
+    concept_extractor = ConceptExtractor(use_nlp=True, use_llm=True, domain=domain or "general")
+
+    # Extract concepts using LLM if available, falling back to NLP and rule-based methods
+    llm_concepts = []
+    try:
+        # Try to extract concepts using LLM
+        logger.info("Extracting concepts using LLM...")
+        llm_concepts = concept_extractor.extract_concepts(text, method="llm", max_concepts=20)
+        logger.info(f"Extracted {len(llm_concepts)} concepts using LLM")
+    except Exception as e:
+        logger.warning(f"LLM-based concept extraction failed: {e}. Falling back to rule-based extraction.")
+        # Fall back to rule-based extraction
+        llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=20)
+        logger.info(f"Extracted {len(llm_concepts)} concepts using rule-based method")
+
+    # Convert LLM concepts to entities
+    text_entities = []
+    for concept in llm_concepts:
+        concept_name = concept["concept"]
+        # Create a simple ID from the concept name
+        concept_id = f"concept-{concept_name.lower().replace(' ', '-')}"
+
+        entity = {
+            "id": concept_id,
+            "name": concept_name,
+            "type": "Concept",
+            "relevance": concept.get("relevance", 1.0),
+            "definition": concept.get("definition", ""),
+            "source": concept.get("source", "llm"),
+            "domain": domain
+        }
+        text_entities.append(entity)
+
+    # If LLM extraction failed or returned no concepts, fall back to keyword-based extraction
+    if not text_entities:
+        logger.warning("LLM extraction returned no concepts. Falling back to keyword-based extraction.")
+        text_entities = extract_entities_from_text(text, domain)
 
     # Extract entities from metadata if available
     metadata_entities = extract_entities_from_metadata(metadata) if metadata else []
@@ -238,36 +276,82 @@ def extract_entities(text: str, metadata: Optional[Dict[str, Any]] = None) -> Li
     # Return the unique entities
     return list(normalized_entities.values())
 
-def extract_relationships(entities: List[Dict[str, Any]], text: str) -> List[Tuple[str, str, float]]:
+def extract_relationships(entities: List[Dict[str, Any]], text: str) -> List[Dict[str, Any]]:
     """
-    Simple relationship extraction function.
-    In a real system, you would use NLP techniques or LLMs for this.
+    Enhanced relationship extraction function.
+    Uses a combination of rule-based and relevance-based approaches.
 
     Args:
         entities: List of extracted entities
         text: Document text
 
     Returns:
-        List of relationships as (source_id, target_id, strength)
+        List of relationships as dictionaries with source_id, target_id, type, and strength
     """
-    # This is a very simple implementation for demonstration
-    # In a real system, you would use NLP or LLMs for relationship extraction
     relationships = []
+    text_lower = text.lower()
 
     # If we have at least 2 entities, create relationships between them
     if len(entities) >= 2:
-        # Create relationships between all pairs of entities
-        for i in range(len(entities)):
-            for j in range(i+1, len(entities)):
-                source_id = entities[i]["id"]
-                target_id = entities[j]["id"]
+        # Create relationships between entities based on patterns and relevance
 
-                # Calculate a simple strength based on proximity in the text
-                # In a real system, you would use more sophisticated methods
-                strength = 0.5  # Default strength
+        # Define relationship types based on common patterns
+        relationship_patterns = {
+            "IS_A": [" is a ", " are ", " as a ", " type of ", " class of "],
+            "PART_OF": [" part of ", " component of ", " element of ", " belongs to "],
+            "USES": [" uses ", " utilizes ", " employs ", " leverages ", " based on "],
+            "SIMILAR_TO": [" similar to ", " like ", " resembles ", " analogous to "],
+            "DIFFERENT_FROM": [" different from ", " unlike ", " contrasts with ", " opposed to "],
+            "PRECEDES": [" before ", " precedes ", " leads to ", " results in ", " causes "],
+            "FOLLOWS": [" after ", " follows ", " succeeds ", " derived from "]
+        }
+
+        # Check for specific relationship patterns in the text
+        for i, source_entity in enumerate(entities):
+            source_name = source_entity["name"].lower()
+            source_id = source_entity["id"]
+
+            for j, target_entity in enumerate(entities):
+                if i == j:  # Skip self-relationships
+                    continue
+
+                target_name = target_entity["name"].lower()
+                target_id = target_entity["id"]
+
+                # Default relationship type and strength
+                rel_type = "RELATED_TO"
+                strength = 0.5
+
+                # Check for specific relationship patterns
+                for pattern_type, patterns in relationship_patterns.items():
+                    for pattern in patterns:
+                        # Check if the pattern appears between the two concepts
+                        pattern1 = f"{source_name}{pattern}{target_name}"
+                        pattern2 = f"{target_name}{pattern}{source_name}"
+
+                        if pattern1 in text_lower:
+                            rel_type = pattern_type
+                            strength = 0.8  # Higher confidence for explicit patterns
+                            break
+                        elif pattern2 in text_lower and pattern_type not in ["IS_A", "PART_OF", "USES"]:
+                            # For some relationships, we need to reverse the direction
+                            # For others, the relationship is bidirectional
+                            rel_type = pattern_type
+                            strength = 0.8
+                            break
+
+                # If no specific pattern was found, use relevance scores if available
+                if rel_type == "RELATED_TO" and "relevance" in source_entity and "relevance" in target_entity:
+                    # Calculate strength based on relevance scores
+                    strength = (source_entity["relevance"] + target_entity["relevance"]) / 2
 
                 # Add the relationship
-                relationships.append((source_id, target_id, strength))
+                relationships.append({
+                    "source_id": source_id,
+                    "target_id": target_id,
+                    "type": rel_type,
+                    "strength": strength
+                })
 
     return relationships
 
@@ -336,13 +420,21 @@ def add_document_to_graphrag(
             query = """
             MATCH (c:Concept {id: $id})
             SET c.name = $name,
-                c.abbreviation = $abbreviation
+                c.abbreviation = $abbreviation,
+                c.relevance = $relevance,
+                c.definition = $definition,
+                c.source = $source,
+                c.domain = $domain
             RETURN c
             """
             neo4j_db.run_query(query, {
                 "id": entity["id"],
                 "name": entity["name"],
-                "abbreviation": entity.get("abbreviation", "")
+                "abbreviation": entity.get("abbreviation", ""),
+                "relevance": entity.get("relevance", 1.0),
+                "definition": entity.get("definition", ""),
+                "source": entity.get("source", "rule"),
+                "domain": entity.get("domain", "")
             })
             logger.info(f"Updated existing concept: {entity['name']}")
         else:
@@ -359,7 +451,11 @@ def add_document_to_graphrag(
                 CREATE (c:Concept {
                     id: $id,
                     name: $name,
-                    abbreviation: $abbreviation
+                    abbreviation: $abbreviation,
+                    relevance: $relevance,
+                    definition: $definition,
+                    source: $source,
+                    domain: $domain
                 })
                 RETURN c
                 """
@@ -367,6 +463,9 @@ def add_document_to_graphrag(
                     "id": entity["id"],
                     "name": entity["name"],
                     "abbreviation": entity.get("abbreviation", ""),
+                    "relevance": entity.get("relevance", 1.0),
+                    "definition": entity.get("definition", ""),
+                    "source": entity.get("source", "rule"),
                     "domain": entity.get("domain", "")
                 })
                 logger.info(f"Created new concept: {entity['name']}")
@@ -375,32 +474,88 @@ def add_document_to_graphrag(
                 query = """
                 MATCH (c:Concept {id: $id})
                 SET c.name = $name,
-                    c.abbreviation = $abbreviation
+                    c.abbreviation = $abbreviation,
+                    c.relevance = $relevance,
+                    c.definition = $definition,
+                    c.source = $source,
+                    c.domain = $domain
                 RETURN c
                 """
                 neo4j_db.run_query(query, {
                     "id": entity["id"],
                     "name": entity["name"],
                     "abbreviation": entity.get("abbreviation", ""),
+                    "relevance": entity.get("relevance", 1.0),
+                    "definition": entity.get("definition", ""),
+                    "source": entity.get("source", "rule"),
                     "domain": entity.get("domain", "")
                 })
                 logger.info(f"Updated concept: {entity['name']}")
 
-    # 5. Add relationships to Neo4j
-    for source_id, target_id, strength in relationships:
-        # Check if relationship already exists
+    # 5. Create Document node in Neo4j
+    doc_properties = {
+        "id": doc_id,
+        "title": metadata.get("title", "Untitled Document"),
+        "author": metadata.get("author", "Unknown"),
+        "category": metadata.get("category", ""),
+        "subcategory": metadata.get("subcategory", ""),
+        "source": metadata.get("source", ""),
+        "hash": doc_hash,
+        "created_at": metadata.get("created_at", datetime.now().isoformat())
+    }
+
+    # Create Document node
+    query = """
+    CREATE (d:Document {
+        id: $id,
+        title: $title,
+        author: $author,
+        category: $category,
+        subcategory: $subcategory,
+        source: $source,
+        hash: $hash,
+        created_at: $created_at
+    })
+    RETURN d
+    """
+    neo4j_db.run_query(query, doc_properties)
+    logger.info(f"Created Document node in Neo4j with ID: {doc_id}")
+
+    # 6. Create MENTIONS relationships between Document and Concepts
+    for entity in entities:
         query = """
-        MATCH (a:Concept {id: $source_id})-[r:RELATED_TO]->(b:Concept {id: $target_id})
+        MATCH (d:Document {id: $doc_id})
+        MATCH (c:Concept {id: $concept_id})
+        CREATE (d)-[r:MENTIONS {relevance: $relevance}]->(c)
+        RETURN r
+        """
+        neo4j_db.run_query(query, {
+            "doc_id": doc_id,
+            "concept_id": entity["id"],
+            "relevance": entity.get("relevance", 1.0)
+        })
+        logger.info(f"Created MENTIONS relationship: {doc_id} -> {entity['id']}")
+
+    # 7. Add relationships between concepts to Neo4j
+    for rel in relationships:
+        source_id = rel["source_id"]
+        target_id = rel["target_id"]
+        rel_type = rel["type"]
+        strength = rel["strength"]
+
+        # Check if relationship already exists
+        query = f"""
+        MATCH (a:Concept {{id: $source_id}})-[r:{rel_type}]->(b:Concept {{id: $target_id}})
         RETURN r
         """
         results = neo4j_db.run_query(query, {"source_id": source_id, "target_id": target_id})
 
         if not results:
             # Create the relationship
-            query = """
-            MATCH (a:Concept {id: $source_id})
-            MATCH (b:Concept {id: $target_id})
-            CREATE (a)-[r:RELATED_TO {strength: $strength}]->(b)
+            query = f"""
+            MATCH (a:Concept {{id: $source_id}})
+            MATCH (b:Concept {{id: $target_id}})
+            CREATE (a)-[r:{rel_type} {{strength: $strength}}]->(b)
             RETURN r
             """
             neo4j_db.run_query(query, {
@@ -408,11 +563,22 @@ def add_document_to_graphrag(
                 "target_id": target_id,
                 "strength": strength
             })
-            logger.info(f"Created relationship: {source_id} -> {target_id}")
+            logger.info(f"Created relationship: {source_id} -{rel_type}-> {target_id}")
         else:
-            logger.info(f"Relationship already exists: {source_id} -> {target_id}")
+            # Update the existing relationship
+            query = f"""
+            MATCH (a:Concept {{id: $source_id}})-[r:{rel_type}]->(b:Concept {{id: $target_id}})
+            SET r.strength = $strength
+            RETURN r
+            """
+            neo4j_db.run_query(query, {
+                "source_id": source_id,
+                "target_id": target_id,
+                "strength": strength
+            })
+            logger.info(f"Updated relationship: {source_id} -{rel_type}-> {target_id}")
 
-    # 6. Add document to vector database
+    # 8. Add document to vector database
     # Update metadata with entity IDs
     doc_metadata = metadata.copy()
     doc_metadata["doc_id"] = doc_id
