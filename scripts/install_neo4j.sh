@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Script to download and install Neo4j Community Edition following best practices
-# - Neo4j binaries installed in ~/.local/neo4j/
+# - Neo4j binaries installed via Homebrew at /opt/homebrew/bin/neo4j
 # - Neo4j data stored in ~/.graphrag/neo4j/
 
 # Define installation directories
-NEO4J_HOME="$HOME/.local/neo4j"
+NEO4J_HOME="/opt/homebrew"
 NEO4J_DATA_DIR="$HOME/.graphrag/neo4j"
 NEO4J_VERSION="5.18.1"
 

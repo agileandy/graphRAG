@@ -800,7 +800,7 @@ uv pip install -r requirements.txt
 ./scripts/start_neo4j.sh
 
 # Set Neo4j password (first time only)
-~/.local/neo4j/bin/neo4j-admin dbms set-initial-password graphrag
+/opt/homebrew/bin/neo4j-admin dbms set-initial-password graphrag
 
 # Start the API server
 ./scripts/start_api_local.sh
@@ -838,7 +838,7 @@ The system uses environment variables for configuration, which can be set in a `
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=graphrag
-NEO4J_HOME=~/.local/neo4j
+NEO4J_HOME=/opt/homebrew
 NEO4J_DATA_DIR=~/.graphrag/neo4j
 
 # ChromaDB Configuration

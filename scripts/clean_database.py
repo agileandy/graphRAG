@@ -103,8 +103,8 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
         # Check standard locations
         home_dir = os.path.expanduser('~')
 
-        # Check ~/.local/neo4j (standard location for binaries)
-        local_neo4j_dir = os.path.join(home_dir, '.local', 'neo4j')
+        # Check Homebrew installation (standard location for binaries)
+        homebrew_neo4j_dir = "/opt/homebrew"
 
         # Check ~/.graphrag/neo4j (application data location)
         graphrag_neo4j_dir = os.path.join(home_dir, '.graphrag', 'neo4j')
@@ -114,12 +114,12 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
         project_neo4j_dir = os.path.join(project_root, 'neo4j')
 
         # Determine which Neo4j installation to use
-        if os.path.exists(local_neo4j_dir) and os.path.isdir(local_neo4j_dir):
-            # Using standard installation with data in .graphrag
-            neo4j_dir = local_neo4j_dir
+        if os.path.exists(homebrew_neo4j_dir) and os.path.isdir(homebrew_neo4j_dir):
+            # Using Homebrew installation with data in .graphrag
+            neo4j_dir = homebrew_neo4j_dir
             neo4j_data_dir = os.path.join(graphrag_neo4j_dir, 'data', 'databases')
             neo4j_tx_dir = os.path.join(graphrag_neo4j_dir, 'data', 'transactions')
-            print("Using Neo4j installation in ~/.local/neo4j with data in ~/.graphrag/neo4j")
+            print("Using Neo4j installation from Homebrew at /opt/homebrew with data in ~/.graphrag/neo4j")
         elif os.path.exists(project_neo4j_dir) and os.path.isdir(project_neo4j_dir):
             # Legacy installation in project directory
             neo4j_dir = project_neo4j_dir
