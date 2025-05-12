@@ -46,8 +46,8 @@
       "id": 7,
       "description": "Document ID Not Returned in API Response",
       "cause": "The /documents API endpoint is successfully adding documents to the GraphRAG system, but it's not returning the document ID in the response.",
-      "status": "fixed",
-      "resolution": "Updated the add_document function in src/api/server.py to handle the case when a document is a duplicate, ensuring that a document ID is always returned in the response."
+      "status": "open",
+      "resolution": ""
     },
     {
       "id": 8,
@@ -62,7 +62,119 @@
       "cause": "There is a mismatch between the ChromaDB directory specified in the environment variable and the directory used by the code.",
       "status": "fixed",
       "resolution": "Ensured the environment variable is properly loaded in the API server. Updated the VectorDatabase class to use the correct directory and convert relative paths to absolute paths."
+    },
+    {
+      "id": 10,
+      "description": "MPC server fails to start",
+      "cause": "The MPC server fails to start with error: OSError: [Errno 48] error while attempting to bind on address (0.0.0.0, 8765): [errno 48] address already in use",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 11,
+      "description": "MCP server not running or using incorrect protocol",
+      "cause": "The server at port 8765 is not a Model Context Protocol server but a Message Passing Communication server. The test_model_context_server.py test fails with 'Missing required parameter: action'",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 12,
+      "description": "Port configuration mismatch between MCP server and tests",
+      "cause": "The MCP server is configured to run on port 8766 by default, but the tests were looking for it on port 8767. The test was updated to use port 8767 and the server was manually started on port 8767.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 13,
+      "description": "MPC server fails to start",
+      "cause": "The MPC server fails to start with no error message. The test_message_passing_server.py test fails with 'Failed to connect to Message Passing server at ws://localhost:8766'",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 14,
+      "description": "MCP server port mismatch in regression tests",
+      "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 15,
+      "description": "MCP server port mismatch in regression tests",
+      "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 16,
+      "description": "MCP server port mismatch in regression tests",
+      "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 17,
+      "description": "MCP server port mismatch in regression tests",
+      "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 18,
+      "description": "MCP server port mismatch in regression tests",
+      "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 19,
+      "description": "MCP server port mismatch in regression tests",
+      "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 20,
+      "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
+      "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 21,
+      "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
+      "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 22,
+      "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
+      "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 23,
+      "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
+      "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 24,
+      "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
+      "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 25,
+      "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
+      "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
+      "status": "open",
+      "resolution": ""
     }
   ],
-  "next_id": 10
+  "next_id": 27
 }

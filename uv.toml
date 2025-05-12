@@ -1,6 +1,0 @@
-[uv]
-# Enable auto-activation of the virtual environment when entering the directory.
-auto-activation = true
-
-# You can optionally specify the Python interpreter uv should use for this project.
-# python = "3.12" # Matches the .venv-py312 and requires-python in pyproject.toml

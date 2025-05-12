@@ -1,0 +1,1 @@
+{"description": "MCP server port mismatch in regression tests", "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.", "status": "fixed"}
