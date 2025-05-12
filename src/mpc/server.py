@@ -282,7 +282,7 @@ async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = N
 
         # Synchronous processing
         # Import here to avoid circular imports
-        from scripts.add_document import add_document_to_graphrag
+        from scripts.document_processing.add_document_core import add_document_to_graphrag
 
         result = add_document_to_graphrag(
             text=text,
@@ -313,7 +313,7 @@ async def _process_add_document_job(job) -> Dict[str, Any]:
         Result of the operation
     """
     # Import here to avoid circular imports
-    from scripts.add_document import add_document_to_graphrag
+    from scripts.document_processing.add_document_core import add_document_to_graphrag
 
     # Extract parameters
     text = job.params['text']
@@ -436,7 +436,7 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
 
         # Synchronous processing
         # Import here to avoid circular imports
-        from scripts.add_document import add_document_to_graphrag
+        from scripts.document_processing.add_document_core import add_document_to_graphrag
 
         # Process each file
         processed_files = 0
@@ -548,7 +548,7 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
         Result of the operation
     """
     # Import here to avoid circular imports
-    from scripts.add_document import add_document_to_graphrag
+    from scripts.document_processing.add_document_core import add_document_to_graphrag
 
     # Extract parameters
     folder_path = job.params['folder_path']
