@@ -1,146 +1,50 @@
-# GraphRAG Tools
+# GraphRAG Tools Directory
 
-This directory contains tools for interacting with the GraphRAG system.
+This directory has been reorganized to reduce duplication and improve maintainability. The tools and scripts have been moved to more appropriate locations based on their functionality.
 
-## GraphRAG MPC Client
+## New Directory Structure
 
-The GraphRAG MPC client is a command-line tool for interacting with the GraphRAG MPC server. It provides a simple interface for adding documents, searching for documents, and getting information about concepts.
+- **bin/**: Executable scripts and command-line tools
+  - Contains the main GraphRAG command-line tools
 
-### Installation
+- **examples/**: Example usage scripts
+  - Client examples (MPC, MCP)
+  - Integration examples (LangChain, OpenAI)
+  - Simple demos
 
-The tool is already installed in the GraphRAG Docker container. If you want to use it outside the container, you need to install the required dependencies:
+- **scripts/**: Core functionality scripts
+  - **document_processing/**: Document addition and processing
+  - **database_management/**: Database operations
+  - **service_management/**: Service control scripts
+  - **query/**: Query and search scripts
 
-```bash
-pip install websockets
-```
+- **tests/**: Testing scripts
+  - **component/**: Component-level tests
+  - **regression/**: Regression tests
 
-### Usage
+- **utils/**: Utility scripts
+  - Docker management
+  - Environment setup
+  - Miscellaneous utilities
 
-```bash
-./graphrag <command> [options]
-```
+## Migration Guide
 
-or
+If you were using scripts from the old `tools/` directory, here's where to find them now:
 
-```bash
-python graphrag_mpc_client.py <command> [options]
-```
+- `add_pdf_documents.py` → `scripts/document_processing/add_pdf_documents.py`
+- `add_all_ebooks.py` → `scripts/document_processing/add_ebooks_batch.py`
+- `add_prompting_ebooks.py` → `scripts/document_processing/add_prompting_ebooks.py`
+- `test_mpc_connection.py` → `tests/component/test_mpc_connection.py`
+- `test_async_processing.py` → `tests/component/test_async_processing.py`
+- `test_mpc_search.py` → `tests/component/test_mpc_search.py`
+- `graphrag-service.sh` → `scripts/service_management/graphrag-service.sh`
+- `bugapi-service.sh` → `scripts/service_management/bugapi-service.sh`
+- `bugmcp-service.sh` → `scripts/service_management/bugmcp-service.sh`
+- `query_neo4j.py` → `scripts/query/query_neo4j.py`
+- `list_documents.py` → `scripts/query/list_documents.py`
+- `graphrag_mpc_client.py` → `examples/graphrag_mpc_client.py`
+- `graphrag` → `bin/graphrag`
+- `graphrag-mcp` → `bin/graphrag-mcp`
+- `graphrag-monitor.py` → `bin/graphrag-monitor.py`
 
-### Commands
-
-#### Add Document
-
-Add a document to the GraphRAG system:
-
-```bash
-./graphrag add-document --text "Document text" --metadata "title=Title,author=Author,category=Category,concepts=Concept1,Concept2"
-```
-
-You can also read the document text from a file:
-
-```bash
-./graphrag add-document --file /path/to/document.txt --metadata "title=Title,author=Author,category=Category,concepts=Concept1,Concept2"
-```
-
-#### Add Folder
-
-Add all documents in a folder to the GraphRAG system:
-
-```bash
-./graphrag add-folder --path /path/to/folder --metadata "category=Category,concepts=Concept1,Concept2"
-```
-
-#### Search
-
-Search for documents in the GraphRAG system:
-
-```bash
-./graphrag search --query "Search query" --limit 10
-```
-
-#### Get Concept
-
-Get information about a concept:
-
-```bash
-./graphrag concept --name "Concept name"
-```
-
-#### Get Related Concepts
-
-Get concepts related to a given concept:
-
-```bash
-./graphrag related-concepts --name "Concept name"
-```
-
-#### Get Passages About Concept
-
-Get passages that mention a given concept:
-
-```bash
-./graphrag passages-about-concept --name "Concept name"
-```
-
-#### Get Books By Concept
-
-Get books that mention a given concept:
-
-```bash
-./graphrag books-by-concept --name "Concept name"
-```
-
-#### Get Documents
-
-Get a list of documents in the GraphRAG system:
-
-```bash
-./graphrag documents --limit 10
-```
-
-### Examples
-
-#### Add a Document
-
-```bash
-./graphrag add-document --text "GraphRAG is a hybrid approach that combines vector embeddings with knowledge graphs for enhanced information retrieval." --metadata "title=Introduction to GraphRAG,author=Test User,category=AI,concepts=GraphRAG,RAG,Knowledge Graph,Vector Embeddings"
-```
-
-#### Search for Documents
-
-```bash
-./graphrag search --query "GraphRAG"
-```
-
-#### Get Information About a Concept
-
-```bash
-./graphrag concept --name "GraphRAG"
-```
-
-#### Get Related Concepts
-
-```bash
-./graphrag related-concepts --name "GraphRAG"
-```
-
-#### Get Passages About a Concept
-
-```bash
-./graphrag passages-about-concept --name "GraphRAG"
-```
-
-### Configuration
-
-By default, the tool connects to the MPC server at `ws://localhost:8766`. You can specify a different URL using the `--url` option:
-
-```bash
-./graphrag --url ws://example.com:8765 search --query "GraphRAG"
-```
-
-### Exit Codes
-
-The tool returns the following exit codes:
-
-- `0`: Success
-- `1`: Error (connection error, invalid command, etc.)
+For any questions or issues with the new structure, please refer to the project documentation or open an issue on the repository.
