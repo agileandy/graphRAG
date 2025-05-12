@@ -94,15 +94,26 @@ class OpenAICompatibleProvider(LLMProvider):
         Returns:
             Generated text
         """
-        # Prepare messages
-        messages = [
-            {"role": "system", "content": kwargs.get("system_prompt", "You are a helpful assistant.")},
-            {"role": "user", "content": prompt}
-        ]
+        system_prompt = kwargs.get("system_prompt", "You are a helpful assistant.")
+        model_name = kwargs.get("model", self.model)
+
+        # Check if we're using Phi-4 model and format accordingly
+        if "phi-4" in model_name.lower():
+            # Format for Phi-4 models
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ]
+        else:
+            # Standard format for other models
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ]
 
         # Prepare request payload
         payload = {
-            "model": kwargs.get("model", self.model),
+            "model": model_name,
             "messages": messages,
             "temperature": kwargs.get("temperature", self.temperature),
             "max_tokens": kwargs.get("max_tokens", self.max_tokens)
@@ -322,9 +333,9 @@ class OllamaProvider(LLMProvider):
             List of embedding vectors
         """
         model = kwargs.get("model", self.embedding_model)
-        
+
         embeddings = []
-        
+
         for text in texts:
             try:
                 # Make API request
@@ -345,7 +356,7 @@ class OllamaProvider(LLMProvider):
                 logger.error(f"Error getting embedding: {e}")
                 # Return dummy embedding in case of error
                 embeddings.append([0.0])
-        
+
         return embeddings
 
 class LLMManager:
