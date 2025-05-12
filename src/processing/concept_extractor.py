@@ -38,10 +38,10 @@ DOMAIN_STOPWORDS = {
 def load_llm_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
     Load LLM configuration from file.
-    
+
     Args:
         config_path: Path to configuration file
-        
+
     Returns:
         Configuration dictionary
     """
@@ -50,7 +50,7 @@ def load_llm_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         # Get the project root directory
         project_root = Path(__file__).parent.parent.parent
         config_path = os.path.join(project_root, "config", "llm_config.json")
-    
+
     try:
         with open(config_path, "r") as f:
             config = json.load(f)
@@ -73,10 +73,10 @@ def load_llm_config(config_path: Optional[str] = None) -> Dict[str, Any]:
 def setup_llm_manager(config: Dict[str, Any]) -> Optional[LLMManager]:
     """
     Set up LLM manager from configuration.
-    
+
     Args:
         config: Configuration dictionary
-        
+
     Returns:
         LLM manager instance or None if setup fails
     """
@@ -88,7 +88,7 @@ def setup_llm_manager(config: Dict[str, Any]) -> Optional[LLMManager]:
     except Exception as e:
         logger.error(f"Error creating primary provider: {e}")
         return None
-    
+
     # Create fallback provider if configured
     fallback_provider = None
     if "fallback_provider" in config:
@@ -98,7 +98,7 @@ def setup_llm_manager(config: Dict[str, Any]) -> Optional[LLMManager]:
             logger.info(f"Created fallback provider: {fallback_config.get('type')} with model {fallback_config.get('model')}")
         except Exception as e:
             logger.error(f"Error creating fallback provider: {e}")
-    
+
     # Create LLM manager
     return LLMManager(primary_provider, fallback_provider)
 
@@ -137,21 +137,21 @@ except ImportError:
 class ConceptExtractor:
     """
     Concept extraction for GraphRAG project.
-    
+
     This class provides methods for extracting concepts from text using
     various techniques, from simple rule-based extraction to more
     sophisticated NLP and LLM-based approaches.
     """
-    
-    def __init__(self, 
-                 use_nlp: bool = True, 
+
+    def __init__(self,
+                 use_nlp: bool = True,
                  use_llm: bool = False,
                  domain: str = "general",
                  min_concept_length: int = 2,
                  max_concept_length: int = 5):
         """
         Initialize concept extractor.
-        
+
         Args:
             use_nlp: Whether to use NLP-based extraction
             use_llm: Whether to use LLM-based extraction
@@ -165,22 +165,22 @@ class ConceptExtractor:
         self.domain = domain
         self.min_concept_length = min_concept_length
         self.max_concept_length = max_concept_length
-        
+
         # Combine stopwords from general and domain-specific sets
         self.stopwords = DOMAIN_STOPWORDS["general"].union(
             DOMAIN_STOPWORDS.get(domain, set())
         )
-        
+
         # Load domain-specific concept patterns if available
         self.domain_patterns = self._load_domain_patterns(domain)
-    
+
     def _load_domain_patterns(self, domain: str) -> List[str]:
         """
         Load domain-specific concept patterns.
-        
+
         Args:
             domain: Domain name
-            
+
         Returns:
             List of regex patterns for the domain
         """
@@ -192,64 +192,64 @@ class ConceptExtractor:
             r'\b(Industry 4\.0|Industry 5\.0|Internet of Things|IoT|AI|ML|DL)\b',  # Industry concepts
             r'\b(Big Data|Cloud Computing|Edge Computing|Blockchain|Quantum Computing)\b'  # Tech concepts
         ]
-        
+
         # TODO: Load patterns from a configuration file based on domain
         return default_patterns
-    
+
     def extract_concepts_rule_based(self, text: str) -> List[str]:
         """
         Extract concepts using rule-based approach.
-        
+
         Args:
             text: Input text
-            
+
         Returns:
             List of extracted concepts
         """
         concepts = []
-        
+
         # Extract noun phrases using regex patterns
         # Look for capitalized phrases that might be concepts
         cap_phrases = re.findall(r'\b[A-Z][a-zA-Z]+(?: [a-zA-Z]+){0,4}\b', text)
         concepts.extend([phrase for phrase in cap_phrases if self._is_valid_concept(phrase)])
-        
+
         # Extract domain-specific patterns
         for pattern in self.domain_patterns:
             matches = re.findall(pattern, text)
             concepts.extend([match for match in matches if self._is_valid_concept(match)])
-        
+
         # Remove duplicates and sort
         return sorted(list(set(concepts)))
-    
+
     def extract_concepts_nlp(self, text: str) -> List[str]:
         """
         Extract concepts using NLP-based approach with spaCy.
-        
+
         Args:
             text: Input text
-            
+
         Returns:
             List of extracted concepts
         """
         if not self.use_nlp or nlp is None:
             logger.warning("NLP-based extraction not available. Using rule-based extraction instead.")
             return self.extract_concepts_rule_based(text)
-        
+
         concepts = []
-        
+
         # Process text with spaCy
         doc = nlp(text)
-        
+
         # Extract noun chunks as potential concepts
         for chunk in doc.noun_chunks:
             if self._is_valid_concept(chunk.text):
                 concepts.append(chunk.text)
-        
+
         # Extract named entities as potential concepts
         for ent in doc.ents:
             if ent.label_ in ["ORG", "PRODUCT", "WORK_OF_ART", "LAW", "LANGUAGE", "EVENT", "FAC"] and self._is_valid_concept(ent.text):
                 concepts.append(ent.text)
-        
+
         # Extract technical terms using dependency parsing
         for token in doc:
             # Look for compound noun phrases that might be technical terms
@@ -257,18 +257,18 @@ class ConceptExtractor:
                 compound_term = f"{token.text} {token.head.text}"
                 if self._is_valid_concept(compound_term):
                     concepts.append(compound_term)
-        
+
         # Remove duplicates and sort
         return sorted(list(set(concepts)))
-    
+
     def extract_concepts_llm(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
         """
         Extract concepts using LLM-based approach.
-        
+
         Args:
             text: Input text
             max_concepts: Maximum number of concepts to extract
-            
+
         Returns:
             List of extracted concepts with metadata
         """
@@ -282,25 +282,25 @@ class ConceptExtractor:
                 if self.use_llm and openai_client is not None:
                     logger.info("Falling back to OpenAI client for concept extraction (DEPRECATED)")
                     return self._extract_concepts_with_openai(text, max_concepts)
-        
+
         # If LLMManager is not available, try using OpenAI client
         if self.use_llm and openai_client is not None:
             logger.warning("Using OpenAI client for concept extraction (DEPRECATED)")
             return self._extract_concepts_with_openai(text, max_concepts)
-        
+
         # If neither is available, fall back to NLP-based extraction
         logger.warning("LLM-based extraction not available. Using NLP-based extraction instead.")
         nlp_concepts = self.extract_concepts_nlp(text)
         return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in nlp_concepts[:max_concepts]]
-    
+
     def _extract_concepts_with_llm_manager(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
         """
-        Extract concepts using LLMManager.
-        
+        Extract concepts using LLMManager with improved error handling for template issues.
+
         Args:
             text: Input text
             max_concepts: Maximum number of concepts to extract
-            
+
         Returns:
             List of extracted concepts with metadata
         """
@@ -311,75 +311,146 @@ class ConceptExtractor:
             logger.info(f"Text truncated from {len(text)} to {max_text_length} characters")
         else:
             truncated_text = text
-        
-        # Prepare prompt for concept extraction
-        prompt = f"""
-        Extract the most important domain-specific concepts from the following text.
-        Return the result as a JSON array of objects, each with the following properties:
-        - concept: The concept name
-        - relevance: A score from 0.0 to 1.0 indicating the relevance of the concept to the text
-        - definition: A brief definition of the concept based on the text
-        
-        Text:
-        {truncated_text}
-        
-        Format:
-        [
-            {{"concept": "Concept 1", "relevance": 0.95, "definition": "Definition 1"}},
-            {{"concept": "Concept 2", "relevance": 0.85, "definition": "Definition 2"}},
-            ...
-        ]
-        
-        Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts.
-        """
-        
-        # Generate response
-        response = llm_manager.generate(
-            prompt, 
-            system_prompt="You are a concept extraction assistant that identifies key technical and domain-specific concepts from text.",
-            max_tokens=1000,
-            temperature=0.2
-        )
-        
-        # Parse JSON from response
+
+        # Try first with a simplified prompt that doesn't require complex formatting
         try:
-            # Find JSON in the response
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
-            
-            if json_start >= 0 and json_end > json_start:
-                json_str = response[json_start:json_end]
-                concepts = json.loads(json_str)
-                # Add source field
-                for concept in concepts:
-                    concept["source"] = "llm"
+            # Simplified prompt without requiring JSON formatting
+            simple_prompt = f"""
+            Extract the {max_concepts} most important domain-specific concepts from the following text.
+            For each concept, provide:
+            1. The concept name
+            2. A relevance score from 0.0 to 1.0
+            3. A brief definition based on the text
+
+            Text:
+            {truncated_text}
+
+            Format each concept as:
+            Concept: [name]
+            Relevance: [score]
+            Definition: [definition]
+            """
+
+            # Generate response with simplified prompt
+            response = llm_manager.generate(
+                simple_prompt,
+                system_prompt="You are a concept extraction assistant that identifies key technical and domain-specific concepts from text.",
+                max_tokens=1000,
+                temperature=0.2
+            )
+
+            # Parse the response manually
+            concepts = []
+            current_concept = {}
+
+            for line in response.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+
+                if line.startswith('Concept:'):
+                    # If we have a previous concept, add it to the list
+                    if current_concept and 'concept' in current_concept:
+                        concepts.append(current_concept)
+
+                    # Start a new concept
+                    current_concept = {'concept': line[8:].strip(), 'source': 'llm'}
+                elif line.startswith('Relevance:'):
+                    try:
+                        relevance = float(line[10:].strip())
+                        current_concept['relevance'] = min(max(relevance, 0.0), 1.0)  # Ensure in range 0-1
+                    except ValueError:
+                        current_concept['relevance'] = 0.8  # Default if parsing fails
+                elif line.startswith('Definition:'):
+                    current_concept['definition'] = line[11:].strip()
+
+            # Add the last concept if it exists
+            if current_concept and 'concept' in current_concept:
+                concepts.append(current_concept)
+
+            # If we successfully extracted concepts, return them
+            if concepts:
+                logger.info(f"Successfully extracted {len(concepts)} concepts with simplified prompt")
                 return concepts
-            else:
-                logger.warning("Could not find JSON array in LLM response")
+
+            # If no concepts were extracted, try the JSON approach as a fallback
+            logger.warning("No concepts extracted with simplified prompt. Trying JSON format...")
+        except Exception as e:
+            logger.warning(f"Error using simplified prompt: {e}. Trying JSON format...")
+
+        # Original JSON-based approach as fallback
+        try:
+            # Prepare prompt for concept extraction with JSON format
+            json_prompt = f"""
+            Extract the most important domain-specific concepts from the following text.
+            Return the result as a JSON array of objects, each with the following properties:
+            - concept: The concept name
+            - relevance: A score from 0.0 to 1.0 indicating the relevance of the concept to the text
+            - definition: A brief definition of the concept based on the text
+
+            Text:
+            {truncated_text}
+
+            Format:
+            [
+                {{"concept": "Concept 1", "relevance": 0.95, "definition": "Definition 1"}},
+                {{"concept": "Concept 2", "relevance": 0.85, "definition": "Definition 2"}},
+                ...
+            ]
+
+            Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts.
+            """
+
+            # Generate response
+            response = llm_manager.generate(
+                json_prompt,
+                system_prompt="You are a concept extraction assistant that identifies key technical and domain-specific concepts from text.",
+                max_tokens=1000,
+                temperature=0.2
+            )
+
+            # Parse JSON from response
+            try:
+                # Find JSON in the response
+                json_start = response.find('[')
+                json_end = response.rfind(']') + 1
+
+                if json_start >= 0 and json_end > json_start:
+                    json_str = response[json_start:json_end]
+                    concepts = json.loads(json_str)
+                    # Add source field
+                    for concept in concepts:
+                        concept["source"] = "llm"
+                    return concepts
+                else:
+                    logger.warning("Could not find JSON array in LLM response")
+                    return []
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse JSON from LLM response")
+                logger.debug(f"LLM response: {response}")
                 return []
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse JSON from LLM response")
-            logger.debug(f"LLM response: {response}")
+        except Exception as e:
+            logger.warning(f"Error using JSON format: {e}")
             return []
-    
+
     def _extract_concepts_with_openai(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
         """
         Extract concepts using OpenAI API (DEPRECATED).
-        
+
         Args:
             text: Input text
             max_concepts: Maximum number of concepts to extract
-            
+
         Returns:
             List of extracted concepts with metadata
         """
         logger.warning("Using deprecated OpenAI API for concept extraction. This will be removed in a future version.")
-        
+
         if openai_client is None:
             logger.warning("OpenAI client not available. Using NLP-based extraction instead.")
             nlp_concepts = self.extract_concepts_nlp(text)
             return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in nlp_concepts[:max_concepts]]
-        
+
         # Prepare prompt for OpenAI
         prompt = f"""
         Extract the most important domain-specific concepts from the following text.
@@ -387,20 +458,20 @@ class ConceptExtractor:
         - concept: The concept name
         - relevance: A score from 0.0 to 1.0 indicating the relevance of the concept to the text
         - definition: A brief definition of the concept based on the text
-        
+
         Text:
         {text[:4000]}  # Limit text length to avoid token limits
-        
+
         Format:
         [
             {{"concept": "Concept 1", "relevance": 0.95, "definition": "Definition 1"}},
             {{"concept": "Concept 2", "relevance": 0.85, "definition": "Definition 2"}},
             ...
         ]
-        
+
         Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts.
         """
-        
+
         try:
             # Call OpenAI API
             response = openai_client.chat.completions.create(
@@ -412,7 +483,7 @@ class ConceptExtractor:
                 temperature=0.2,
                 max_tokens=1000
             )
-            
+
             # Parse response
             result = response.choices[0].message.content
             try:
@@ -427,16 +498,16 @@ class ConceptExtractor:
         except Exception as e:
             logger.error(f"Error calling OpenAI API: {e}")
             return []
-    
+
     def extract_concepts(self, text: str, method: str = "auto", max_concepts: int = 20) -> List[Dict[str, Any]]:
         """
         Extract concepts from text using the specified method.
-        
+
         Args:
             text: Input text
             method: Extraction method ("rule", "nlp", "llm", or "auto")
             max_concepts: Maximum number of concepts to extract
-            
+
         Returns:
             List of extracted concepts with metadata
         """
@@ -448,7 +519,7 @@ class ConceptExtractor:
                 method = "nlp"
             else:
                 method = "rule"
-        
+
         # Extract concepts using the specified method
         if method == "llm" and self.use_llm:
             return self.extract_concepts_llm(text, max_concepts)
@@ -458,48 +529,48 @@ class ConceptExtractor:
         else:
             concepts = self.extract_concepts_rule_based(text)
             return [{"concept": c, "relevance": 1.0, "source": "rule"} for c in concepts[:max_concepts]]
-    
+
     def _is_valid_concept(self, concept: str) -> bool:
         """
         Check if a concept is valid.
-        
+
         Args:
             concept: Concept to check
-            
+
         Returns:
             True if the concept is valid, False otherwise
         """
         # Normalize concept
         concept = concept.strip()
-        
+
         # Check length
         words = concept.split()
         if len(words) < self.min_concept_length or len(words) > self.max_concept_length:
             return False
-        
+
         # Check if concept contains only stopwords
         if all(word.lower() in self.stopwords for word in words):
             return False
-        
+
         # Check if concept is too short
         if len(concept) < 4:
             return False
-        
+
         return True
-    
+
     def weight_concepts(self, concepts: List[Dict[str, Any]], text: str) -> List[Dict[str, Any]]:
         """
         Weight concepts based on frequency and position in text.
-        
+
         Args:
             concepts: List of concepts
             text: Input text
-            
+
         Returns:
             List of weighted concepts
         """
         weighted_concepts = []
-        
+
         # Count occurrences of each concept
         concept_counts = {}
         for concept_dict in concepts:
@@ -507,18 +578,18 @@ class ConceptExtractor:
             # Case-insensitive count
             count = len(re.findall(re.escape(concept), text, re.IGNORECASE))
             concept_counts[concept] = count
-        
+
         # Normalize counts
         max_count = max(concept_counts.values()) if concept_counts else 1
-        
+
         # Weight concepts
         for concept_dict in concepts:
             concept = concept_dict["concept"]
             count = concept_counts.get(concept, 0)
-            
+
             # Calculate frequency weight
             freq_weight = count / max_count if max_count > 0 else 0
-            
+
             # Calculate position weight (concepts appearing earlier are more important)
             first_pos = text.lower().find(concept.lower())
             pos_weight = 1.0
@@ -527,53 +598,53 @@ class ConceptExtractor:
                 norm_pos = first_pos / len(text)
                 # Invert so earlier positions get higher weight
                 pos_weight = 1.0 - (norm_pos * 0.5)  # Scale to 0.5-1.0 range
-            
+
             # Calculate final weight
             weight = (freq_weight * 0.7) + (pos_weight * 0.3)
-            
+
             # Create weighted concept
             weighted_concept = concept_dict.copy()
             weighted_concept["weight"] = weight
             weighted_concept["frequency"] = count
-            
+
             weighted_concepts.append(weighted_concept)
-        
+
         # Sort by weight
         return sorted(weighted_concepts, key=lambda x: x["weight"], reverse=True)
 
 if __name__ == "__main__":
     # Example usage
     extractor = ConceptExtractor(use_nlp=True, use_llm=True)
-    
+
     text = """
-    Industry 4.0 is the ongoing automation of traditional manufacturing and industrial practices, 
-    using modern smart technology. Large-scale machine-to-machine communication (M2M) and the 
-    Internet of Things (IoT) are integrated for increased automation, improved communication 
-    and self-monitoring, and production of smart machines that can analyze and diagnose issues 
+    Industry 4.0 is the ongoing automation of traditional manufacturing and industrial practices,
+    using modern smart technology. Large-scale machine-to-machine communication (M2M) and the
+    Internet of Things (IoT) are integrated for increased automation, improved communication
+    and self-monitoring, and production of smart machines that can analyze and diagnose issues
     without the need for human intervention.
-    
-    Industry 5.0 refers to people working alongside robots and smart machines. It's about 
-    robots helping humans work better and faster by leveraging advanced technologies like 
-    the Internet of Things (IoT) and big data. It adds a personal human touch to the 
+
+    Industry 5.0 refers to people working alongside robots and smart machines. It's about
+    robots helping humans work better and faster by leveraging advanced technologies like
+    the Internet of Things (IoT) and big data. It adds a personal human touch to the
     Industry 4.0 pillars of automation and efficiency.
     """
-    
+
     print("Rule-based concepts:")
     rule_concepts = extractor.extract_concepts_rule_based(text)
     for concept in rule_concepts:
         print(f"  - {concept}")
-    
+
     if SPACY_AVAILABLE:
         print("\nNLP-based concepts:")
         nlp_concepts = extractor.extract_concepts_nlp(text)
         for concept in nlp_concepts:
             print(f"  - {concept}")
-    
+
     print("\nAuto-selected method concepts:")
     auto_concepts = extractor.extract_concepts(text)
     for concept in auto_concepts:
         print(f"  - {concept['concept']} (relevance: {concept['relevance']}, source: {concept['source']})")
-    
+
     print("\nWeighted concepts:")
     weighted_concepts = extractor.weight_concepts(auto_concepts, text)
     for concept in weighted_concepts:
