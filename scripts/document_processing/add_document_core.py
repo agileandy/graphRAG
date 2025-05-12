@@ -221,14 +221,27 @@ def extract_entities(text: str, metadata: Optional[Dict[str, Any]] = None) -> Li
     # Extract concepts using LLM if available, falling back to NLP and rule-based methods
     llm_concepts = []
     try:
-        # Try to extract concepts using LLM
+        # Try to extract concepts using LLM with chunking for large documents
         logger.info("Extracting concepts using LLM...")
-        llm_concepts = concept_extractor.extract_concepts(text, method="llm", max_concepts=20)
+
+        # Determine max concepts based on document size
+        text_length = len(text)
+        if text_length < 5000:
+            max_concepts = 10
+        elif text_length < 20000:
+            max_concepts = 15
+        else:
+            max_concepts = 20
+
+        logger.info(f"Using max_concepts={max_concepts} for document of length {text_length}")
+
+        # Extract concepts - the chunking is handled internally by the extract_concepts method
+        llm_concepts = concept_extractor.extract_concepts(text, method="llm", max_concepts=max_concepts)
         logger.info(f"Extracted {len(llm_concepts)} concepts using LLM")
     except Exception as e:
         logger.warning(f"LLM-based concept extraction failed: {e}. Falling back to rule-based extraction.")
         # Fall back to rule-based extraction
-        llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=20)
+        llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=15)
         logger.info(f"Extracted {len(llm_concepts)} concepts using rule-based method")
 
     # Convert LLM concepts to entities
