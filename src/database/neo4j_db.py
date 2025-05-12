@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
 from neo4j import GraphDatabase, Driver
+from src.config import get_port
 
 # Load environment variables
 load_dotenv()
@@ -23,8 +24,12 @@ class Neo4jDatabase:
             username: Neo4j username (default: from environment variable)
             password: Neo4j password (default: from environment variable)
         """
+        # Get Neo4j port from centralized configuration
+        neo4j_port = get_port('neo4j_bolt')
+
         # Try different URIs for Neo4j connection
-        env_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        default_uri = f"bolt://localhost:{neo4j_port}"
+        env_uri = os.getenv("NEO4J_URI", default_uri)
         self.uri = uri or env_uri
 
         # If URI contains 0.0.0.0, replace it with localhost for client connections
