@@ -4,7 +4,13 @@ Example client for the GraphRAG MPC server.
 import json
 import asyncio
 import websockets
+import sys
+import os
 from typing import Dict, Any
+
+# Add the project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config import get_port
 
 async def send_message(websocket, action: str, **kwargs) -> Dict[str, Any]:
     """
@@ -33,7 +39,10 @@ async def send_message(websocket, action: str, **kwargs) -> Dict[str, Any]:
     # Parse response
     return json.loads(response)
 
-async def interactive_client(uri: str = "ws://localhost:8765"):
+# Get MPC port from centralized configuration
+mpc_port = get_port('mpc')
+
+async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
     """
     Run an interactive client for the MPC server.
 
@@ -222,7 +231,7 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Example client for the GraphRAG MPC server")
     parser.add_argument("--host", type=str, default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=8765, help="Server port")
+    parser.add_argument("--port", type=int, default=mpc_port, help=f"Server port (default: {mpc_port})")
 
     # Add action-specific arguments
     parser.add_argument("--action", type=str, help="Action to perform (search, concept, documents, books-by-concept, related-concepts, passages-about-concept, add-document, add-folder)")

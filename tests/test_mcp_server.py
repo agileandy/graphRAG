@@ -19,6 +19,8 @@ from typing import Dict, Any, List, Optional
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from src.config import get_port
+
 def check_package_installed(package_name: str) -> bool:
     """Check if a package is installed."""
     return importlib.util.find_spec(package_name) is not None
@@ -29,7 +31,10 @@ def print_section(title: str) -> None:
     print(f" {title} ".center(80, "="))
     print("=" * 80)
 
-async def test_mcp_protocol(uri: str = "ws://localhost:8766") -> None:
+# Get MCP port from centralized configuration
+mcp_port = get_port('mcp')
+
+async def test_mcp_protocol(uri: str = f"ws://localhost:{mcp_port}") -> None:
     """Test the MCP protocol."""
     print_section("Testing MCP Protocol")
     print(f"Connecting to {uri}...")
@@ -116,13 +121,17 @@ def check_database_connections() -> None:
     """Check database connections."""
     print_section("Checking Database Connections")
 
+    # Get Neo4j ports from centralized configuration
+    docker_neo4j_port = get_port('docker_neo4j_bolt')
+    neo4j_port = get_port('neo4j_bolt')
+
     # Check Neo4j
     print("Checking Neo4j connection...")
     try:
         from src.database.neo4j_db import Neo4jDatabase
-        # Try with port 7688 (Docker mapping) and explicit credentials
+        # Try with Docker port mapping and explicit credentials
         neo4j_db = Neo4jDatabase(
-            uri="bolt://localhost:7688",
+            uri=f"bolt://localhost:{docker_neo4j_port}",
             username="neo4j",
             password="graphrag"
         )
@@ -132,9 +141,9 @@ def check_database_connections() -> None:
         else:
             print("❌ Neo4j connection failed")
             # Try with the default port as fallback
-            print("Trying with default port 7687...")
+            print(f"Trying with default port {neo4j_port}...")
             neo4j_db = Neo4jDatabase(
-                uri="bolt://localhost:7687",
+                uri=f"bolt://localhost:{neo4j_port}",
                 username="neo4j",
                 password="graphrag"
             )

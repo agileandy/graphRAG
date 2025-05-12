@@ -9,9 +9,13 @@ import requests
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, Field
 from langchain.tools import BaseTool
+from src.config import get_port
+
+# Get API port from centralized configuration
+api_port = get_port('api')
 
 # Default API URL
-DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", "http://localhost:5001")
+DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", f"http://localhost:{api_port}")
 
 class GraphRAGSearchInput(BaseModel):
     """Input for GraphRAG search tool."""
@@ -139,7 +143,7 @@ def get_graphrag_tools(api_url: Optional[str] = None) -> List[BaseTool]:
     Get a list of GraphRAG tools for use with LangChain.
 
     Args:
-        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5001)
+        api_url: URL of the GraphRAG API server (default: from environment or centralized configuration)
 
     Returns:
         List of LangChain tools
