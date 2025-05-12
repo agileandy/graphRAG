@@ -1,5 +1,0 @@
-[python]
-python-version = "3.12"
-
-[environments]
-auto-activation = true
