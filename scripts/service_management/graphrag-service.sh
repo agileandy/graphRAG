@@ -15,12 +15,26 @@ else
     cat > "$CONFIG_FILE" << EOF
 # GraphRAG Configuration
 NEO4J_HOME=$HOME/.graphrag/neo4j
-NEO4J_URI=bolt://localhost:7687
+
+# Port Configuration
+GRAPHRAG_PORT_NEO4J_BOLT=7687
+GRAPHRAG_PORT_NEO4J_HTTP=7474
+GRAPHRAG_PORT_NEO4J_HTTPS=7473
+GRAPHRAG_PORT_API=5001
+GRAPHRAG_PORT_MPC=8765
+GRAPHRAG_PORT_MCP=8767
+GRAPHRAG_PORT_BUG_MCP=5005
+GRAPHRAG_PORT_DOCKER_NEO4J_BOLT=7688
+
+# Neo4j Configuration
+NEO4J_URI=bolt://localhost:\${GRAPHRAG_PORT_NEO4J_BOLT}
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=graphrag
+
+# ChromaDB Configuration
 CHROMA_PERSIST_DIRECTORY=$HOME/.graphrag/data/chromadb
-GRAPHRAG_API_PORT=5001
-GRAPHRAG_MPC_PORT=8765
+
+# Other Configuration
 GRAPHRAG_LOG_LEVEL=INFO
 EOF
     source "$CONFIG_FILE"
@@ -63,7 +77,7 @@ start_api() {
 
     cd "$(dirname "$0")/.." && \
     .venv-py312/bin/gunicorn \
-        --bind 0.0.0.0:$GRAPHRAG_API_PORT \
+        --bind 0.0.0.0:$GRAPHRAG_PORT_API \
         --workers 2 \
         --threads 4 \
         --timeout 120 \
@@ -77,7 +91,7 @@ start_api() {
     # Wait for API server to start
     echo "Waiting for API server to start..."
     for i in {1..15}; do
-        if curl -s http://localhost:$GRAPHRAG_API_PORT/health > /dev/null; then
+        if curl -s http://localhost:$GRAPHRAG_PORT_API/health > /dev/null; then
             echo "API server started successfully."
             return 0
         fi
@@ -97,7 +111,7 @@ start_mpc() {
     fi
 
     cd "$(dirname "$0")/.." && \
-    .venv-py312/bin/python -m src.mpc.server --host 0.0.0.0 --port $GRAPHRAG_MPC_PORT > "$LOG_DIR/mpc.log" 2>&1 &
+    .venv-py312/bin/python -m src.mpc.server --host 0.0.0.0 --port $GRAPHRAG_PORT_MPC > "$LOG_DIR/mpc.log" 2>&1 &
     echo $! > "$PID_DIR/mpc.pid"
 
     # Wait for MPC server to start
@@ -155,7 +169,7 @@ status() {
     echo "GraphRAG Service Status:"
 
     # Check Neo4j
-    if curl -s http://localhost:7474 > /dev/null; then
+    if curl -s http://localhost:$GRAPHRAG_PORT_NEO4J_HTTP > /dev/null; then
         echo "Neo4j: Running"
     else
         echo "Neo4j: Stopped"
