@@ -12,6 +12,10 @@ import logging
 import subprocess
 import psutil
 
+# Add the project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config import get_port
+
 # Configuration
 LOG_FILE = os.path.expanduser("~/.graphrag/logs/monitor.log")
 PID_DIR = os.path.expanduser("~/.graphrag/pids")
@@ -41,18 +45,22 @@ def load_config():
 
 config = load_config()
 
+# Get ports from centralized configuration
+neo4j_http_port = get_port('neo4j_http')
+api_port = get_port('api')
+
 # Service definitions
 SERVICES = [
     {
         'name': 'neo4j',
         'pid_file': os.path.join(PID_DIR, 'neo4j.pid'),
-        'check_url': 'http://localhost:7474',
+        'check_url': f'http://localhost:{neo4j_http_port}',
         'start_cmd': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'graphrag-service.sh') + ' start-neo4j'
     },
     {
         'name': 'api',
         'pid_file': os.path.join(PID_DIR, 'api.pid'),
-        'check_url': f"http://localhost:{config.get('GRAPHRAG_API_PORT', '5000')}/health",
+        'check_url': f"http://localhost:{api_port}/health",
         'start_cmd': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'graphrag-service.sh') + ' start-api'
     },
     {
@@ -66,12 +74,12 @@ def check_service(service):
     """Check if a service is running and restart it if necessary."""
     name = service['name']
     pid_file = service['pid_file']
-    
+
     # Check if PID file exists
     if not os.path.exists(pid_file):
         logging.warning(f"{name} service is not running (no PID file)")
         return False
-    
+
     # Read PID from file
     try:
         with open(pid_file, 'r') as f:
@@ -79,7 +87,7 @@ def check_service(service):
     except (IOError, ValueError) as e:
         logging.error(f"Error reading PID file for {name}: {e}")
         return False
-    
+
     # Check if process is running
     try:
         process = psutil.Process(pid)
@@ -99,7 +107,7 @@ def check_service(service):
                 except subprocess.SubprocessError as e:
                     logging.warning(f"Error checking {name} service URL: {e}")
                     return False
-            
+
             # Service is running
             return True
         else:
@@ -114,13 +122,13 @@ def restart_service(service):
     name = service['name']
     pid_file = service['pid_file']
     start_cmd = service['start_cmd']
-    
+
     logging.info(f"Restarting {name} service...")
-    
+
     # Remove PID file if it exists
     if os.path.exists(pid_file):
         os.remove(pid_file)
-    
+
     # Start service
     try:
         result = subprocess.run(
@@ -151,13 +159,13 @@ def collect_resource_usage():
     cpu_percent = psutil.cpu_percent(interval=1)
     memory = psutil.virtual_memory()
     disk = psutil.disk_usage('/')
-    
+
     logging.info(f"Resource Usage - CPU: {cpu_percent}%, Memory: {memory.percent}%, Disk: {disk.percent}%")
 
 def main():
     """Main function."""
     logging.info("Starting GraphRAG Service Monitor")
-    
+
     try:
         while True:
             monitor_services()

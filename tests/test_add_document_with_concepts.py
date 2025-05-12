@@ -5,11 +5,12 @@ import sys
 import os
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from scripts.add_document_with_concepts import add_document_to_graphrag
+from src.config import get_port
 
 def main():
     """
@@ -17,9 +18,12 @@ def main():
     """
     print("Initializing databases...")
 
+    # Get Neo4j port from centralized configuration
+    docker_neo4j_port = get_port('docker_neo4j_bolt')
+
     # Initialize databases with Docker container connection details
     neo4j_db = Neo4jDatabase(
-        uri="bolt://localhost:7688",
+        uri=f"bolt://localhost:{docker_neo4j_port}",
         username="neo4j",
         password="graphrag"
     )

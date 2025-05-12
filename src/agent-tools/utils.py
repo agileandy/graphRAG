@@ -13,12 +13,17 @@ import sys
 import json
 import websockets.sync.client as ws
 from typing import Dict, Any, Optional
+from src.config import get_port
+
+# Get ports from centralized configuration
+mpc_port = get_port('mpc')
+docker_neo4j_port = get_port('docker_neo4j_bolt')
 
 # Default configuration that can be overridden by environment variables
 DEFAULT_CONFIG = {
     "MPC_HOST": "localhost",
-    "MPC_PORT": "8766",  # Default port for Docker mapping
-    "NEO4J_URI": "bolt://localhost:7688",  # Default port for Docker mapping
+    "MPC_PORT": str(mpc_port),
+    "NEO4J_URI": f"bolt://localhost:{docker_neo4j_port}",  # Default port for Docker mapping
     "NEO4J_USERNAME": "neo4j",
     "NEO4J_PASSWORD": "graphrag"
 }

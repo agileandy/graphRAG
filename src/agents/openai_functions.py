@@ -7,16 +7,20 @@ feature, making it easy to integrate with AI agents.
 import os
 import requests
 from typing import Dict, List, Any, Optional, Callable
+from src.config import get_port
+
+# Get API port from centralized configuration
+api_port = get_port('api')
 
 # Default API URL
-DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", "http://localhost:5001")
+DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", f"http://localhost:{api_port}")
 
 def get_graphrag_functions(api_url: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Get a list of GraphRAG functions for use with OpenAI function calling.
 
     Args:
-        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5001)
+        api_url: URL of the GraphRAG API server (default: from environment or centralized configuration)
 
     Returns:
         List of function definitions
@@ -108,7 +112,7 @@ def get_graphrag_function_map(api_url: Optional[str] = None) -> Dict[str, Callab
     Get a map of GraphRAG function names to their implementations.
 
     Args:
-        api_url: URL of the GraphRAG API server (default: from environment or http://localhost:5001)
+        api_url: URL of the GraphRAG API server (default: from environment or centralized configuration)
 
     Returns:
         Dictionary mapping function names to their implementations

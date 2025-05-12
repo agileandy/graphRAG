@@ -5,6 +5,11 @@
 # Change to the project root directory
 cd "$(dirname "$0")/.."
 
+# Load environment variables from .env file
+if [ -f .env ]; then
+    source .env
+fi
+
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
     echo "❌ Docker is not installed. Please install Docker first."
@@ -52,10 +57,15 @@ if [ $? -eq 0 ]; then
 
     # Check if the container is running
     if [ $? -eq 0 ]; then
+        # Get port values from environment variables or use defaults
+        NEO4J_HTTP_PORT=${GRAPHRAG_PORT_NEO4J_HTTP:-7474}
+        API_PORT=${GRAPHRAG_PORT_API:-5001}
+        MPC_PORT=${GRAPHRAG_PORT_MPC:-8765}
+
         echo "✅ GraphRAG Docker container is now running!"
-        echo "- Neo4j Browser: http://localhost:7475 (username: neo4j, password: graphrag)"
-        echo "- API Server: http://localhost:5001"
-        echo "- MPC Server: ws://localhost:8766"
+        echo "- Neo4j Browser: http://localhost:${NEO4J_HTTP_PORT} (username: neo4j, password: graphrag)"
+        echo "- API Server: http://localhost:${API_PORT}"
+        echo "- MPC Server: ws://localhost:${MPC_PORT}"
         echo ""
         echo "To view the logs, run: docker-compose logs -f"
         echo "To stop the container, run: docker-compose down"
