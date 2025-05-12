@@ -52,7 +52,7 @@ def generate_mcp_settings(output_path: str, host: str = "localhost", port: int =
                 "args": ["--host", "0.0.0.0", "--port", str(port)],
                 "env": {
                     "PYTHONPATH": graphrag_path,
-                    "NEO4J_URI": "bolt://localhost:7688",
+                    "NEO4J_URI": "bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}",
                     "NEO4J_USERNAME": "neo4j",
                     "NEO4J_PASSWORD": "graphrag",
                     "CHROMA_PERSIST_DIRECTORY": os.path.join(graphrag_path, "data", "chromadb")
@@ -564,7 +564,7 @@ def check_database_connections() -> None:
         from src.database.neo4j_db import Neo4jDatabase
         # Try with port 7688 (Docker mapping) and explicit credentials
         neo4j_db = Neo4jDatabase(
-            uri="bolt://localhost:7688",
+            uri="bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}",
             username="neo4j",
             password="graphrag"
         )
@@ -576,7 +576,7 @@ def check_database_connections() -> None:
             # Try with the default port as fallback
             print("Trying with default port 7687...")
             neo4j_db = Neo4jDatabase(
-                uri="bolt://localhost:7687",
+                uri="bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}",
                 username="neo4j",
                 password="graphrag"
             )
@@ -713,7 +713,7 @@ Before setting up the MCP server, ensure you have:
 
 The MCP server uses the following environment variables:
 
-- `NEO4J_URI`: URI for the Neo4j database (default: bolt://localhost:7688)
+- `NEO4J_URI`: URI for the Neo4j database (default: bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT})
 - `NEO4J_USERNAME`: Username for the Neo4j database (default: neo4j)
 - `NEO4J_PASSWORD`: Password for the Neo4j database (default: graphrag)
 - `CHROMA_PERSIST_DIRECTORY`: Directory for ChromaDB persistence (default: ./data/chromadb)
@@ -728,7 +728,7 @@ Create an `mcp_settings.json` file in Claude's configuration directory with the 
       "args": ["--host", "0.0.0.0", "--port", "8766"],
       "env": {
         "PYTHONPATH": "/path/to/graphRAG",
-        "NEO4J_URI": "bolt://localhost:7688",
+        "NEO4J_URI": "bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}",
         "NEO4J_USERNAME": "neo4j",
         "NEO4J_PASSWORD": "graphrag",
         "CHROMA_PERSIST_DIRECTORY": "/path/to/graphRAG/data/chromadb"

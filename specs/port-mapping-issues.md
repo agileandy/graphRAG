@@ -25,7 +25,7 @@ PORTS=(7475 7688 5001 8766)
 DEFAULT_CONFIG = {
     "MPC_HOST": "localhost",
     "MPC_PORT": "8766",  # Default port for Docker mapping
-    "NEO4J_URI": "bolt://localhost:7688",  # Default port for Docker mapping
+    "NEO4J_URI": "bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}",  # Default port for Docker mapping
     "NEO4J_USERNAME": "neo4j",
     "NEO4J_PASSWORD": "graphrag"
 }
@@ -43,12 +43,12 @@ DEFAULT_CONFIG = {
 ```bash
 echo "Service Endpoints:"
 echo "- Neo4j Browser: http://localhost:7475"
-echo "- API Server: http://localhost:5001"
+echo "- API Server: http://localhost:${GRAPHRAG_PORT_API}"
 echo "- MPC Server: ws://localhost:8766"
-echo "- MCP Server: ws://localhost:8767"
+echo "- MCP Server: ws://localhost:${GRAPHRAG_PORT_MCP}"
 ```
 
-**Expected:** echo "- MPC Server: ws://localhost:8765"
+**Expected:** echo "- MPC Server: ws://localhost:${GRAPHRAG_PORT_MPC}"
 
 **Impact:** Misleading documentation that could cause confusion for users trying to connect to the MPC server.
 
@@ -60,7 +60,7 @@ echo "- MCP Server: ws://localhost:8767"
 ```bash
 # Start the MPC server in the background
 echo "Starting MPC server..."
-cd /app && python -m src.mpc.server --host 0.0.0.0 --port 8765 &
+cd /app && python -m src.mpc.server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MPC} &
 MPC_PID=$!
 ```
 
@@ -81,7 +81,7 @@ MPC_PID=$!
 **File:** specs/todo/mcp-docker-and-service.md
 ```bash
 # Default values
-NEO4J_URI="bolt://localhost:7687"
+NEO4J_URI="bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}"
 NEO4J_USERNAME="neo4j"
 NEO4J_PASSWORD="graphrag"
 API_PORT=5001
@@ -101,7 +101,7 @@ MCP_PORT=8766
 ```bash
 # GraphRAG Configuration
 NEO4J_HOME=/opt/homebrew
-NEO4J_URI=bolt://localhost:7687
+NEO4J_URI=bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=graphrag
 CHROMA_PERSIST_DIRECTORY=/Users/andyspamer/.graphrag/data/chromadb

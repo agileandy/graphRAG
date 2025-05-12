@@ -332,7 +332,7 @@ services:
   graphrag:
     # ...
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${GRAPHRAG_PORT_API}/health"]
       interval: 30s
       timeout: 10s
       retries: 3

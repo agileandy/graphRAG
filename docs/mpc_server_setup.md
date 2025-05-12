@@ -31,7 +31,7 @@ pip install neo4j>=5.14.0 websockets>=11.0.0 chromadb>=0.4.22 python-dotenv>=1.0
 Create or update your `.env` file with the following settings:
 
 ```bash
-NEO4J_URI=bolt://localhost:7688  # Note: Using port 7688 for Docker mapping
+NEO4J_URI=bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}  # Note: Using port 7688 for Docker mapping
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=graphrag
 CHROMA_PERSIST_DIRECTORY=/path/to/graphRAG/data/chromadb
@@ -51,7 +51,7 @@ Create an `mcp_settings.json` file in Claude's configuration directory with the 
       "args": ["--host", "0.0.0.0", "--port", "8767"],
       "env": {
         "PYTHONPATH": "/path/to/graphRAG",
-        "NEO4J_URI": "bolt://localhost:7688",
+        "NEO4J_URI": "bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}",
         "NEO4J_USERNAME": "neo4j",
         "NEO4J_PASSWORD": "graphrag",
         "CHROMA_PERSIST_DIRECTORY": "/path/to/graphRAG/data/chromadb"
@@ -90,7 +90,7 @@ docker-compose logs -f
 
 ```bash
 export PYTHONPATH=/path/to/graphRAG
-python -m src.mpc.mcp_server --host 0.0.0.0 --port 8767
+python -m src.mpc.mcp_server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MCP}
 ```
 
 ## Testing the MPC Server
@@ -135,7 +135,7 @@ If the MPC server is running in "limited mode" without database connections:
 
 1. Verify Neo4j is running:
    ```bash
-   curl http://localhost:7474
+   curl http://localhost:${GRAPHRAG_PORT_NEO4J_HTTP}
    ```
 
 2. Check your Neo4j credentials in the `.env` file
@@ -147,7 +147,7 @@ If the MPC server is running in "limited mode" without database connections:
 
 4. Test the Neo4j connection directly:
    ```bash
-   python -c "from neo4j import GraphDatabase; driver = GraphDatabase.driver('bolt://localhost:7688', auth=('neo4j', 'graphrag')); session = driver.session(); result = session.run('RETURN 1'); print(result.single()[0]); driver.close()"
+   python -c "from neo4j import GraphDatabase; driver = GraphDatabase.driver('bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}', auth=('neo4j', 'graphrag')); session = driver.session(); result = session.run('RETURN 1'); print(result.single()[0]); driver.close()"
    ```
 
 ### Neo4j Password Reset Issues
@@ -176,7 +176,7 @@ If you're having trouble connecting to Neo4j, the password might not be set corr
 
 4. Verify the connection:
    ```bash
-   curl -u neo4j:graphrag http://localhost:7474/browser/
+   curl -u neo4j:graphrag http://localhost:${GRAPHRAG_PORT_NEO4J_HTTP}/browser/
    ```
 
 ### Docker Port Mapping Issues
@@ -194,7 +194,7 @@ Common port mapping issues:
 
 1. **Connection refused**: Make sure the ports are correctly mapped in `docker-compose.yml`
 
-2. **Wrong connection URI**: When connecting from outside the container, use the host port (e.g., `bolt://localhost:7688`). When connecting from inside the container, use the container port (e.g., `bolt://localhost:7687`).
+2. **Wrong connection URI**: When connecting from outside the container, use the host port (e.g., `bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}`). When connecting from inside the container, use the container port (e.g., `bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}`).
 
 3. **Port conflicts**: If another service is using the same port, you'll need to change the host port mapping in `docker-compose.yml`.
 
@@ -219,7 +219,7 @@ If Claude can't connect to the MPC server:
 
 1. Verify the MPC server is running:
    ```bash
-   curl -v telnet://localhost:8767
+   curl -v telnet://localhost:${GRAPHRAG_PORT_MCP}
    ```
 
 2. Check the `mcp_settings.json` file is in the correct location
@@ -255,7 +255,7 @@ For production environments:
 The MPC server logs to the console by default. To save logs to a file:
 
 ```bash
-python -m src.mpc.mcp_server --host 0.0.0.0 --port 8767 > mpc_server.log 2>&1
+python -m src.mpc.mcp_server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MCP} > mpc_server.log 2>&1
 ```
 
 For more verbose logging, modify the logging level in `src/mpc/mcp_server.py`.
