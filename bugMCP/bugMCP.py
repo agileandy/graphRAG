@@ -2,7 +2,12 @@ import socket
 import json
 import re
 import os
+import sys
 import atexit
+
+# Add the project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.config import get_port
 
 # File to store bugs
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bugs.json")
@@ -44,7 +49,7 @@ def parse_action(data):
         request = json.loads(data)
         if not isinstance(request, dict):
             raise ValueError("Invalid request format")
-            
+
         required_fields = {
             'add': ['description', 'cause'],
             'update': ['id'],
@@ -66,7 +71,7 @@ def parse_action(data):
                 return {'status': 'error', 'message': f'Missing required field: {field}'}
 
         return {'status': 'success', 'payload': request}
-    
+
     except (json.JSONDecodeError, ValueError) as e:
         return {'status': 'error', 'message': f'Invalid request: {str(e)}'}
 
@@ -88,7 +93,7 @@ def update_bug(bug_id, updates):
     bug = next((b for b in bugs if b['id'] == bug_id), None)
     if not bug:
         return {'status': 'error', 'message': 'Bug not found'}
-    
+
     valid_fields = {'status', 'resolution'}
     for field, value in updates.items():
         if field not in valid_fields:
@@ -96,7 +101,7 @@ def update_bug(bug_id, updates):
         if field == 'status' and value not in VALID_STATUSES:
             return {'status': 'error', 'message': f'Invalid status. Allowed values: {VALID_STATUSES}'}
         bug[field] = value
-    
+
     save_bugs()  # Save after updating a bug
     return {'status': 'success', 'updated': True}
 
@@ -128,11 +133,11 @@ def handle_client_request(payload):
             required = ['id']
             if not all(field in payload for field in required):
                 raise ValueError("Missing required fields for update")
-            
+
             bug_id = payload['id']
             if 'status' in payload and payload['status'] not in VALID_STATUSES:
                 raise ValueError(f"Invalid status. Allowed values: {VALID_STATUSES}")
-            
+
             # Find and update the bug
             for bug in bugs:
                 if bug['id'] == bug_id:
@@ -193,18 +198,21 @@ atexit.register(save_bugs)
 # Load bugs from file when starting
 load_bugs()
 
+# Get port from centralized configuration
+bug_mcp_port = get_port('bug_mcp')
+
 # TCP Server setup
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(('', 5005))
+server.bind(('', bug_mcp_port))
 server.listen(1)
-print("Server listening on port 5005...")
+print(f"Server listening on port {bug_mcp_port}...")
 print(f"Data file: {DATA_FILE}")
 
 try:
     while True:
         conn, addr = server.accept()
         print(f"Connected by {addr}")
-        
+
         # Read all client data
         data = b''
         while True:
@@ -212,7 +220,7 @@ try:
             if not chunk:
                 break
             data += chunk
-        
+
         if data:
             # Process the request
             parsed = parse_action(data.decode())
@@ -220,7 +228,7 @@ try:
                 result = handle_client_request(parsed['payload'])
             else:
                 result = parsed
-            
+
             # Send response
             conn.sendall(json.dumps(result).encode())
             print(f"Response sent to {addr}")
