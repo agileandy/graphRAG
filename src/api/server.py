@@ -7,6 +7,7 @@ to interact with the system programmatically.
 import os
 import sys
 import logging
+import glob
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -30,6 +31,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.database.db_linkage import DatabaseLinkage
+from src.processing.job_manager import JobManager
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -39,6 +41,9 @@ CORS(app)  # Enable CORS for all routes
 neo4j_db = Neo4jDatabase()
 vector_db = VectorDatabase()
 db_linkage = DatabaseLinkage(neo4j_db, vector_db)
+
+# Initialize job manager
+job_manager = JobManager()
 
 # Verify database connections on startup
 if not neo4j_db.verify_connection():
@@ -277,6 +282,263 @@ def add_document():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+@app.route('/documents/folder', methods=['POST'])
+def add_folder():
+    """
+    Add all documents from a folder to the GraphRAG system.
+    This endpoint processes documents asynchronously using the job management system.
+
+    Request body:
+        folder_path (str): Path to the folder containing documents
+        recursive (bool, optional): Whether to process subfolders (default: False)
+        file_types (list, optional): List of file extensions to process (default: [".pdf", ".txt", ".md"])
+        default_metadata (dict, optional): Default metadata to apply to all documents
+
+    Returns:
+        Job information for tracking the folder processing
+    """
+    data = request.json
+
+    if not data or 'folder_path' not in data:
+        return jsonify({'error': 'Missing required parameter: folder_path'}), 400
+
+    folder_path = data['folder_path']
+    recursive = data.get('recursive', False)
+    file_types = data.get('file_types', [".pdf", ".txt", ".md"])
+    default_metadata = data.get('default_metadata', {})
+
+    # Validate folder path
+    if not os.path.isdir(folder_path):
+        return jsonify({'error': f"Folder not found: {folder_path}"}), 404
+
+    # Get list of files in the folder
+    files = []
+    for file_type in file_types:
+        if recursive:
+            # Use recursive glob pattern
+            pattern = os.path.join(folder_path, "**", f"*{file_type}")
+            files.extend(glob.glob(pattern, recursive=True))
+        else:
+            # Use non-recursive pattern
+            pattern = os.path.join(folder_path, f"*{file_type}")
+            files.extend(glob.glob(pattern))
+
+    if not files:
+        return jsonify({
+            'status': 'error',
+            'message': f"No files with types {file_types} found in {folder_path}"
+        }), 404
+
+    # Create a job for processing the folder
+    job = job_manager.create_job(
+        job_type="add-folder",
+        params={
+            "folder_path": folder_path,
+            "recursive": recursive,
+            "file_types": file_types,
+            "default_metadata": default_metadata,
+            "files": files
+        }
+    )
+
+    # Define the task function
+    def process_folder_task(job):
+        """
+        Process all files in a folder.
+
+        Args:
+            job: Job object
+
+        Returns:
+            Processing results
+        """
+        from scripts.document_processing.add_document_core import add_document_to_graphrag
+        from src.processing.duplicate_detector import DuplicateDetector
+        import time
+
+        # Initialize duplicate detector
+        duplicate_detector = DuplicateDetector(vector_db)
+
+        files = job.params["files"]
+        default_metadata = job.params.get("default_metadata", {})
+
+        results = {
+            "added_count": 0,
+            "skipped_count": 0,
+            "failed_count": 0,
+            "details": []
+        }
+
+        # Process each file
+        for i, file_path in enumerate(files):
+            # Extract filename for logging
+            filename = os.path.basename(file_path)
+
+            try:
+                # Update job progress
+                job.update_progress(i, len(files))
+
+                logger.info(f"Processing file {i+1}/{len(files)}: {filename}")
+
+                # Read file content
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        text = f.read()
+                except UnicodeDecodeError:
+                    # Try with a different encoding
+                    try:
+                        with open(file_path, 'r', encoding='latin-1') as f:
+                            text = f.read()
+                    except Exception as e:
+                        logger.error(f"Failed to read file {filename}: {str(e)}")
+                        results["failed_count"] += 1
+                        results["details"].append({
+                            "file": filename,
+                            "success": False,
+                            "error": f"Failed to read file: {str(e)}"
+                        })
+                        continue
+
+                # Create metadata for the document
+                metadata = default_metadata.copy()
+
+                # Extract title from filename (remove extension and clean up)
+                title = os.path.splitext(filename)[0]
+
+                # Try to extract author information if in parentheses
+                author = "Unknown"
+                if "(" in title and ")" in title:
+                    parts = title.split("(")
+                    for part in parts[1:]:
+                        if ")" in part:
+                            potential_author = part.split(")")[0].strip()
+                            if potential_author and "Z-Library" not in potential_author:
+                                author = potential_author
+                                break
+
+                # Clean up title
+                title = title.split("(")[0].strip()
+
+                # Set default metadata if not provided
+                if 'title' not in metadata:
+                    metadata['title'] = title
+                if 'author' not in metadata:
+                    metadata['author'] = author
+                if 'source' not in metadata:
+                    metadata['source'] = "Folder Import"
+                if 'filename' not in metadata:
+                    metadata['filename'] = filename
+
+                # Add document to GraphRAG system
+                result = add_document_to_graphrag(
+                    text=text,
+                    metadata=metadata,
+                    neo4j_db=neo4j_db,
+                    vector_db=vector_db,
+                    duplicate_detector=duplicate_detector
+                )
+
+                if result:
+                    # Document was added successfully
+                    logger.info(f"Added document: {filename}")
+                    results["added_count"] += 1
+                    results["details"].append({
+                        "file": filename,
+                        "success": True,
+                        "document_id": result.get("document_id"),
+                        "entities_count": len(result.get("entities", [])),
+                        "relationships_count": len(result.get("relationships", []))
+                    })
+                else:
+                    # Document was a duplicate
+                    logger.info(f"Skipped duplicate document: {filename}")
+                    results["skipped_count"] += 1
+                    results["details"].append({
+                        "file": filename,
+                        "success": True,
+                        "status": "duplicate"
+                    })
+
+                # Wait a bit between files to avoid overwhelming the system
+                time.sleep(0.5)
+
+            except Exception as e:
+                logger.error(f"Error processing file {filename}: {str(e)}")
+                results["failed_count"] += 1
+                results["details"].append({
+                    "file": filename,
+                    "success": False,
+                    "error": str(e)
+                })
+
+        # Update final job progress
+        job.update_progress(len(files), len(files))
+
+        return results
+
+    # Start the job asynchronously
+    job_manager.run_job_async(job, process_folder_task)
+
+    # Return job information
+    return jsonify({
+        'status': 'accepted',
+        'message': 'Folder processing started',
+        'job_id': job.job_id,
+        'total_files': len(files)
+    })
+
+@app.route('/jobs/<job_id>', methods=['GET'])
+def get_job_status(job_id: str):
+    """
+    Get the status of an asynchronous job.
+
+    Args:
+        job_id: Job ID
+
+    Returns:
+        Job status information
+    """
+    job = job_manager.get_job(job_id)
+
+    if not job:
+        return jsonify({'error': f"Job not found: {job_id}"}), 404
+
+    return jsonify(job.to_dict())
+
+@app.route('/jobs', methods=['GET'])
+def list_jobs():
+    """
+    List all jobs, optionally filtered by status or type.
+
+    Query parameters:
+        status: Filter by job status (queued, running, completed, failed, cancelled)
+        type: Filter by job type (add-document, add-folder, etc.)
+
+    Returns:
+        List of jobs
+    """
+    # Get filter parameters
+    status_param = request.args.get('status')
+    job_type = request.args.get('type')
+
+    # Convert status string to JobStatus enum if provided
+    status = None
+    if status_param:
+        from src.processing.job_manager import JobStatus
+        try:
+            status = JobStatus(status_param)
+        except ValueError:
+            # Invalid status, return empty list
+            return jsonify({'jobs': []})
+
+    # Get jobs
+    jobs = job_manager.get_jobs(status=status, job_type=job_type)
+
+    # Convert jobs to dictionaries
+    job_dicts = [job.to_dict() for job in jobs]
+
+    return jsonify({'jobs': job_dicts})
 
 @app.route('/documents/<concept_name>', methods=['GET'])
 def get_documents_for_concept(concept_name: str):

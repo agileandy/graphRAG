@@ -5,9 +5,9 @@ This module provides a job queue and management system for handling
 long-running background tasks in the GraphRAG system.
 """
 import uuid
-import asyncio
 import threading
-from typing import Dict, List, Any, Optional, Callable, Awaitable, Union
+import time
+from typing import Dict, List, Any, Optional, Callable, Union
 from enum import Enum
 from datetime import datetime
 
@@ -141,7 +141,7 @@ class JobManager:
         """Initialize job manager."""
         if self._initialized:
             return
-        
+
         self.jobs: Dict[str, Job] = {}
         self.lock = threading.RLock()
         self._initialized = True
@@ -165,10 +165,10 @@ class JobManager:
         """
         job_id = str(uuid.uuid4())
         job = Job(job_id, job_type, params, created_by)
-        
+
         with self.lock:
             self.jobs[job_id] = job
-        
+
         return job
 
     def get_job(self, job_id: str) -> Optional[Job]:
@@ -203,47 +203,50 @@ class JobManager:
         """
         with self.lock:
             jobs = list(self.jobs.values())
-        
+
         # Filter by status
         if status:
             if isinstance(status, list):
                 jobs = [job for job in jobs if job.status in status]
             else:
                 jobs = [job for job in jobs if job.status == status]
-        
+
         # Filter by job type
         if job_type:
             jobs = [job for job in jobs if job.job_type == job_type]
-        
+
         # Filter by creator
         if created_by:
             jobs = [job for job in jobs if job.created_by == created_by]
-        
+
         return jobs
 
     def run_job_async(
         self,
         job: Job,
-        task_func: Callable[[Job], Awaitable[Any]]
+        task_func: Callable[[Job], Any]
     ) -> None:
         """
-        Run a job asynchronously.
+        Run a job asynchronously using threading.
 
         Args:
             job: Job to run
-            task_func: Async function to run
+            task_func: Function to run in a separate thread
         """
-        async def _run_job():
+        def _run_job():
             job.start()
             try:
-                result = await task_func(job)
+                result = task_func(job)
                 job.complete(result)
             except Exception as e:
                 job.fail(str(e))
                 raise
-        
-        # Create and store the task
-        job.task = asyncio.create_task(_run_job())
+
+        # Create and start a thread
+        thread = threading.Thread(target=_run_job)
+        thread.daemon = True  # Allow the thread to be terminated when the main program exits
+        job.task = thread
+        thread.start()
 
     def cancel_job(self, job_id: str) -> bool:
         """
@@ -258,13 +261,13 @@ class JobManager:
         job = self.get_job(job_id)
         if not job:
             return False
-        
+
         if job.status in [JobStatus.QUEUED, JobStatus.RUNNING]:
             if job.task and not job.task.done():
                 job.task.cancel()
             job.cancel()
             return True
-        
+
         return False
 
     def cleanup_old_jobs(self, max_age_hours: int = 24) -> int:
@@ -279,7 +282,7 @@ class JobManager:
         """
         now = datetime.now()
         jobs_to_remove = []
-        
+
         with self.lock:
             for job_id, job in self.jobs.items():
                 if job.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
@@ -287,10 +290,10 @@ class JobManager:
                         age = (now - job.completed_at).total_seconds() / 3600
                         if age > max_age_hours:
                             jobs_to_remove.append(job_id)
-        
+
         # Remove jobs outside the lock to avoid deadlocks
         for job_id in jobs_to_remove:
             with self.lock:
                 self.jobs.pop(job_id, None)
-        
+
         return len(jobs_to_remove)
