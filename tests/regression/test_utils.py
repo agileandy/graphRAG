@@ -247,7 +247,7 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
 
         # Use the stop script to ensure all services are stopped
         result = subprocess.run(
-            ["./tools/graphrag-service.sh", "stop"],
+            ["./scripts/service_management/graphrag-service.sh", "stop"],
             capture_output=True,
             text=True
         )
