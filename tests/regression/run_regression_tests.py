@@ -15,7 +15,11 @@ from typing import Dict, Any, List, Optional, Tuple
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 # Import test modules
-from tests.regression.test_utils import print_section, print_test_header, print_test_result
+from tests.regression.test_utils import print_header, print_section, print_test_result
+
+def print_test_header(title: str) -> None:
+    """Print a test header."""
+    print_header(title)
 
 # Import test modules
 try:
