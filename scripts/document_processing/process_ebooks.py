@@ -19,10 +19,11 @@ from typing import List, Dict, Any, Tuple
 import time
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
+from src.config import get_port
 
 # Define a list of prompt engineering concepts for entity extraction
 PROMPT_ENGINEERING_CONCEPTS = {
@@ -136,32 +137,32 @@ PROMPT_ENGINEERING_CONCEPTS = {
 def extract_text_from_pdf(pdf_path: str) -> str:
     """
     Extract text from a PDF file.
-    
+
     Args:
         pdf_path: Path to the PDF file
-        
+
     Returns:
         Extracted text
     """
     print(f"Extracting text from {os.path.basename(pdf_path)}...")
-    
+
     try:
         text = ""
         with open(pdf_path, 'rb') as file:
             reader = PyPDF2.PdfReader(file)
             num_pages = len(reader.pages)
-            
+
             # Extract text from each page
             for page_num in range(num_pages):
                 page = reader.pages[page_num]
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n\n"
-                    
+
                 # Print progress for large PDFs
                 if num_pages > 50 and page_num % 10 == 0:
                     print(f"  Processed {page_num}/{num_pages} pages...")
-            
+
             print(f"  Extracted {num_pages} pages")
             return text
     except Exception as e:
@@ -171,35 +172,35 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
     """
     Split text into overlapping chunks.
-    
+
     Args:
         text: Text to chunk
         chunk_size: Maximum chunk size in characters
         overlap: Overlap between chunks in characters
-        
+
     Returns:
         List of text chunks
     """
     chunks = []
-    
+
     # Clean text: remove excessive whitespace and normalize line breaks
     text = re.sub(r'\s+', ' ', text)
-    
+
     # Split text into sentences (simple approach)
     sentences = re.split(r'(?<=[.!?])\s+', text)
-    
+
     current_chunk = ""
     for sentence in sentences:
         # If adding this sentence would exceed chunk size, save current chunk and start a new one
         if len(current_chunk) + len(sentence) > chunk_size and current_chunk:
             chunks.append(current_chunk.strip())
-            
+
             # Start new chunk with overlap from the end of the previous chunk
             if len(current_chunk) > overlap:
                 # Find the last complete sentence within the overlap
                 overlap_text = current_chunk[-overlap:]
                 last_sentence_break = max(overlap_text.rfind('. '), overlap_text.rfind('! '), overlap_text.rfind('? '))
-                
+
                 if last_sentence_break != -1:
                     # Start with the last complete sentence in the overlap
                     current_chunk = current_chunk[-(overlap - last_sentence_break):] + " "
@@ -208,34 +209,34 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[st
                     current_chunk = current_chunk[-overlap:] + " "
             else:
                 current_chunk = ""
-        
+
         current_chunk += sentence + " "
-    
+
     # Add the last chunk if it's not empty
     if current_chunk.strip():
         chunks.append(current_chunk.strip())
-    
+
     print(f"  Created {len(chunks)} chunks from text")
     return chunks
 
 def extract_entities(text: str) -> List[Dict[str, Any]]:
     """
     Extract entities from text.
-    
+
     Args:
         text: Text to extract entities from
-        
+
     Returns:
         List of extracted entities
     """
     entities = []
     text_lower = text.lower()
-    
+
     # Check for each concept in the text
     for concept, abbr in PROMPT_ENGINEERING_CONCEPTS.items():
         if concept.lower() in text_lower:
             entity_id = f"concept-{abbr.lower()}"
-            
+
             # Check if entity already exists in the list
             if not any(e["id"] == entity_id for e in entities):
                 entities.append({
@@ -244,22 +245,22 @@ def extract_entities(text: str) -> List[Dict[str, Any]]:
                     "type": "Concept",
                     "abbreviation": abbr
                 })
-    
+
     return entities
 
 def extract_relationships(entities: List[Dict[str, Any]], text: str) -> List[Tuple[str, str, float]]:
     """
     Extract relationships between entities.
-    
+
     Args:
         entities: List of extracted entities
         text: Text to extract relationships from
-        
+
     Returns:
         List of relationships as (source_id, target_id, strength)
     """
     relationships = []
-    
+
     # If we have at least 2 entities, create relationships between them
     if len(entities) >= 2:
         # Create relationships between all pairs of entities
@@ -267,14 +268,14 @@ def extract_relationships(entities: List[Dict[str, Any]], text: str) -> List[Tup
             for j in range(i+1, len(entities)):
                 source_id = entities[i]["id"]
                 target_id = entities[j]["id"]
-                
+
                 # Calculate a simple strength based on co-occurrence
                 # In a real system, you would use more sophisticated methods
                 strength = 0.5  # Default strength
-                
+
                 # Add the relationship
                 relationships.append((source_id, target_id, strength))
-    
+
     return relationships
 
 def process_pdf_file(
@@ -286,32 +287,32 @@ def process_pdf_file(
 ) -> Dict[str, Any]:
     """
     Process a PDF file and add it to the GraphRAG system.
-    
+
     Args:
         pdf_path: Path to the PDF file
         neo4j_db: Neo4j database instance
         vector_db: Vector database instance
         chunk_size: Maximum chunk size in characters
         overlap: Overlap between chunks in characters
-        
+
     Returns:
         Processing results
     """
     # Extract book metadata from filename
     filename = os.path.basename(pdf_path)
     book_title = os.path.splitext(filename)[0]
-    
+
     # Create a unique ID for the book
     book_id = f"book-{uuid.uuid4().hex[:8]}"
-    
+
     print(f"Processing book: {book_title} (ID: {book_id})")
-    
+
     # Extract text from PDF
     text = extract_text_from_pdf(pdf_path)
     if not text:
         print(f"❌ Failed to extract text from {filename}")
         return {"success": False, "book_id": book_id, "title": book_title}
-    
+
     # Create book node in Neo4j
     query = """
     CREATE (b:Book {
@@ -329,23 +330,23 @@ def process_pdf_file(
         "file_path": pdf_path
     })
     print(f"  Created book node in Neo4j: {book_title}")
-    
+
     # Chunk the text
     chunks = chunk_text(text, chunk_size, overlap)
-    
+
     # Process each chunk
     all_entities = []
     all_relationships = []
-    
+
     for i, chunk in enumerate(chunks):
         chunk_id = f"{book_id}-chunk-{i}"
-        
+
         # Extract entities from chunk
         entities = extract_entities(chunk)
-        
+
         # Extract relationships between entities
         relationships = extract_relationships(entities, chunk)
-        
+
         # Add entities to Neo4j
         for entity in entities:
             # Check if entity already exists
@@ -354,7 +355,7 @@ def process_pdf_file(
             RETURN c
             """
             results = neo4j_db.run_query(query, {"id": entity["id"]})
-            
+
             if not results:
                 # Create the entity
                 query = """
@@ -370,7 +371,7 @@ def process_pdf_file(
                     "name": entity["name"],
                     "abbreviation": entity.get("abbreviation", "")
                 })
-            
+
             # Create relationship between book and concept
             query = """
             MATCH (b:Book {id: $book_id})
@@ -382,7 +383,7 @@ def process_pdf_file(
                 "book_id": book_id,
                 "concept_id": entity["id"]
             })
-        
+
         # Add relationships to Neo4j
         for source_id, target_id, strength in relationships:
             # Check if relationship already exists
@@ -391,7 +392,7 @@ def process_pdf_file(
             RETURN r
             """
             results = neo4j_db.run_query(query, {"source_id": source_id, "target_id": target_id})
-            
+
             if not results:
                 # Create the relationship
                 query = """
@@ -405,7 +406,7 @@ def process_pdf_file(
                     "target_id": target_id,
                     "strength": strength
                 })
-        
+
         # Add chunk to vector database
         # Prepare metadata
         chunk_metadata = {
@@ -415,32 +416,32 @@ def process_pdf_file(
             "filename": filename,
             "file_path": pdf_path
         }
-        
+
         # Add concept IDs to metadata
         if entities:
             # ChromaDB doesn't support lists in metadata, so we'll join them into a string
             chunk_metadata["concept_ids"] = ",".join([entity["id"] for entity in entities])
             chunk_metadata["concept_id"] = entities[0]["id"]  # Primary concept
-        
+
         # Add chunk to vector database
         vector_db.add_documents(
             documents=[chunk],
             metadatas=[chunk_metadata],
             ids=[chunk_id]
         )
-        
+
         # Collect all entities and relationships
         all_entities.extend(entities)
         all_relationships.extend(relationships)
-        
+
         # Print progress for large books
         if len(chunks) > 20 and i % 10 == 0:
             print(f"  Processed {i}/{len(chunks)} chunks...")
-    
+
     print(f"  Added {len(chunks)} chunks to vector database")
     print(f"  Extracted {len(all_entities)} unique entities")
     print(f"  Created {len(all_relationships)} relationships")
-    
+
     return {
         "success": True,
         "book_id": book_id,
@@ -459,28 +460,28 @@ def process_directory(
 ) -> List[Dict[str, Any]]:
     """
     Process all PDF files in a directory.
-    
+
     Args:
         directory_path: Path to directory containing PDF files
         neo4j_db: Neo4j database instance
         vector_db: Vector database instance
         chunk_size: Maximum chunk size in characters
         overlap: Overlap between chunks in characters
-        
+
     Returns:
         List of processing results
     """
     # Find all PDF files in the directory
     pdf_files = glob.glob(os.path.join(directory_path, "*.pdf"))
-    
+
     print(f"Found {len(pdf_files)} PDF files in {directory_path}")
-    
+
     results = []
-    
+
     # Process each PDF file
     for i, pdf_path in enumerate(pdf_files):
         print(f"\nProcessing file {i+1}/{len(pdf_files)}: {os.path.basename(pdf_path)}")
-        
+
         # Process the PDF file
         result = process_pdf_file(
             pdf_path=pdf_path,
@@ -489,9 +490,9 @@ def process_directory(
             chunk_size=chunk_size,
             overlap=overlap
         )
-        
+
         results.append(result)
-    
+
     return results
 
 def main():
@@ -505,42 +506,42 @@ def main():
     parser.add_argument("--overlap", "-o", type=int, default=200, help="Overlap between chunks in characters")
     parser.add_argument("--clean", action="store_true", help="Clean the database before processing")
     args = parser.parse_args()
-    
+
     # Check if directory exists
     if not os.path.isdir(args.dir):
         print(f"Directory not found: {args.dir}")
         return
-    
+
     # Initialize databases
     neo4j_db = Neo4jDatabase()
     vector_db = VectorDatabase()
-    
+
     # Verify connections
     if not neo4j_db.verify_connection():
         print("❌ Neo4j connection failed!")
         return
-    
+
     if not vector_db.verify_connection():
         print("❌ Vector database connection failed!")
         return
-    
+
     print("✅ Database connections verified!")
-    
+
     # Clean the database if requested
     if args.clean:
         print("\nCleaning the database...")
-        
+
         # Clean Neo4j
         neo4j_db.run_query("MATCH (n) DETACH DELETE n")
         print("✅ Cleaned Neo4j database")
-        
+
         # Initialize Neo4j schema
         neo4j_db.create_schema()
         print("✅ Initialized Neo4j schema")
-    
+
     # Record start time
     start_time = time.time()
-    
+
     # Process ebooks
     results = process_directory(
         directory_path=args.dir,
@@ -549,54 +550,57 @@ def main():
         chunk_size=args.chunk_size,
         overlap=args.overlap
     )
-    
+
     # Record end time
     end_time = time.time()
     processing_time = end_time - start_time
-    
+
     # Print summary
     print("\n" + "="*50)
     print("Processing Summary")
     print("="*50)
     print(f"Processed {len(results)} books")
     print(f"Total processing time: {processing_time:.2f} seconds")
-    
+
     successful = [r for r in results if r.get("success", False)]
     print(f"Successfully processed: {len(successful)}/{len(results)}")
-    
+
     if successful:
         total_chunks = sum(r.get("chunks", 0) for r in successful)
         total_entities = sum(r.get("entities", 0) for r in successful)
         total_relationships = sum(r.get("relationships", 0) for r in successful)
-        
+
         print(f"Total chunks added: {total_chunks}")
         print(f"Total entities extracted: {total_entities}")
         print(f"Total relationships created: {total_relationships}")
-    
+
     # Get entity count from Neo4j
     query = "MATCH (c:Concept) RETURN count(c) as count"
     result = neo4j_db.run_query_and_return_single(query)
     concept_count = result.get("count", 0)
-    
+
     # Get relationship count from Neo4j
     query = "MATCH ()-[r:RELATED_TO]->() RETURN count(r) as count"
     result = neo4j_db.run_query_and_return_single(query)
     relationship_count = result.get("count", 0)
-    
+
     print(f"Total concepts in Neo4j: {concept_count}")
     print(f"Total relationships in Neo4j: {relationship_count}")
-    
+
     # Get document count from ChromaDB
     doc_count = vector_db.count()
     print(f"Total documents in ChromaDB: {doc_count}")
-    
+
     # Close Neo4j connection
     neo4j_db.close()
-    
+
+    # Get Neo4j HTTP port from centralized configuration
+    neo4j_http_port = get_port('neo4j_http')
+
     print("\n✅ Processing completed!")
     print("\nNext steps:")
     print("1. Query the system interactively with 'python scripts/query_graphrag.py'")
-    print("2. Explore the knowledge graph in Neo4j Browser at http://localhost:7474/")
+    print(f"2. Explore the knowledge graph in Neo4j Browser at http://localhost:{neo4j_http_port}/")
 
 if __name__ == "__main__":
     main()
