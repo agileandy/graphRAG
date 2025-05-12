@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+# Load environment variables for port configuration
+# These should be set in the Docker environment
+GRAPHRAG_PORT_NEO4J_HTTP=${GRAPHRAG_PORT_NEO4J_HTTP:-7474}
+GRAPHRAG_PORT_NEO4J_BOLT=${GRAPHRAG_PORT_NEO4J_BOLT:-7687}
+GRAPHRAG_PORT_API=${GRAPHRAG_PORT_API:-5000}
+GRAPHRAG_PORT_MPC=${GRAPHRAG_PORT_MPC:-8765}
+GRAPHRAG_PORT_MCP=${GRAPHRAG_PORT_MCP:-8767}
+GRAPHRAG_PORT_DOCKER_NEO4J_BOLT=${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT:-7688}
+
 # Function to wait for Neo4j to be available
 wait_for_neo4j() {
   echo "Waiting for Neo4j to be available..."
@@ -9,7 +18,7 @@ wait_for_neo4j() {
 
   # Wait for Neo4j to start accepting connections
   while [ $attempt -le $max_attempts ]; do
-    if curl -s http://0.0.0.0:7474 > /dev/null; then
+    if curl -s http://0.0.0.0:${GRAPHRAG_PORT_NEO4J_HTTP} > /dev/null; then
       echo "Neo4j is now available!"
       return 0
     else
@@ -72,7 +81,7 @@ if [ ! -f /app/data/.neo4j_initialized ]; then
 
   # Verify we can connect with the new password
   echo "Verifying Neo4j connection with new password..."
-  if curl -s -u neo4j:$NEO4J_PASSWORD http://localhost:7474/db/data/ > /dev/null; then
+  if curl -s -u neo4j:$NEO4J_PASSWORD http://localhost:${GRAPHRAG_PORT_NEO4J_HTTP}/db/data/ > /dev/null; then
     echo "✅ Successfully connected to Neo4j with new password."
   else
     echo "⚠️ Could not verify Neo4j connection with new password."
@@ -141,7 +150,7 @@ fi
 
 # Start the MPC server in the background
 echo "Starting MPC server..."
-cd /app && python -m src.mpc.server --host 0.0.0.0 --port 8765 &
+cd /app && python -m src.mpc.server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MPC} &
 MPC_PID=$!
 
 # Give the MPC server a moment to start
@@ -150,7 +159,7 @@ echo "✅ MPC server started (PID: $MPC_PID)."
 
 # Start the MCP server in the background
 echo "Starting MCP server..."
-cd /app && python -m src.mpc.mcp_server --host 0.0.0.0 --port 8767 &
+cd /app && python -m src.mpc.mcp_server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MCP} &
 MCP_PID=$!
 
 # Give the MCP server a moment to start
@@ -169,10 +178,10 @@ echo "- Hostname: $(hostname)"
 echo "- Date: $(date)"
 echo ""
 echo "Service Endpoints:"
-echo "- Neo4j Browser: http://localhost:7475"
-echo "- API Server: http://localhost:5001"
-echo "- MPC Server: ws://localhost:8766"
-echo "- MCP Server: ws://localhost:8767"
+echo "- Neo4j Browser: http://localhost:${GRAPHRAG_PORT_NEO4J_HTTP}"
+echo "- API Server: http://localhost:${GRAPHRAG_PORT_API}"
+echo "- MPC Server: ws://localhost:${GRAPHRAG_PORT_MPC}"
+echo "- MCP Server: ws://localhost:${GRAPHRAG_PORT_MCP}"
 echo ""
 echo "Health Status:"
 echo "- Neo4j: Running"
@@ -181,9 +190,9 @@ echo "- MPC Server: Running"
 echo "- MCP Server: Running"
 echo ""
 echo "Use the following commands to interact with the system:"
-echo "- API: curl http://localhost:5001/health"
-echo "- MPC: python scripts/mpc_client_example.py --port 8766"
-echo "- MCP: python scripts/mcp_client_example.py --port 8767"
+echo "- API: curl http://localhost:${GRAPHRAG_PORT_API}/health"
+echo "- MPC: python scripts/mpc_client_example.py --port ${GRAPHRAG_PORT_MPC}"
+echo "- MCP: python scripts/mcp_client_example.py --port ${GRAPHRAG_PORT_MCP}"
 echo ""
 echo "Log Files:"
 echo "- Neo4j Logs: /app/neo4j/logs/"
