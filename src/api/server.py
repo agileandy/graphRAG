@@ -381,24 +381,77 @@ def add_folder():
 
                 logger.info(f"Processing file {i+1}/{len(files)}: {filename}")
 
-                # Read file content
+                # Read file content based on file type
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        text = f.read()
-                except UnicodeDecodeError:
-                    # Try with a different encoding
-                    try:
-                        with open(file_path, 'r', encoding='latin-1') as f:
-                            text = f.read()
-                    except Exception as e:
-                        logger.error(f"Failed to read file {filename}: {str(e)}")
-                        results["failed_count"] += 1
-                        results["details"].append({
-                            "file": filename,
-                            "success": False,
-                            "error": f"Failed to read file: {str(e)}"
-                        })
-                        continue
+                    file_ext = os.path.splitext(file_path)[1].lower()
+
+                    # Handle PDF files
+                    if file_ext == '.pdf':
+                        try:
+                            import PyPDF2
+                            with open(file_path, 'rb') as file:
+                                reader = PyPDF2.PdfReader(file)
+                                text = ""
+                                # Extract text from each page
+                                for page_num in range(len(reader.pages)):
+                                    page = reader.pages[page_num]
+                                    text += page.extract_text() + "\n\n"
+
+                            if not text.strip():
+                                logger.warning(f"PDF extraction returned empty text for {filename}")
+                                results["failed_count"] += 1
+                                results["details"].append({
+                                    "file": filename,
+                                    "success": False,
+                                    "error": "PDF extraction returned empty text"
+                                })
+                                continue
+                        except ImportError:
+                            logger.error("PyPDF2 is not installed. Please install it with 'pip install PyPDF2'.")
+                            results["failed_count"] += 1
+                            results["details"].append({
+                                "file": filename,
+                                "success": False,
+                                "error": "PyPDF2 is not installed"
+                            })
+                            continue
+                        except Exception as e:
+                            logger.error(f"Failed to extract text from PDF {filename}: {str(e)}")
+                            results["failed_count"] += 1
+                            results["details"].append({
+                                "file": filename,
+                                "success": False,
+                                "error": f"Failed to extract text from PDF: {str(e)}"
+                            })
+                            continue
+                    # Handle text files
+                    else:
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                text = f.read()
+                        except UnicodeDecodeError:
+                            # Try with a different encoding
+                            try:
+                                with open(file_path, 'r', encoding='latin-1') as f:
+                                    text = f.read()
+                            except Exception as e:
+                                logger.error(f"Failed to read file {filename}: {str(e)}")
+                                results["failed_count"] += 1
+                                results["details"].append({
+                                    "file": filename,
+                                    "success": False,
+                                    "error": f"Failed to read file: {str(e)}"
+                                })
+                                continue
+                except Exception as e:
+                    logger.error(f"Failed to process file {filename}: {str(e)}")
+                    results["failed_count"] += 1
+                    results["details"].append({
+                        "file": filename,
+                        "success": False,
+                        "error": f"Failed to process file: {str(e)}"
+                    })
+                    continue
 
                 # Create metadata for the document
                 metadata = default_metadata.copy()

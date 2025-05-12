@@ -317,7 +317,7 @@ class ConceptExtractor:
             # Phi-4 specific prompt format
             phi4_system_prompt = """You are a concept extraction assistant that identifies key technical and domain-specific concepts from text. Your task is to extract important concepts, their relevance, and definitions from the provided text."""
 
-            phi4_user_prompt = f"""Extract the {max_concepts} most important domain-specific concepts from the following text.
+            phi4_user_prompt = f"""Extract up to {max_concepts} of the most important domain-specific concepts from the following text.
 For each concept, provide:
 1. The concept name
 2. A relevance score from 0.0 to 1.0
@@ -338,7 +338,8 @@ Example format:
     ...
 ]
 
-Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts."""
+Only extract concepts that are truly relevant to the domain of the text. Quality is more important than quantity.
+Focus on technical and domain-specific concepts."""
 
             # Generate response with Phi-4 specific prompt
             response = llm_manager.generate(
@@ -507,6 +508,17 @@ Extract at most {max_concepts} concepts. Focus on technical and domain-specific 
         Returns:
             List of extracted concepts with metadata
         """
+        # Adjust max_concepts based on text length
+        text_length = len(text)
+        if text_length < 1000:  # Short text
+            adjusted_max_concepts = min(5, max_concepts)
+        elif text_length < 5000:  # Medium text
+            adjusted_max_concepts = min(10, max_concepts)
+        else:  # Long text
+            adjusted_max_concepts = max_concepts
+
+        logger.info(f"Adjusting max concepts from {max_concepts} to {adjusted_max_concepts} based on text length ({text_length} chars)")
+
         # Determine method based on availability
         if method == "auto":
             if self.use_llm and (llm_manager is not None or openai_client is not None):
@@ -518,13 +530,13 @@ Extract at most {max_concepts} concepts. Focus on technical and domain-specific 
 
         # Extract concepts using the specified method
         if method == "llm" and self.use_llm:
-            return self.extract_concepts_llm(text, max_concepts)
+            return self.extract_concepts_llm(text, adjusted_max_concepts)
         elif method == "nlp" and self.use_nlp and nlp is not None:
             concepts = self.extract_concepts_nlp(text)
-            return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in concepts[:max_concepts]]
+            return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in concepts[:adjusted_max_concepts]]
         else:
             concepts = self.extract_concepts_rule_based(text)
-            return [{"concept": c, "relevance": 1.0, "source": "rule"} for c in concepts[:max_concepts]]
+            return [{"concept": c, "relevance": 1.0, "source": "rule"} for c in concepts[:adjusted_max_concepts]]
 
     def _is_valid_concept(self, concept: str) -> bool:
         """

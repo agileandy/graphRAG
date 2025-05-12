@@ -93,7 +93,6 @@ def extract_entities_from_text(text: str, domain: Optional[str] = None) -> List[
         "fine-tuning": "FT",
         "backpropagation": "BP",
         "gradient descent": "GD",
-        "rag": "RAG",
         "retrieval-augmented generation": "RAG",
         "graphrag": "GRAG",
         "knowledge graph": "KG",
@@ -102,7 +101,6 @@ def extract_entities_from_text(text: str, domain: Optional[str] = None) -> List[
         "hybrid search": "HS",
         "deduplication": "DD",
         "large language model": "LLM",
-        "llm": "LLM",
         "neo4j": "NEO",
         "chromadb": "CHROMA"
     }
