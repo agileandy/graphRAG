@@ -56,7 +56,7 @@ start_neo4j() {
     # Wait for Neo4j to start
     echo "Waiting for Neo4j to start..."
     for i in {1..30}; do
-        if curl -s http://localhost:7474 > /dev/null; then
+        if curl -s http://localhost:$GRAPHRAG_PORT_NEO4J_HTTP > /dev/null; then
             echo "Neo4j started successfully."
             return 0
         fi
