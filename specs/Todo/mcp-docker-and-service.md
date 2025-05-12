@@ -86,7 +86,7 @@ PID_DIR="$HOME/.graphrag/pids"
 
 # Default values
 NEO4J_HOME="$HOME/.graphrag/neo4j"
-NEO4J_URI="bolt://localhost:7687"
+NEO4J_URI="bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}"
 NEO4J_USERNAME="neo4j"
 NEO4J_PASSWORD="graphrag"
 CHROMA_PERSIST_DIRECTORY="$HOME/.graphrag/data/chromadb"
@@ -417,7 +417,7 @@ WorkingDirectory=/opt/graphrag
 ExecStart=/usr/bin/python -m src.mpc.mcp_server --host 0.0.0.0 --port 8766
 Restart=on-failure
 Environment=PYTHONPATH=/opt/graphrag
-Environment=NEO4J_URI=bolt://localhost:7687
+Environment=NEO4J_URI=bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}
 Environment=NEO4J_USERNAME=neo4j
 Environment=NEO4J_PASSWORD=graphrag
 Environment=CHROMA_PERSIST_DIRECTORY=/opt/graphrag/data/chromadb
@@ -486,7 +486,7 @@ CONFIG_FILE="$HOME/.graphrag/config.env"
 PID_DIR="$HOME/.graphrag/pids"
 
 # Default values
-NEO4J_URI="bolt://localhost:7687"
+NEO4J_URI="bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}"
 NEO4J_USERNAME="neo4j"
 NEO4J_PASSWORD="graphrag"
 API_PORT=5001

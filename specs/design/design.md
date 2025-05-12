@@ -722,7 +722,7 @@ from src.agents.langchain_tools import get_graphrag_tools
 
 # Initialize LangChain components
 llm = ChatOpenAI(temperature=0)
-tools = get_graphrag_tools(api_url="http://localhost:5001")
+tools = get_graphrag_tools(api_url="http://localhost:${GRAPHRAG_PORT_API}")
 
 # Initialize agent
 agent = initialize_agent(
@@ -746,8 +746,8 @@ from src.agents.openai_functions import get_graphrag_functions, get_graphrag_fun
 client = OpenAI()
 
 # Get GraphRAG functions
-functions = get_graphrag_functions(api_url="http://localhost:5001")
-function_map = get_graphrag_function_map(api_url="http://localhost:5001")
+functions = get_graphrag_functions(api_url="http://localhost:${GRAPHRAG_PORT_API}")
+function_map = get_graphrag_function_map(api_url="http://localhost:${GRAPHRAG_PORT_API}")
 
 # Use with OpenAI
 response = client.chat.completions.create(
@@ -821,9 +821,9 @@ docker build -t graphrag .
 
 # Run the container
 docker run -d --name graphrag \
-  -p 5001:5000 \
+  -p ${GRAPHRAG_PORT_API}:5000 \
   -p 7475:7474 \
-  -p 7688:7687 \
+  -p ${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}:7687 \
   -p 8766:8765 \
   -v $(pwd)/data:/app/data \
   graphrag
@@ -835,7 +835,7 @@ The system uses environment variables for configuration, which can be set in a `
 
 ```env
 # Neo4j Configuration
-NEO4J_URI=bolt://localhost:7687
+NEO4J_URI=bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=graphrag
 NEO4J_HOME=/opt/homebrew
@@ -1369,7 +1369,7 @@ import json
 import websockets
 
 async def graphrag_client():
-    uri = "ws://localhost:8765"
+    uri = "ws://localhost:${GRAPHRAG_PORT_MPC}"
 
     async with websockets.connect(uri) as websocket:
         # Ping to test connection

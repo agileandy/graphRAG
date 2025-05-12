@@ -54,7 +54,7 @@ mkdir -p ~/.graphrag
 cat > ~/.graphrag/config.env << EOF
 # GraphRAG Configuration
 NEO4J_HOME=$HOME/.graphrag/neo4j
-NEO4J_URI=bolt://localhost:7687
+NEO4J_URI=bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=graphrag
 CHROMA_PERSIST_DIRECTORY=$HOME/.graphrag/data/chromadb
@@ -149,7 +149,7 @@ pkill -f graphrag-monitor.py
 
 ```bash
 # Check if Neo4j is running
-curl -u neo4j:graphrag http://localhost:7474/browser/
+curl -u neo4j:graphrag http://localhost:${GRAPHRAG_PORT_NEO4J_HTTP}/browser/
 
 # Should return the Neo4j Browser HTML
 ```
@@ -165,7 +165,7 @@ python scripts/verify_chromadb.py
 
 ```bash
 # Check the API health endpoint
-curl http://localhost:5001/health
+curl http://localhost:${GRAPHRAG_PORT_API}/health
 
 # Should return: {"neo4j_connected":true,"status":"ok","vector_db_connected":true,"version":"1.0.0"}
 ```
@@ -174,7 +174,7 @@ curl http://localhost:5001/health
 
 ```bash
 # Test the MPC server with the ping tool
-python tools/mpc_client_example.py --port 8765 --tool ping
+python tools/mpc_client_example.py --port ${GRAPHRAG_PORT_MPC} --tool ping
 ```
 
 ## Adding Documents

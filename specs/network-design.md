@@ -50,7 +50,7 @@ ports:
 - **Bolt Protocol**: Used for database connections
   - Default: 7687
   - Docker Mapping: 7688:7687
-  - Configuration: `NEO4J_URI=bolt://localhost:7687` (local) or `NEO4J_URI=bolt://0.0.0.0:7687` (Docker)
+  - Configuration: `NEO4J_URI=bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}` (local) or `NEO4J_URI=bolt://0.0.0.0:7687` (Docker)
 
 - **HTTP API**: Used for Neo4j Browser
   - Default: 7474
@@ -63,7 +63,7 @@ ports:
   - Default: 5001
   - Docker Mapping: 5001:5000
   - Configuration: `GRAPHRAG_API_PORT=5001`
-  - Access: http://localhost:5001/health
+  - Access: http://localhost:${GRAPHRAG_PORT_API}/health
 
 ### 3. Message Passing Communication (MPC) Server
 
@@ -71,7 +71,7 @@ ports:
   - Default: 8765
   - Docker Mapping: 8765:8765
   - Configuration: `GRAPHRAG_MPC_PORT=8765`
-  - Access: ws://localhost:8765
+  - Access: ws://localhost:${GRAPHRAG_PORT_MPC}
 
 ### 4. Model Context Protocol (MCP) Server
 
@@ -79,7 +79,7 @@ ports:
   - Default: 8767
   - Docker Mapping: 8767:8767
   - Configuration: None (hardcoded in server.py)
-  - Access: ws://localhost:8767
+  - Access: ws://localhost:${GRAPHRAG_PORT_MCP}
 
 ### 5. Bug Tracking MCP Server
 
@@ -87,7 +87,7 @@ ports:
   - Default: 5005
   - Docker Mapping: N/A (not in Docker)
   - Configuration: None (hardcoded in bugMCP.py)
-  - Access: localhost:5005
+  - Access: localhost:${GRAPHRAG_PORT_BUG_MCP}
 
 ## Port Configuration in Code
 
@@ -151,7 +151,7 @@ The agent tools in `src/agent-tools/utils.py` use the following default configur
 DEFAULT_CONFIG = {
     "MPC_HOST": "localhost",
     "MPC_PORT": "8766",  # Default port for Docker mapping
-    "NEO4J_URI": "bolt://localhost:7688",  # Default port for Docker mapping
+    "NEO4J_URI": "bolt://localhost:${GRAPHRAG_PORT_DOCKER_NEO4J_BOLT}",  # Default port for Docker mapping
     "NEO4J_USERNAME": "neo4j",
     "NEO4J_PASSWORD": "graphrag"
 }

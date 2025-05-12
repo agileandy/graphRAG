@@ -29,10 +29,10 @@ Or directly:
 python bugMCP/bugAPI.py
 ```
 
-By default, the server runs on `localhost:5005`. You can customize the host and port:
+By default, the server runs on `localhost:${GRAPHRAG_PORT_BUG_MCP}`. You can customize the host and port:
 
 ```bash
-python bugMCP/bugAPI.py --host 0.0.0.0 --port 5005
+python bugMCP/bugAPI.py --host 0.0.0.0 --port ${GRAPHRAG_PORT_BUG_MCP}
 ```
 
 ### Using the Client
@@ -91,7 +91,7 @@ import requests
 
 # Add a bug
 response = requests.post(
-    "http://localhost:5005/bugs",
+    "http://localhost:${GRAPHRAG_PORT_BUG_MCP}/bugs",
     json={
         "description": "Bug found by AI agent",
         "cause": "Identified during analysis"
@@ -102,7 +102,7 @@ bug_id = result.get("bug_id")
 
 # Update the bug
 response = requests.put(
-    f"http://localhost:5005/bugs/{bug_id}",
+    f"http://localhost:${GRAPHRAG_PORT_BUG_MCP}/bugs/{bug_id}",
     json={
         "status": "fixed",
         "resolution": "Fixed by AI agent"
@@ -141,7 +141,7 @@ If you encounter issues:
 
 When the server is running, you can access the auto-generated API documentation at:
 
-- Swagger UI: `http://localhost:5005/docs`
-- ReDoc: `http://localhost:5005/redoc`
+- Swagger UI: `http://localhost:${GRAPHRAG_PORT_BUG_MCP}/docs`
+- ReDoc: `http://localhost:${GRAPHRAG_PORT_BUG_MCP}/redoc`
 
 These interactive documentation pages allow you to explore and test the API endpoints directly from your browser.
