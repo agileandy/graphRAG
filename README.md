@@ -189,14 +189,43 @@ Build and run with Docker:
 
 ## Configuration
 
-The system uses environment variables for configuration. You can set these in a `.env` file or directly in your environment:
+GraphRAG uses a flexible configuration approach with multiple configuration files:
 
-```
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=password
-CHROMA_PERSIST_DIRECTORY=./data/chromadb
-```
+### Configuration Files
+
+1. **System-wide Configuration**: `~/.graphrag/config.env`
+   - Contains system-wide settings that apply to all GraphRAG instances
+   - Used by service scripts and daemons
+   - Takes precedence over project-specific configuration
+
+2. **Project-specific Configuration**: `.env` (in project root)
+   - Contains settings specific to the current project
+   - Used during development
+   - Falls back to this if system-wide configuration is not found
+
+3. **Docker Configuration**: `.env.docker` / `config/env.docker`
+   - Contains settings specific to Docker deployment
+   - Used when running in a container
+
+4. **Sample Configuration**: `.env.sample` / `config/env.sample`
+   - Template for users to create their own configuration files
+
+### Setting Up Configuration
+
+1. Create a project-specific configuration:
+   ```bash
+   cp config/env.sample .env
+   nano .env  # Edit as needed
+   ```
+
+2. For system-wide configuration:
+   ```bash
+   mkdir -p ~/.graphrag
+   cp config/env.sample ~/.graphrag/config.env
+   nano ~/.graphrag/config.env  # Edit as needed
+   ```
+
+For a complete list of configuration options and detailed explanation, see [Configuration Guide](config/README.md).
 
 ## License
 
