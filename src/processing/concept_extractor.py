@@ -312,99 +312,38 @@ class ConceptExtractor:
         else:
             truncated_text = text
 
-        # Try first with a simplified prompt that doesn't require complex formatting
+        # Try with Phi-4 specific prompt format
         try:
-            # Simplified prompt without requiring JSON formatting
-            simple_prompt = f"""
-            Extract the {max_concepts} most important domain-specific concepts from the following text.
-            For each concept, provide:
-            1. The concept name
-            2. A relevance score from 0.0 to 1.0
-            3. A brief definition based on the text
+            # Phi-4 specific prompt format
+            phi4_system_prompt = """You are a concept extraction assistant that identifies key technical and domain-specific concepts from text. Your task is to extract important concepts, their relevance, and definitions from the provided text."""
 
-            Text:
-            {truncated_text}
+            phi4_user_prompt = f"""Extract the {max_concepts} most important domain-specific concepts from the following text.
+For each concept, provide:
+1. The concept name
+2. A relevance score from 0.0 to 1.0
+3. A brief definition based on the text
 
-            Format each concept as:
-            Concept: [name]
-            Relevance: [score]
-            Definition: [definition]
-            """
+Text:
+{truncated_text}
 
-            # Generate response with simplified prompt
+Format your response as a JSON array of objects, each with the following properties:
+- concept: The concept name
+- relevance: A score from 0.0 to 1.0 indicating the relevance of the concept to the text
+- definition: A brief definition of the concept based on the text
+
+Example format:
+[
+    {{"concept": "Concept 1", "relevance": 0.95, "definition": "Definition 1"}},
+    {{"concept": "Concept 2", "relevance": 0.85, "definition": "Definition 2"}},
+    ...
+]
+
+Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts."""
+
+            # Generate response with Phi-4 specific prompt
             response = llm_manager.generate(
-                simple_prompt,
-                system_prompt="You are a concept extraction assistant that identifies key technical and domain-specific concepts from text.",
-                max_tokens=1000,
-                temperature=0.2
-            )
-
-            # Parse the response manually
-            concepts = []
-            current_concept = {}
-
-            for line in response.split('\n'):
-                line = line.strip()
-                if not line:
-                    continue
-
-                if line.startswith('Concept:'):
-                    # If we have a previous concept, add it to the list
-                    if current_concept and 'concept' in current_concept:
-                        concepts.append(current_concept)
-
-                    # Start a new concept
-                    current_concept = {'concept': line[8:].strip(), 'source': 'llm'}
-                elif line.startswith('Relevance:'):
-                    try:
-                        relevance = float(line[10:].strip())
-                        current_concept['relevance'] = min(max(relevance, 0.0), 1.0)  # Ensure in range 0-1
-                    except ValueError:
-                        current_concept['relevance'] = 0.8  # Default if parsing fails
-                elif line.startswith('Definition:'):
-                    current_concept['definition'] = line[11:].strip()
-
-            # Add the last concept if it exists
-            if current_concept and 'concept' in current_concept:
-                concepts.append(current_concept)
-
-            # If we successfully extracted concepts, return them
-            if concepts:
-                logger.info(f"Successfully extracted {len(concepts)} concepts with simplified prompt")
-                return concepts
-
-            # If no concepts were extracted, try the JSON approach as a fallback
-            logger.warning("No concepts extracted with simplified prompt. Trying JSON format...")
-        except Exception as e:
-            logger.warning(f"Error using simplified prompt: {e}. Trying JSON format...")
-
-        # Original JSON-based approach as fallback
-        try:
-            # Prepare prompt for concept extraction with JSON format
-            json_prompt = f"""
-            Extract the most important domain-specific concepts from the following text.
-            Return the result as a JSON array of objects, each with the following properties:
-            - concept: The concept name
-            - relevance: A score from 0.0 to 1.0 indicating the relevance of the concept to the text
-            - definition: A brief definition of the concept based on the text
-
-            Text:
-            {truncated_text}
-
-            Format:
-            [
-                {{"concept": "Concept 1", "relevance": 0.95, "definition": "Definition 1"}},
-                {{"concept": "Concept 2", "relevance": 0.85, "definition": "Definition 2"}},
-                ...
-            ]
-
-            Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts.
-            """
-
-            # Generate response
-            response = llm_manager.generate(
-                json_prompt,
-                system_prompt="You are a concept extraction assistant that identifies key technical and domain-specific concepts from text.",
+                phi4_user_prompt,
+                system_prompt=phi4_system_prompt,
                 max_tokens=1000,
                 temperature=0.2
             )
@@ -421,17 +360,74 @@ class ConceptExtractor:
                     # Add source field
                     for concept in concepts:
                         concept["source"] = "llm"
+                    logger.info(f"Successfully extracted {len(concepts)} concepts with Phi-4 prompt")
                     return concepts
                 else:
                     logger.warning("Could not find JSON array in LLM response")
+                    logger.debug(f"LLM response: {response}")
+
+                    # Try to parse structured format as fallback
+                    concepts = self._parse_structured_response(response)
+                    if concepts:
+                        logger.info(f"Successfully extracted {len(concepts)} concepts from structured response")
+                        return concepts
+
+                    # If still no concepts, try fallback to rule-based extraction
                     return []
             except json.JSONDecodeError:
                 logger.warning("Failed to parse JSON from LLM response")
                 logger.debug(f"LLM response: {response}")
+
+                # Try to parse structured format as fallback
+                concepts = self._parse_structured_response(response)
+                if concepts:
+                    logger.info(f"Successfully extracted {len(concepts)} concepts from structured response")
+                    return concepts
+
                 return []
         except Exception as e:
-            logger.warning(f"Error using JSON format: {e}")
+            logger.warning(f"Error using Phi-4 prompt: {e}")
             return []
+
+    def _parse_structured_response(self, response: str) -> List[Dict[str, Any]]:
+        """
+        Parse a structured response from the LLM.
+
+        Args:
+            response: LLM response text
+
+        Returns:
+            List of extracted concepts with metadata
+        """
+        concepts = []
+        current_concept = {}
+
+        for line in response.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.startswith('Concept:'):
+                # If we have a previous concept, add it to the list
+                if current_concept and 'concept' in current_concept:
+                    concepts.append(current_concept)
+
+                # Start a new concept
+                current_concept = {'concept': line[8:].strip(), 'source': 'llm'}
+            elif line.startswith('Relevance:'):
+                try:
+                    relevance = float(line[10:].strip())
+                    current_concept['relevance'] = min(max(relevance, 0.0), 1.0)  # Ensure in range 0-1
+                except ValueError:
+                    current_concept['relevance'] = 0.8  # Default if parsing fails
+            elif line.startswith('Definition:'):
+                current_concept['definition'] = line[11:].strip()
+
+        # Add the last concept if it exists
+        if current_concept and 'concept' in current_concept:
+            concepts.append(current_concept)
+
+        return concepts
 
     def _extract_concepts_with_openai(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
         """
