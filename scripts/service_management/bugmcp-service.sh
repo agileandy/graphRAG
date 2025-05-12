@@ -5,12 +5,19 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
+# Load environment variables from .env file
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    source "$PROJECT_ROOT/.env"
+fi
+
 # Activate the virtual environment
 source "$PROJECT_ROOT/.venv-py312/bin/activate"
 
+# Get port from centralized configuration
+PORT=${GRAPHRAG_PORT_BUG_MCP:-5005}
+
 # Default values
 HOST="localhost"
-PORT=5005
 LOG_LEVEL="INFO"
 ACTION="start"
 
@@ -43,23 +50,23 @@ done
 # Function to start the server
 start_server() {
     echo "Starting Bug Tracking MCP server on $HOST:$PORT..."
-    
+
     # Check if the server is already running
     if pgrep -f "python.*bugMCP_mcp.py" > /dev/null; then
         echo "Server is already running."
         return
     fi
-    
+
     # Start the server in the background
     nohup python "$PROJECT_ROOT/bugMCP/bugMCP_mcp.py" \
         --host "$HOST" \
         --port "$PORT" \
         --log-level "$LOG_LEVEL" \
         > "$PROJECT_ROOT/bugMCP/bugmcp.log" 2>&1 &
-    
+
     # Wait a moment for the server to start
     sleep 2
-    
+
     # Check if the server started successfully
     if pgrep -f "python.*bugMCP_mcp.py" > /dev/null; then
         echo "Server started successfully."
@@ -72,19 +79,19 @@ start_server() {
 # Function to stop the server
 stop_server() {
     echo "Stopping Bug Tracking MCP server..."
-    
+
     # Find and kill the server process
     pkill -f "python.*bugMCP_mcp.py"
-    
+
     # Wait a moment for the server to stop
     sleep 2
-    
+
     # Check if the server stopped successfully
     if pgrep -f "python.*bugMCP_mcp.py" > /dev/null; then
         echo "Failed to stop server. Trying force kill..."
         pkill -9 -f "python.*bugMCP_mcp.py"
         sleep 1
-        
+
         if pgrep -f "python.*bugMCP_mcp.py" > /dev/null; then
             echo "Failed to force kill server."
             exit 1
@@ -100,11 +107,11 @@ stop_server() {
 check_status() {
     if pgrep -f "python.*bugMCP_mcp.py" > /dev/null; then
         echo "Bug Tracking MCP server is running."
-        
+
         # Get the process ID
         PID=$(pgrep -f "python.*bugMCP_mcp.py")
         echo "Process ID: $PID"
-        
+
         # Check if the server is listening on the expected port
         if netstat -tuln | grep -q ":$PORT "; then
             echo "Server is listening on port $PORT."
