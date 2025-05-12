@@ -232,7 +232,7 @@ def add_document():
 
     try:
         # Import here to avoid circular imports
-        from scripts.add_document import add_document_to_graphrag
+        from scripts.document_processing.add_document_core import add_document_to_graphrag
         from src.processing.duplicate_detector import DuplicateDetector
 
         # Initialize duplicate detector

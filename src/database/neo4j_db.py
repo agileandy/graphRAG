@@ -30,6 +30,15 @@ class Neo4jDatabase:
         # Try different URIs for Neo4j connection
         default_uri = f"bolt://localhost:{neo4j_port}"
         env_uri = os.getenv("NEO4J_URI", default_uri)
+
+        # Handle variable substitution in NEO4J_URI
+        if "${GRAPHRAG_PORT_NEO4J_BOLT}" in env_uri:
+            env_uri = env_uri.replace("${GRAPHRAG_PORT_NEO4J_BOLT}", str(neo4j_port))
+
+        # If no port is specified in the URI, add the port
+        if env_uri.endswith(':'):
+            env_uri = f"{env_uri}{neo4j_port}"
+
         self.uri = uri or env_uri
 
         # If URI contains 0.0.0.0, replace it with localhost for client connections
