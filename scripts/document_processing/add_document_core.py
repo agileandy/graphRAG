@@ -235,9 +235,20 @@ def extract_entities(text: str, metadata: Optional[Dict[str, Any]] = None) -> Li
 
         logger.info(f"Using max_concepts={max_concepts} for document of length {text_length}")
 
+        # For very large documents, log a warning
+        if text_length > 500000:  # > 500K chars
+            logger.warning(f"Document is very large ({text_length} chars). Processing may take a while.")
+
         # Extract concepts - the chunking is handled internally by the extract_concepts method
         llm_concepts = concept_extractor.extract_concepts(text, method="llm", max_concepts=max_concepts)
         logger.info(f"Extracted {len(llm_concepts)} concepts using LLM")
+
+        # If no concepts were extracted, fall back to rule-based extraction
+        if not llm_concepts:
+            logger.warning("LLM extraction returned no concepts. Falling back to rule-based extraction.")
+            llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=max_concepts)
+            logger.info(f"Extracted {len(llm_concepts)} concepts using rule-based method")
+
     except Exception as e:
         logger.warning(f"LLM-based concept extraction failed: {e}. Falling back to rule-based extraction.")
         # Fall back to rule-based extraction

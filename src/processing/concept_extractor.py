@@ -498,7 +498,7 @@ Focus on technical and domain-specific concepts."""
 
     def _chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 100) -> List[str]:
         """
-        Split text into smaller chunks for processing.
+        Split text into smaller chunks for processing using the document processor.
 
         Args:
             text: Input text
@@ -508,41 +508,14 @@ Focus on technical and domain-specific concepts."""
         Returns:
             List of text chunks
         """
-        # If text is shorter than chunk_size, return it as a single chunk
-        if len(text) <= chunk_size:
-            return [text]
+        # Import the document processor
+        from src.processing.document_processor import smart_chunk_text, optimize_chunk_size
 
-        chunks = []
-        start = 0
+        # Determine optimal chunk size based on document characteristics
+        optimal_chunk_size = optimize_chunk_size(text, default_size=chunk_size)
 
-        while start < len(text):
-            # Get chunk of size chunk_size or remaining text if less
-            end = min(start + chunk_size, len(text))
-
-            # If not at the end of text, try to find a good break point
-            if end < len(text):
-                # Look for paragraph break
-                paragraph_break = text.rfind('\n\n', start, end)
-                if paragraph_break != -1 and paragraph_break > start + chunk_size // 2:
-                    end = paragraph_break + 2  # Include the newlines
-                else:
-                    # Look for sentence break (period followed by space)
-                    sentence_break = text.rfind('. ', start, end)
-                    if sentence_break != -1 and sentence_break > start + chunk_size // 2:
-                        end = sentence_break + 2  # Include the period and space
-                    else:
-                        # Look for any whitespace
-                        space_break = text.rfind(' ', start, end)
-                        if space_break != -1 and space_break > start + chunk_size // 2:
-                            end = space_break + 1  # Include the space
-
-            # Add the chunk
-            chunks.append(text[start:end])
-
-            # Move start position for next chunk, accounting for overlap
-            start = max(start, end - overlap)
-
-        return chunks
+        # Use the smart chunking algorithm from document processor
+        return smart_chunk_text(text, chunk_size=optimal_chunk_size, overlap=overlap, semantic_boundaries=True)
 
     def extract_concepts(self, text: str, method: str = "auto", max_concepts: int = 20) -> List[Dict[str, Any]]:
         """
@@ -566,12 +539,32 @@ Focus on technical and domain-specific concepts."""
             else:
                 method = "rule"
 
-        # For LLM method, chunk the text if it's too long
-        if method == "llm" and self.use_llm and len(text) > 4000:
-            logger.info(f"Text is {len(text)} characters, chunking for LLM processing")
+        # Log the text length and method
+        text_length = len(text)
+        logger.info(f"Extracting concepts from text of length {text_length} using method: {method}")
 
-            # Chunk the text
-            chunks = self._chunk_text(text, chunk_size=2000, overlap=200)
+        # For LLM method, always chunk the text for consistent processing
+        if method == "llm" and self.use_llm:
+            # Determine appropriate chunk size based on text length
+            if text_length > 50000:  # Very large document
+                chunk_size = 1000
+                overlap = 100
+            elif text_length > 10000:  # Large document
+                chunk_size = 1500
+                overlap = 150
+            else:  # Smaller document
+                chunk_size = 2000
+                overlap = 200
+
+            # For very small texts, don't chunk
+            if text_length <= 3000:
+                logger.info(f"Text is small ({text_length} chars), processing as a single chunk")
+                return self.extract_concepts_llm(text, max_concepts)
+
+            logger.info(f"Chunking text of {text_length} chars with chunk_size={chunk_size}, overlap={overlap}")
+
+            # Chunk the text using the document processor
+            chunks = self._chunk_text(text, chunk_size=chunk_size, overlap=overlap)
             logger.info(f"Split text into {len(chunks)} chunks for processing")
 
             # Process each chunk
@@ -579,57 +572,74 @@ Focus on technical and domain-specific concepts."""
             concepts_by_name = {}
 
             # Calculate concepts per chunk based on total desired concepts
-            concepts_per_chunk = max(3, min(10, max_concepts // len(chunks)))
+            # Ensure we request more concepts per chunk than we need in total to get good coverage
+            concepts_per_chunk = max(5, min(15, max_concepts))
             logger.info(f"Processing {len(chunks)} chunks with {concepts_per_chunk} concepts per chunk")
 
             for i, chunk in enumerate(chunks):
                 logger.info(f"Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
 
-                # Extract concepts from this chunk
-                chunk_concepts = self.extract_concepts_llm(chunk, concepts_per_chunk)
+                try:
+                    # Extract concepts from this chunk
+                    chunk_concepts = self.extract_concepts_llm(chunk, concepts_per_chunk)
+                    logger.info(f"Extracted {len(chunk_concepts)} concepts from chunk {i+1}")
 
-                # Merge with existing concepts
-                for concept in chunk_concepts:
-                    concept_name = concept["concept"].lower()
+                    # Merge with existing concepts
+                    for concept in chunk_concepts:
+                        concept_name = concept["concept"].lower()
 
-                    if concept_name in concepts_by_name:
-                        # Update existing concept with higher relevance
-                        existing = concepts_by_name[concept_name]
-                        existing["relevance"] = max(existing["relevance"], concept["relevance"])
+                        if concept_name in concepts_by_name:
+                            # Update existing concept with higher relevance
+                            existing = concepts_by_name[concept_name]
+                            existing["relevance"] = max(existing["relevance"], concept["relevance"])
 
-                        # Merge definitions if they're different
-                        if concept.get("definition") and concept["definition"] != existing.get("definition", ""):
-                            existing["definition"] = (existing.get("definition", "") + " " + concept["definition"]).strip()
-                    else:
-                        # Add new concept
-                        concepts_by_name[concept_name] = concept
-                        all_concepts.append(concept)
+                            # Merge definitions if they're different
+                            if concept.get("definition") and concept["definition"] != existing.get("definition", ""):
+                                existing["definition"] = (existing.get("definition", "") + " " + concept["definition"]).strip()
+                        else:
+                            # Add new concept
+                            concepts_by_name[concept_name] = concept
+                            all_concepts.append(concept)
+                except Exception as e:
+                    logger.error(f"Error processing chunk {i+1}: {e}")
+                    # Continue with other chunks
+
+            # If we didn't get any concepts, fall back to rule-based extraction
+            if not all_concepts:
+                logger.warning("LLM extraction failed to produce concepts, falling back to rule-based extraction")
+                concepts = self.extract_concepts_rule_based(text)
+                return [{"concept": c, "relevance": 1.0, "source": "rule"} for c in concepts[:max_concepts]]
 
             # Sort by relevance and limit to max_concepts
             all_concepts.sort(key=lambda x: x.get("relevance", 0), reverse=True)
             return all_concepts[:max_concepts]
 
-        # For shorter texts or other methods, process normally
-        # Adjust max_concepts based on text length
-        text_length = len(text)
-        if text_length < 1000:  # Short text
-            adjusted_max_concepts = min(5, max_concepts)
-        elif text_length < 5000:  # Medium text
-            adjusted_max_concepts = min(10, max_concepts)
-        else:  # Long text
-            adjusted_max_concepts = max_concepts
-
-        logger.info(f"Adjusting max concepts from {max_concepts} to {adjusted_max_concepts} based on text length ({text_length} chars)")
-
-        # Extract concepts using the specified method
-        if method == "llm" and self.use_llm:
-            return self.extract_concepts_llm(text, adjusted_max_concepts)
+        # For NLP method
         elif method == "nlp" and self.use_nlp and nlp is not None:
-            concepts = self.extract_concepts_nlp(text)
-            return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in concepts[:adjusted_max_concepts]]
+            # For very large texts, chunk and process separately
+            if text_length > 100000:
+                logger.info(f"Text is very large ({text_length} chars), chunking for NLP processing")
+                chunks = self._chunk_text(text, chunk_size=50000, overlap=1000)
+
+                all_concepts = []
+                for i, chunk in enumerate(chunks):
+                    chunk_concepts = self.extract_concepts_nlp(chunk)
+                    all_concepts.extend(chunk_concepts)
+
+                # Remove duplicates and sort by frequency
+                from collections import Counter
+                concept_counter = Counter(all_concepts)
+                unique_concepts = [concept for concept, _ in concept_counter.most_common(max_concepts)]
+
+                return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in unique_concepts]
+            else:
+                concepts = self.extract_concepts_nlp(text)
+                return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in concepts[:max_concepts]]
+
+        # For rule-based method
         else:
             concepts = self.extract_concepts_rule_based(text)
-            return [{"concept": c, "relevance": 1.0, "source": "rule"} for c in concepts[:adjusted_max_concepts]]
+            return [{"concept": c, "relevance": 1.0, "source": "rule"} for c in concepts[:max_concepts]]
 
     def _is_valid_concept(self, concept: str) -> bool:
         """
