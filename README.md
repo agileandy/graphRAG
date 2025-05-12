@@ -193,15 +193,16 @@ GraphRAG uses a flexible configuration approach with multiple configuration file
 
 ### Configuration Files
 
-1. **System-wide Configuration**: `~/.graphrag/config.env`
-   - Contains system-wide settings that apply to all GraphRAG instances
-   - Used by service scripts and daemons
-   - Takes precedence over project-specific configuration
-
-2. **Project-specific Configuration**: `.env` (in project root)
+1. **Project-specific Configuration**: `.env` (in project root)
    - Contains settings specific to the current project
-   - Used during development
-   - Falls back to this if system-wide configuration is not found
+   - Primary configuration file for development
+   - **Recommended for most configuration needs**
+
+2. **System-wide Configuration**: `~/.graphrag/config.env`
+   - Optional system-wide settings for all GraphRAG instances
+   - Used primarily by service scripts and daemons
+   - Takes precedence over project-specific configuration
+   - **Only use for machine-specific settings that shouldn't be in version control**
 
 3. **Docker Configuration**: `.env.docker` / `config/env.docker`
    - Contains settings specific to Docker deployment
@@ -212,18 +213,25 @@ GraphRAG uses a flexible configuration approach with multiple configuration file
 
 ### Setting Up Configuration
 
-1. Create a project-specific configuration:
+1. Create a project-specific configuration (recommended approach):
    ```bash
    cp config/env.sample .env
    nano .env  # Edit as needed
    ```
 
-2. For system-wide configuration:
+2. For system-wide configuration (optional, only if needed):
    ```bash
    mkdir -p ~/.graphrag
    cp config/env.sample ~/.graphrag/config.env
    nano ~/.graphrag/config.env  # Edit as needed
    ```
+
+### Important Note
+
+To avoid confusion with multiple configuration files:
+- Use `.env` for most configuration needs
+- Only use `~/.graphrag/config.env` for machine-specific settings
+- Avoid duplicating settings between the two files
 
 For a complete list of configuration options and detailed explanation, see [Configuration Guide](config/README.md).
 

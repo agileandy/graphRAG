@@ -6,15 +6,16 @@ This document explains the configuration approach used in GraphRAG.
 
 GraphRAG uses multiple configuration files to support different deployment scenarios:
 
-1. **System-wide Configuration**: `~/.graphrag/config.env`
-   - Contains system-wide settings that apply to all GraphRAG instances on the machine
-   - Used by service scripts and daemons
-   - Takes precedence over project-specific configuration
-
-2. **Project-specific Configuration**: `.env` (in project root)
+1. **Project-specific Configuration**: `.env` (in project root)
    - Contains settings specific to the current project
-   - Used during development
-   - Falls back to this if system-wide configuration is not found
+   - Primary configuration file for development
+   - Should be used for most configuration needs
+
+2. **System-wide Configuration**: `~/.graphrag/config.env`
+   - Optional system-wide settings that apply to all GraphRAG instances on the machine
+   - Used primarily by service scripts and daemons
+   - Takes precedence over project-specific configuration
+   - **Note**: Only use this for system-specific settings that shouldn't be in version control
 
 3. **Docker Configuration**: `.env.docker` / `config/env.docker`
    - Contains settings specific to Docker deployment
@@ -34,6 +35,16 @@ The configuration is loaded in the following order:
 3. Default values hardcoded in the application
 
 This allows for a flexible configuration approach where system-wide settings can be overridden by project-specific settings.
+
+## Important Note on Configuration Files
+
+The codebase is designed to check for both `.env` and `~/.graphrag/config.env`, but you should generally prefer using just the `.env` file in the project root for most configuration needs. The system-wide configuration should only be used for settings that are specific to your machine and shouldn't be committed to version control.
+
+If you find that both files exist and contain conflicting settings, the system-wide configuration (`~/.graphrag/config.env`) will take precedence. To avoid confusion, it's recommended to:
+
+1. Use `.env` for most configuration needs
+2. Only use `~/.graphrag/config.env` for machine-specific settings that shouldn't be in version control
+3. Avoid duplicating settings between the two files
 
 ## Configuration Options
 
