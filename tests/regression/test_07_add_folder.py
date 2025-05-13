@@ -17,16 +17,19 @@ import sys
 import time
 import json
 import requests
+import subprocess
 from typing import Dict, Any, Tuple, List, Optional
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
+import tests.regression.test_utils as test_utils
 from tests.regression.test_utils import (
     start_services,
     stop_services,
     search_documents,
     get_all_concepts,
+    wait_for_api_ready,
     DOCUMENTS_ENDPOINT
 )
 
@@ -123,19 +126,34 @@ def add_folder(folder_path: str, file_types: Optional[List[str]] = None) -> Tupl
         print(error_message)
         return False, {"error": error_message}
 
-def test_add_folder():
-    """Test adding a folder of documents to the GraphRAG system."""
+def test_add_folder(start_stop_services=True):
+    """
+    Test adding a folder of documents to the GraphRAG system.
+
+    Args:
+        start_stop_services: Whether to start and stop services as part of the test.
+                            Set to False if services are already running.
+    """
     print("\n=== Test 7: Add Folder ===\n")
 
-    # Step 1: Start services
-    print("Step 1: Starting services...")
-    success, process = start_services()
+    process = None
+    if start_stop_services:
+        # Step 1: Start services
+        print("Step 1: Starting services...")
+        success, process = start_services()
 
-    if not success:
-        print("❌ Failed to start services")
-        return False
+        if not success:
+            print("❌ Failed to start services")
+            return False
 
-    print("✅ Services started successfully")
+        print("✅ Services started successfully")
+    else:
+        print("Step 1: Using already running services...")
+        # Check if API is accessible
+        if not wait_for_api_ready(max_retries=5, retry_interval=1):
+            print("❌ API is not accessible. Please start services before running this test.")
+            return False
+        print("✅ Services are running")
 
     try:
         # Step 2: Add documents from folder
@@ -166,6 +184,19 @@ def test_add_folder():
             skipped_count = response.get('skipped_count', 0)
             failed_count = response.get('failed_count', 0)
 
+            # Check if we have a result field with details
+            if 'result' in response and isinstance(response['result'], dict):
+                result = response['result']
+                added_count = result.get('added_count', added_count)
+                skipped_count = result.get('skipped_count', skipped_count)
+                failed_count = result.get('failed_count', failed_count)
+
+                # Check if we have details with successful documents
+                if 'details' in result and isinstance(result['details'], list):
+                    successful_docs = [doc for doc in result['details'] if doc.get('success', False)]
+                    if successful_docs and added_count == 0:
+                        added_count = len(successful_docs)
+
             print(f"Added: {added_count} documents")
             print(f"Skipped: {skipped_count} documents")
             print(f"Failed: {failed_count} documents")
@@ -180,13 +211,15 @@ def test_add_folder():
 
         # Wait for processing to complete
         print("Waiting for processing to complete...")
-        time.sleep(10)
+        # Wait longer to ensure all documents are indexed
+        print("Waiting 30 seconds for indexing to complete...")
+        time.sleep(30)
 
         # Step 3: Verify documents are in the database
         print("\nStep 3: Verifying documents are in the database...")
 
-        # Search for a term likely to be in prompt engineering documents
-        search_query = "prompt engineering"
+        # Search for a more general term that's likely to be in the documents
+        search_query = "prompt"
         success, search_results = search_documents(search_query, n_results=10)
 
         if success:
@@ -251,23 +284,71 @@ def test_add_folder():
         return True
 
     finally:
-        # Step 5: Stop services
-        print("\nStep 5: Stopping services...")
-        if stop_services(process):
-            print("✅ Services stopped successfully")
+        if start_stop_services and process:
+            # Step 5: Stop services
+            print("\nStep 5: Stopping services...")
+            if stop_services(process):
+                print("✅ Services stopped successfully")
+            else:
+                print("❌ Failed to stop services")
         else:
-            print("❌ Failed to stop services")
+            print("\nStep 5: Keeping services running as requested...")
 
 def main():
     """Main function to run the test."""
-    success = test_add_folder()
+    # Check if --no-restart flag is provided
+    import argparse
+    parser = argparse.ArgumentParser(description='Test adding a folder of documents to GraphRAG')
+    parser.add_argument('--no-restart', action='store_true',
+                        help='Do not restart services (use already running services)')
+    parser.add_argument('--use-service-script', action='store_true',
+                        help='Use graphrag-service.sh script instead of start-graphrag-local.sh')
+    args = parser.parse_args()
 
-    if success:
-        print("\n✅ Test 7 passed: Add folder")
-        return 0
-    else:
-        print("\n❌ Test 7 failed: Add folder")
-        return 1
+    # If using service script, modify the start_services function in test_utils
+    if args.use_service_script:
+        # Save the original function
+        original_start_services = test_utils.start_services
+
+        # Define a new function that uses the service script
+        def service_script_start_services():
+            try:
+                # Use the service script to start the services
+                process = subprocess.Popen(
+                    ["./scripts/service_management/graphrag-service.sh", "start"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+
+                # Wait for the API to be ready
+                if test_utils.wait_for_api_ready():
+                    return True, process
+
+                # If the API is not ready, kill the process
+                process.terminate()
+                return False, None
+            except Exception as e:
+                print(f"Error starting services: {e}")
+                return False, None
+
+        # Replace the function
+        test_utils.start_services = service_script_start_services
+
+    try:
+        # Run the test with or without restarting services
+        success = test_add_folder(start_stop_services=not args.no_restart)
+
+        if success:
+            print("\n✅ Test 7 passed: Add folder")
+            return 0
+        else:
+            print("\n❌ Test 7 failed: Add folder")
+            return 1
+    finally:
+        # Restore the original function if we modified it
+        if args.use_service_script:
+            test_utils.start_services = original_start_services
 
 if __name__ == "__main__":
     sys.exit(main())

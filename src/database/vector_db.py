@@ -99,13 +99,29 @@ class VectorDatabase:
         try:
             # Create client with persistence using the new client format
             logger.info(f"Connecting to ChromaDB at {self.persist_directory}")
-            self.client = chromadb.PersistentClient(
-                path=self.persist_directory,
-                settings=Settings(
-                    anonymized_telemetry=False,  # Disable telemetry
-                    allow_reset=True,            # Allow database reset
+            try:
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,  # Disable telemetry
+                        allow_reset=True,            # Allow database reset
+                    )
                 )
-            )
+            except Exception as e:
+                logger.error(f"Error connecting to ChromaDB: {e}")
+                # Try with tenant parameter explicitly set
+                if "tenant" in str(e).lower():
+                    logger.info("Attempting to connect with explicit tenant parameter")
+                    self.client = chromadb.PersistentClient(
+                        path=self.persist_directory,
+                        settings=Settings(
+                            anonymized_telemetry=False,
+                            allow_reset=True,
+                        ),
+                        tenant="default_tenant"
+                    )
+                else:
+                    raise
 
             # Configure collection settings for large datasets
             collection_metadata = {
@@ -163,6 +179,38 @@ class VectorDatabase:
             return True
         except Exception as e:
             logger.error(f"Vector database connection error: {e}")
+
+            # If the error is related to tenant, try to reconnect with explicit tenant
+            if "tenant" in str(e).lower() and "default_tenant" in str(e).lower():
+                try:
+                    logger.info("Attempting to reconnect with explicit tenant parameter")
+                    # Ensure the persist directory exists
+                    os.makedirs(self.persist_directory, exist_ok=True)
+
+                    # Try with tenant parameter explicitly set
+                    self.client = chromadb.PersistentClient(
+                        path=self.persist_directory,
+                        settings=Settings(
+                            anonymized_telemetry=False,
+                            allow_reset=True,
+                        ),
+                        tenant="default_tenant"
+                    )
+
+                    # Get or create collection
+                    self.collection = self.client.get_or_create_collection(
+                        name="ebook_chunks",
+                        metadata={"hnsw:space": "cosine"}
+                    )
+
+                    # Check if we can get collection info
+                    count = self.collection.count()
+                    logger.info(f"Successfully connected to ChromaDB with explicit tenant. Collection contains {count} documents.")
+                    return True
+                except Exception as e2:
+                    logger.error(f"Second attempt to connect to ChromaDB failed: {e2}")
+                    return False
+
             return False
 
     def add_documents(self,
@@ -531,14 +579,50 @@ class VectorDatabase:
         # Use type assertion to handle potential None value
         assert self.collection is not None, "Collection is None after connect()"
 
-        # Use type casting to handle type compatibility issues
-        result = self.collection.get(
-            ids=ids,
-            where=where
-        )
+        try:
+            # Use type casting to handle type compatibility issues
+            result = self.collection.get(
+                ids=ids,
+                where=where
+            )
 
-        # Convert the result to a dictionary
-        return cast(Dict[str, Any], result)
+            # Convert the result to a dictionary
+            return cast(Dict[str, Any], result)
+        except Exception as e:
+            logger.error(f"Error getting documents from ChromaDB: {e}")
+
+            # If the error is related to tenant, try to reconnect with explicit tenant
+            if "tenant" in str(e).lower() and "default_tenant" in str(e).lower():
+                try:
+                    logger.info("Attempting to reconnect with explicit tenant parameter for get operation")
+                    # Try with tenant parameter explicitly set
+                    self.client = chromadb.PersistentClient(
+                        path=self.persist_directory,
+                        settings=Settings(
+                            anonymized_telemetry=False,
+                            allow_reset=True,
+                        ),
+                        tenant="default_tenant"
+                    )
+
+                    # Get or create collection
+                    self.collection = self.client.get_or_create_collection(
+                        name="ebook_chunks",
+                        metadata={"hnsw:space": "cosine"}
+                    )
+
+                    # Try the get operation again
+                    result = self.collection.get(
+                        ids=ids,
+                        where=where
+                    )
+
+                    return cast(Dict[str, Any], result)
+                except Exception as e2:
+                    logger.error(f"Second attempt to get documents failed: {e2}")
+
+            # Return empty result structure
+            return self._create_empty_result()
 
     def _create_empty_result(self) -> Dict[str, Any]:
         """

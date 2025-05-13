@@ -59,9 +59,10 @@ def load_llm_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         logger.error(f"Error loading LLM config: {e}")
         # Return default config
         return {
+            "_comment": "To use OpenRouter for concept extraction, replace OPENROUTER_API_KEY with your actual API key from https://openrouter.ai/",
             "primary_provider": {
                 "type": "openrouter",
-                "api_key": "REPLACE_WITH_YOUR_OPENROUTER_API_KEY",
+                "api_key": "OPENROUTER_API_KEY",
                 "model": "google/gemini-2.0-flash-exp:free",
                 "temperature": 0.1,
                 "max_tokens": 1000,
