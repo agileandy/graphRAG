@@ -81,8 +81,8 @@
       "id": 12,
       "description": "Port configuration mismatch between MCP server and tests",
       "cause": "The MCP server is configured to run on port 8766 by default, but the tests were looking for it on port 8767. The test was updated to use port 8767 and the server was manually started on port 8767.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Fixed by using the centralized port configuration in src/config/ports.py. The MCP server now uses the port from the configuration."
     },
     {
       "id": 13,
@@ -95,85 +95,85 @@
       "id": 14,
       "description": "MCP server port mismatch in regression tests",
       "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Consolidated with bug #12. The port configuration system has been updated to use the centralized port configuration in src/config/ports.py. The MCP server now uses the port from the configuration."
     },
     {
       "id": 15,
       "description": "MCP server port mismatch in regression tests",
       "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #14. Consolidated to avoid redundancy."
     },
     {
       "id": 16,
       "description": "MCP server port mismatch in regression tests",
       "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #14. Consolidated to avoid redundancy."
     },
     {
       "id": 17,
       "description": "MCP server port mismatch in regression tests",
       "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #14. Consolidated to avoid redundancy."
     },
     {
       "id": 18,
       "description": "MCP server port mismatch in regression tests",
       "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #14. Consolidated to avoid redundancy."
     },
     {
       "id": 19,
       "description": "MCP server port mismatch in regression tests",
       "cause": "Regression tests were using hardcoded port 8767 for MCP server, but the server might be running on a different port if 8767 is already in use. Fixed by using the port from the configuration.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #14. Consolidated to avoid redundancy."
     },
     {
       "id": 20,
       "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
       "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Fixed in scripts/check_ports.sh by using the port values from environment variables or defaults. The script now uses GRAPHRAG_PORT_MPC=8765 to get the correct port."
     },
     {
       "id": 21,
       "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
       "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #20. Consolidated to avoid redundancy."
     },
     {
       "id": 22,
       "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
       "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #20. Consolidated to avoid redundancy."
     },
     {
       "id": 23,
       "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
       "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #20. Consolidated to avoid redundancy."
     },
     {
       "id": 24,
       "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
       "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #20. Consolidated to avoid redundancy."
     },
     {
       "id": 25,
       "description": "[Port Mapping] - MPC port mismatch in scripts/check_ports.sh",
       "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Duplicate of bug #20. Consolidated to avoid redundancy."
     },
     {
       "id": 27,
@@ -200,8 +200,8 @@
       "id": 30,
       "description": "Neo4j Port Configuration Issue",
       "cause": "The system is trying to connect to Neo4j on port 7688, but it's actually running on port 7687. The environment variable NEO4J_URI is set to bolt://localhost: without specifying the port.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Fixed in src/database/neo4j_db.py by properly handling variable substitution in NEO4J_URI and adding the port if it's missing. The code now checks if the URI ends with ':' and appends the port number."
     },
     {
       "id": 31,
@@ -223,7 +223,14 @@
       "cause": "The system has scripts to start services but lacks a single comprehensive script to properly shut down all GraphRAG services. Currently, stopping services requires multiple manual steps.",
       "status": "open",
       "resolution": ""
+    },
+    {
+      "id": 34,
+      "description": "Document chunking not working correctly in concept extraction",
+      "cause": "The chunking logic in concept_extractor.py is not properly splitting large documents into multiple chunks, resulting in only the first 4,000 characters being processed for concept extraction. This causes poor concept extraction and isolated concept networks.",
+      "status": "fixed",
+      "resolution": "Fixed by: 1) Modified text normalization in smart_chunk_text to preserve paragraph breaks, 2) Improved handling of large paragraphs by splitting them into sentences, 3) Removed OpenAI dependencies and ensured we only use local LLM providers, 4) Updated extract_concepts method to pass is_chunk=True when processing chunks. Commit: 0f2c80f"
     }
   ],
-  "next_id": 34
+  "next_id": 35
 }
