@@ -20,7 +20,7 @@ The Bug Tracking API Server provides a RESTful interface for managing bugs in th
 You can start the server using the service script:
 
 ```bash
-./tools/bugapi-service.sh start
+./scripts/service_management/bugapi-service.sh start
 ```
 
 Or directly:
@@ -112,27 +112,27 @@ response = requests.put(
 
 ## Service Management
 
-The `tools/bugapi-service.sh` script provides commands for managing the server:
+The `scripts/service_management/bugapi-service.sh` script provides commands for managing the server:
 
 ```bash
 # Start the server
-./tools/bugapi-service.sh start
+./scripts/service_management/bugapi-service.sh start
 
 # Stop the server
-./tools/bugapi-service.sh stop
+./scripts/service_management/bugapi-service.sh stop
 
 # Restart the server
-./tools/bugapi-service.sh restart
+./scripts/service_management/bugapi-service.sh restart
 
 # Check server status
-./tools/bugapi-service.sh status
+./scripts/service_management/bugapi-service.sh status
 ```
 
 ## Troubleshooting
 
 If you encounter issues:
 
-1. Check if the server is running: `./tools/bugapi-service.sh status`
+1. Check if the server is running: `./scripts/service_management/bugapi-service.sh status`
 2. Check the log file: `cat bugMCP/bugapi.log`
 3. Ensure the port is not in use by another application
 4. Verify that the required packages are installed: `pip list | grep fastapi`

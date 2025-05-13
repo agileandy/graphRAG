@@ -94,31 +94,31 @@ The `graphrag-service.sh` script provides an easy way to manage GraphRAG service
 
 ```bash
 # Make the script executable
-chmod +x tools/graphrag-service.sh
+chmod +x scripts/service_management/graphrag-service.sh
 
 # Start all services
-tools/graphrag-service.sh start
+scripts/service_management/graphrag-service.sh start
 
 # Check status
-tools/graphrag-service.sh status
+scripts/service_management/graphrag-service.sh status
 
 # Stop all services
-tools/graphrag-service.sh stop
+scripts/service_management/graphrag-service.sh stop
 
 # Restart all services
-tools/graphrag-service.sh restart
+scripts/service_management/graphrag-service.sh restart
 ```
 
 You can also manage individual services:
 
 ```bash
 # Start/stop individual services
-tools/graphrag-service.sh start-neo4j
-tools/graphrag-service.sh start-api
-tools/graphrag-service.sh start-mpc
-tools/graphrag-service.sh stop-neo4j
-tools/graphrag-service.sh stop-api
-tools/graphrag-service.sh stop-mpc
+scripts/service_management/graphrag-service.sh start-neo4j
+scripts/service_management/graphrag-service.sh start-api
+scripts/service_management/graphrag-service.sh start-mpc
+scripts/service_management/graphrag-service.sh stop-neo4j
+scripts/service_management/graphrag-service.sh stop-api
+scripts/service_management/graphrag-service.sh stop-mpc
 ```
 
 ### Service Monitoring
@@ -127,17 +127,17 @@ The `graphrag-monitor.py` script monitors the services and restarts them if they
 
 ```bash
 # Make the script executable
-chmod +x tools/graphrag-monitor.py
+chmod +x bin/graphrag-monitor.py
 
 # Run the monitor
-tools/graphrag-monitor.py
+bin/graphrag-monitor.py
 ```
 
 To run the monitor as a background service:
 
 ```bash
 # Run in the background
-nohup tools/graphrag-monitor.py > ~/.graphrag/logs/monitor.out 2>&1 &
+nohup bin/graphrag-monitor.py > ~/.graphrag/logs/monitor.out 2>&1 &
 
 # To stop the monitor
 pkill -f graphrag-monitor.py
@@ -174,7 +174,7 @@ curl http://localhost:${GRAPHRAG_PORT_API}/health
 
 ```bash
 # Test the MPC server with the ping tool
-python tools/mpc_client_example.py --port ${GRAPHRAG_PORT_MPC} --tool ping
+python examples/mpc_client_example.py --port ${GRAPHRAG_PORT_MPC} --tool ping
 ```
 
 ## Adding Documents
@@ -182,13 +182,13 @@ python tools/mpc_client_example.py --port ${GRAPHRAG_PORT_MPC} --tool ping
 ### Add a Single Document
 
 ```bash
-python tools/add-document.py --file /path/to/document.pdf
+python scripts/document_processing/add_document_core.py --file /path/to/document.pdf
 ```
 
 ### Add a Folder of Documents
 
 ```bash
-python tools/add-folder.py --folder /path/to/documents --recursive
+python scripts/document_processing/add_pdf_documents.py --folder /path/to/documents --recursive
 ```
 
 ## Troubleshooting
@@ -233,7 +233,7 @@ To completely remove GraphRAG from your system:
 
 ```bash
 # Stop all services
-tools/graphrag-service.sh stop
+scripts/service_management/graphrag-service.sh stop
 
 # Remove GraphRAG data
 rm -rf ~/.graphrag

@@ -23,8 +23,8 @@ The following files have been removed to simplify the codebase and reduce duplic
    - `mcp_settings.json` - Replaced by more specific configuration files
    - `test_lmstudio_direct.py` - Test script not part of core functionality
    - `test_lmstudio_spacy.py` - Test script not part of core functionality
-   - `scripts/start_api_local.sh` - Functionality covered by `tools/graphrag-service.sh`
-   - `scripts/start_mpc_local.sh` - Functionality covered by `tools/graphrag-service.sh`
+   - `scripts/start_api_local.sh` - Functionality covered by `scripts/service_management/graphrag-service.sh`
+   - `scripts/start_mpc_local.sh` - Functionality covered by `scripts/service_management/graphrag-service.sh`
 
 ## Impact on Functionality
 
@@ -36,7 +36,7 @@ These changes do not impact the core functionality of the GraphRAG system. All r
 
 2. **Update Documentation**: Any documentation that references the removed files should be updated to point to the replacement files.
 
-3. **Standardize Service Management**: Continue to use `start-graphrag-local.sh` as the main entry point for starting all GraphRAG services locally, and `tools/graphrag-service.sh` for more fine-grained control.
+3. **Standardize Service Management**: Continue to use `scripts/start-graphrag-local.sh` as the main entry point for starting all GraphRAG services locally, and `scripts/service_management/graphrag-service.sh` for more fine-grained control.
 
 4. **Standardize Database Management**: Use `scripts/clean_database.py` as the primary script for database management.
 

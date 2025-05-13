@@ -73,7 +73,7 @@ fi
 
 #### 2.1 Create MCP Service Script
 
-**File**: `tools/graphrag-service.sh`
+**File**: `scripts/service_management/graphrag-service.sh`
 
 ```bash
 #!/bin/bash
@@ -403,7 +403,7 @@ exit 0
 
 #### 2.2 Create systemd Service Files
 
-**File**: `tools/systemd/graphrag-mcp.service`
+**File**: `scripts/service_management/systemd/graphrag-mcp.service`
 
 ```ini
 [Unit]
@@ -426,7 +426,7 @@ Environment=CHROMA_PERSIST_DIRECTORY=/opt/graphrag/data/chromadb
 WantedBy=multi-user.target
 ```
 
-**File**: `tools/systemd/install-services.sh`
+**File**: `scripts/service_management/systemd/install-services.sh`
 
 ```bash
 #!/bin/bash
@@ -452,9 +452,9 @@ fi
 
 # Copy service files
 echo "Installing systemd service files..."
-cp tools/systemd/graphrag-api.service $SYSTEMD_DIR/
-cp tools/systemd/graphrag-mpc.service $SYSTEMD_DIR/
-cp tools/systemd/graphrag-mcp.service $SYSTEMD_DIR/
+cp scripts/service_management/systemd/graphrag-api.service $SYSTEMD_DIR/
+cp scripts/service_management/systemd/graphrag-mpc.service $SYSTEMD_DIR/
+cp scripts/service_management/systemd/graphrag-mcp.service $SYSTEMD_DIR/
 
 # Reload systemd
 systemctl daemon-reload
@@ -475,7 +475,7 @@ echo "  systemctl start graphrag-mcp"
 
 #### 3.1 Create Health Check Script
 
-**File**: `tools/health-check.sh`
+**File**: `scripts/service_management/health-check.sh`
 
 ```bash
 #!/bin/bash
@@ -687,19 +687,19 @@ The MCP (Model Context Protocol) server allows AI agents to interact with the Gr
 
 ```bash
 # Start the MCP server
-./tools/graphrag-service.sh start mcp
+./scripts/service_management/graphrag-service.sh start mcp
 
 # Stop the MCP server
-./tools/graphrag-service.sh stop mcp
+./scripts/service_management/graphrag-service.sh stop mcp
 
 # Restart the MCP server
-./tools/graphrag-service.sh restart mcp
+./scripts/service_management/graphrag-service.sh restart mcp
 
 # Check MCP server status
-./tools/graphrag-service.sh status
+./scripts/service_management/graphrag-service.sh status
 
 # View MCP server logs
-./tools/graphrag-service.sh logs mcp
+./scripts/service_management/graphrag-service.sh logs mcp
 ```
 
 ### Using systemd (Linux)
@@ -728,7 +728,7 @@ sudo journalctl -u graphrag-mcp
 You can check the health of all GraphRAG services, including the MCP server, using the health check script:
 
 ```bash
-./tools/health-check.sh
+./scripts/service_management/health-check.sh
 ```
 
 This script will check if all services are running and can be connected to.

@@ -174,7 +174,56 @@
       "cause": "The scripts/check_ports.sh script checks for port 8766, but the Docker container maps MPC to port 8765 according to docker-compose.yml. This inconsistency could lead to incorrect port availability checks before starting the Docker container.",
       "status": "open",
       "resolution": ""
+    },
+    {
+      "id": 27,
+      "description": "API Document Addition Error",
+      "cause": "The API server is failing to add documents with error: No module named 'scripts.add_document'",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 28,
+      "description": "Regression Test Service Script Path Error",
+      "cause": "The regression tests are looking for './tools/graphrag-service.sh' but the script is actually at './scripts/service_management/graphrag-service.sh'",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 29,
+      "description": "Document Addition Failure in Regression Tests",
+      "cause": "All tests that involve adding documents are failing with a 500 error. The API server returns 'No module named scripts.add_document'",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 30,
+      "description": "Neo4j Port Configuration Issue",
+      "cause": "The system is trying to connect to Neo4j on port 7688, but it's actually running on port 7687. The environment variable NEO4J_URI is set to bolt://localhost: without specifying the port.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 31,
+      "description": "MCP Server Connection Failure",
+      "cause": "The MCP server test is failing to connect to ws://localhost:8767. The server might not be running or is running on a different port.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 32,
+      "description": "MPC Server Connection Failure",
+      "cause": "The MPC server test is failing to connect to ws://localhost:8766. The server might not be running or is running on a different port.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 33,
+      "description": "Missing comprehensive shutdown script for GraphRAG services",
+      "cause": "The system has scripts to start services but lacks a single comprehensive script to properly shut down all GraphRAG services. Currently, stopping services requires multiple manual steps.",
+      "status": "open",
+      "resolution": ""
     }
   ],
-  "next_id": 27
+  "next_id": 34
 }

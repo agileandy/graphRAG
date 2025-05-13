@@ -265,7 +265,7 @@ def setup_test_environment():
     # Start Neo4j
     neo4j_success, _ = start_service(
         "neo4j_bolt",
-        ["./tools/graphrag-service.sh", "start-neo4j"],
+        ["./scripts/service_management/graphrag-service.sh", "start-neo4j"],
         check_neo4j_ready
     )
     
@@ -277,7 +277,7 @@ def setup_test_environment():
     # Start API server
     api_success, _ = start_service(
         "api",
-        ["./tools/graphrag-service.sh", "start-api"],
+        ["./scripts/service_management/graphrag-service.sh", "start-api"],
         check_api_ready
     )
     
