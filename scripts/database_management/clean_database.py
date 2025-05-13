@@ -14,7 +14,7 @@ import subprocess
 import time
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
@@ -88,17 +88,21 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
 
     # Determine Neo4j data directories
     # Check environment variables first
-    neo4j_home = os.getenv("NEO4J_HOME")
-    neo4j_data_dir = os.getenv("NEO4J_DATA_DIR")
+    neo4j_home = os.getenv("NEO4J_HOME", "/opt/homebrew")
+    neo4j_data_dir = os.getenv("NEO4J_DATA_DIR", "/opt/homebrew/var/neo4j/data")
 
     # If environment variables are set, use them
     if neo4j_home and neo4j_data_dir:
         neo4j_dir = neo4j_home
-        neo4j_data_dir = os.path.join(neo4j_data_dir, 'data', 'databases')
-        neo4j_tx_dir = os.path.join(neo4j_data_dir, 'data', 'transactions')
+        # Expand the tilde in the path if it exists
+        neo4j_data_dir = os.path.expanduser(neo4j_data_dir)
+        neo4j_databases_dir = os.path.join(neo4j_data_dir, 'databases')
+        neo4j_tx_dir = os.path.join(neo4j_data_dir, 'transactions')
         print("Using Neo4j installation from environment variables:")
         print(f"  NEO4J_HOME: {neo4j_home}")
         print(f"  NEO4J_DATA_DIR: {neo4j_data_dir}")
+        print(f"  NEO4J_DATABASES_DIR: {neo4j_databases_dir}")
+        print(f"  NEO4J_TRANSACTIONS_DIR: {neo4j_tx_dir}")
     else:
         # Check standard locations
         home_dir = os.path.expanduser('~')
@@ -117,13 +121,13 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
         if os.path.exists(homebrew_neo4j_dir) and os.path.isdir(homebrew_neo4j_dir):
             # Using Homebrew installation with data in .graphrag
             neo4j_dir = homebrew_neo4j_dir
-            neo4j_data_dir = os.path.join(graphrag_neo4j_dir, 'data', 'databases')
+            neo4j_databases_dir = os.path.join(graphrag_neo4j_dir, 'data', 'databases')
             neo4j_tx_dir = os.path.join(graphrag_neo4j_dir, 'data', 'transactions')
             print("Using Neo4j installation from Homebrew at /opt/homebrew with data in ~/.graphrag/neo4j")
         elif os.path.exists(project_neo4j_dir) and os.path.isdir(project_neo4j_dir):
             # Legacy installation in project directory
             neo4j_dir = project_neo4j_dir
-            neo4j_data_dir = os.path.join(project_neo4j_dir, 'data', 'databases')
+            neo4j_databases_dir = os.path.join(project_neo4j_dir, 'data', 'databases')
             neo4j_tx_dir = os.path.join(project_neo4j_dir, 'data', 'transactions')
             print(f"Using Neo4j installation in project directory: {neo4j_dir}")
         else:
@@ -131,14 +135,14 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
             return False
 
     # Check if Neo4j data directory exists
-    if not os.path.exists(neo4j_data_dir):
-        print(f"Neo4j data directory not found: {neo4j_data_dir}")
+    if not os.path.exists(neo4j_databases_dir):
+        print(f"Neo4j databases directory not found: {neo4j_databases_dir}")
         return False
 
     # Confirm deletion
     if not confirm:
         print("⚠️  WARNING: This will physically delete all Neo4j database files!")
-        print(f"Neo4j data directory: {neo4j_data_dir}")
+        print(f"Neo4j databases directory: {neo4j_databases_dir}")
         print(f"Neo4j transaction directory: {neo4j_tx_dir}")
         response = input("Are you sure you want to physically delete Neo4j database files? (y/n): ")
         if response.lower() != 'y':
@@ -167,12 +171,12 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
     success = True
 
     # Delete databases directory
-    if os.path.exists(neo4j_data_dir):
-        print(f"Deleting Neo4j databases directory: {neo4j_data_dir}")
+    if os.path.exists(neo4j_databases_dir):
+        print(f"Deleting Neo4j databases directory: {neo4j_databases_dir}")
         try:
             # Delete all contents but keep the directory
-            for item in os.listdir(neo4j_data_dir):
-                item_path = os.path.join(neo4j_data_dir, item)
+            for item in os.listdir(neo4j_databases_dir):
+                item_path = os.path.join(neo4j_databases_dir, item)
                 if os.path.isdir(item_path):
                     shutil.rmtree(item_path)
                 else:

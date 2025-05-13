@@ -51,14 +51,16 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 
 ### Service Management
 
-- **start-graphrag-local.sh**: **MAIN ENTRY POINT** - User-friendly script to start all GraphRAG services locally with proper environment checks.
-- **tools/graphrag-service.sh**: **PRIMARY SERVICE MANAGEMENT SCRIPT** - Comprehensive script for starting, stopping, and monitoring all GraphRAG services locally.
-- **tools/graphrag-monitor.py**: Monitors GraphRAG services and restarts them if they crash.
-- **scripts/start_all_services.sh**: Starts all services using tmux (alternative to graphrag-service.sh).
-- **scripts/start_neo4j.sh**: Starts Neo4j server (used by start_all_services.sh).
-- **scripts/start_api_server.sh**: Starts API server (used by start_all_services.sh).
-- **scripts/start_mpc_server.sh**: Starts MPC server (used by start_all_services.sh).
-- **scripts/stop_neo4j.sh**: Stops Neo4j server.
+- **scripts/start-graphrag-local.sh**: **MAIN ENTRY POINT** - User-friendly script to start all GraphRAG services locally with proper environment checks.
+- **scripts/service_management/graphrag-service.sh**: **PRIMARY SERVICE MANAGEMENT SCRIPT** - Comprehensive script for starting, stopping, and monitoring all GraphRAG services locally.
+- **bin/graphrag-monitor.py**: Monitors GraphRAG services and restarts them if they crash.
+- **scripts/service_management/start_all_services.sh**: Starts all services using tmux (alternative to graphrag-service.sh).
+- **scripts/service_management/start_neo4j.sh**: Starts Neo4j server (used by start_all_services.sh).
+- **scripts/service_management/start_api_server.sh**: Starts API server (used by start_all_services.sh).
+- **scripts/service_management/start_mpc_server.sh**: Starts MPC server (used by start_all_services.sh).
+- **scripts/service_management/stop_neo4j.sh**: Stops Neo4j server.
+- **scripts/service_management/bugapi-service.sh**: Manages the Bug Tracking API server.
+- **scripts/service_management/bugmcp-service.sh**: Manages the Bug Tracking MCP server.
 
 ### Database Management
 
@@ -154,8 +156,8 @@ This document provides a comprehensive overview of the GraphRAG project's file s
    - `scripts/clear_neo4j.py` (partial duplicate)
 
 2. **Service Management Scripts**:
-   - `tools/graphrag-service.sh` (primary)
-   - `scripts/start_all_services.sh` (alternative using tmux)
+   - `scripts/service_management/graphrag-service.sh` (primary)
+   - `scripts/service_management/start_all_services.sh` (alternative using tmux)
    - Individual start/stop scripts (partial duplicates)
 
 3. **Document Addition Scripts**:
@@ -199,30 +201,30 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 
 ### Essential Service Management
 
-- **start-graphrag-local.sh**: Use this as the main entry point for starting all GraphRAG services locally.
+- **scripts/start-graphrag-local.sh**: Use this as the main entry point for starting all GraphRAG services locally.
   ```bash
   # Start all services
-  ./start-graphrag-local.sh
+  ./scripts/start-graphrag-local.sh
   ```
 
-- **tools/graphrag-service.sh**: Use this for more fine-grained control over the services.
+- **scripts/service_management/graphrag-service.sh**: Use this for more fine-grained control over the services.
   ```bash
   # Start all services
-  ./tools/graphrag-service.sh start
+  ./scripts/service_management/graphrag-service.sh start
   
   # Check status
-  ./tools/graphrag-service.sh status
+  ./scripts/service_management/graphrag-service.sh status
   
   # Stop all services
-  ./tools/graphrag-service.sh stop
+  ./scripts/service_management/graphrag-service.sh stop
   
   # Restart all services
-  ./tools/graphrag-service.sh restart
+  ./scripts/service_management/graphrag-service.sh restart
   
   # Start individual services
-  ./tools/graphrag-service.sh start-neo4j
-  ./tools/graphrag-service.sh start-api
-  ./tools/graphrag-service.sh start-mpc
+  ./scripts/service_management/graphrag-service.sh start-neo4j
+  ./scripts/service_management/graphrag-service.sh start-api
+  ./scripts/service_management/graphrag-service.sh start-mpc
   ```
 
 ### Database Management
@@ -268,10 +270,10 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 
 The GraphRAG project has a comprehensive set of tools and scripts for managing the system. The primary scripts for local deployment are:
 
-1. **start-graphrag-local.sh** as the main entry point for starting all services
-2. **tools/graphrag-service.sh** for detailed service management
+1. **scripts/start-graphrag-local.sh** as the main entry point for starting all services
+2. **scripts/service_management/graphrag-service.sh** for detailed service management
 3. **scripts/clean_database.py** for database management
-4. **scripts/add_document.py** and **tools/test_async_processing.py** for document processing
+4. **scripts/add_document.py** and **scripts/document_processing/test_async_processing.py** for document processing
 5. **scripts/query_graphrag.py** for querying
 
 There is some duplication in functionality, particularly in database reset scripts and service management scripts. The deprecated files are mostly old test files that have been replaced by newer versions.

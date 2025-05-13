@@ -7,9 +7,9 @@ GraphRAG is a hybrid Retrieval-Augmented Generation system that combines vector 
 ```mermaid
 graph TD
     User[User/AI Agent] --> API[API Server]
-    User --> MPC[MPC Server]
+    User --> MCP[MCP Server]
     API --> DBL[Database Linkage]
-    MPC --> DBL
+    MCP --> DBL
     DBL --> Neo4j[Neo4j Graph Database]
     DBL --> ChromaDB[ChromaDB Vector Database]
     DP[Document Processing] --> Neo4j
@@ -32,7 +32,7 @@ graph TD
 - **Graph Database**: Neo4j 5.18.1
 - **Vector Database**: ChromaDB 1.0.8+
 - **API Server**: Flask
-- **MPC Server**: WebSockets
+- **MCP Server**: WebSockets
 - **LLM Integration**: OpenAI API and local models via LM Studio
 - **Containerization**: Docker
 
@@ -47,7 +47,7 @@ graph TD
   - Neo4j 5.18.1+
   - UV package manager (preferred over pip)
 - **Network**:
-  - Ports 5001 (API), 7688 (Neo4j Bolt), 7475 (Neo4j Browser), 8766 (MPC) must be available
+  - Ports 5001 (API), 7688 (Neo4j Bolt), 7475 (Neo4j Browser), 8766 (MCP) must be available
   - Internet connection for LLM API calls (if using OpenAI)
 
 ## 2. Component Architecture
@@ -380,39 +380,42 @@ classDiagram
 | `/concepts` | GET | Get all concepts |
 | `/documents/<concept_name>` | GET | Get documents for concept |
 | `/documents` | POST | Add a document |
+| `/documents/folder` | POST | Add all documents from a folder |
+| `/jobs/<job_id>` | GET | Get status of an asynchronous job |
+| `/jobs` | GET | List all jobs |
 
-### 2.4 MPC Server
+### 2.4 MCP Server
 
-The MPC (Message Passing Communication) server enables AI agents to interact with the system:
+The MCP (Message Passing Communication) server enables AI agents to interact with the system:
 
 ```mermaid
 sequenceDiagram
     participant Agent as AI Agent
-    participant MPC as MPC Server
+    participant MCP as MCP Server
     participant JM as Job Manager
     participant DB as Database Layer
 
-    Agent->>MPC: Connect WebSocket
-    MPC->>Agent: Connection Established
-    Agent->>MPC: Request (action: "search", query: "...")
-    MPC->>DB: Perform Search
-    DB->>MPC: Search Results
-    MPC->>Agent: Response (results)
+    Agent->>MCP: Connect WebSocket
+    MCP->>Agent: Connection Established
+    Agent->>MCP: Request (action: "search", query: "...")
+    MCP->>DB: Perform Search
+    DB->>MCP: Search Results
+    MCP->>Agent: Response (results)
 
-    Agent->>MPC: Request (action: "add-document", text: "...", async: true)
-    MPC->>JM: Create Job
+    Agent->>MCP: Request (action: "add-document", text: "...", async: true)
+    MCP->>JM: Create Job
     JM->>Agent: Job Created (job_id)
     JM->>DB: Process Document (async)
-    Agent->>MPC: Request (action: "job-status", job_id: "...")
-    MPC->>JM: Get Job Status
+    Agent->>MCP: Request (action: "job-status", job_id: "...")
+    MCP->>JM: Get Job Status
     JM->>Agent: Job Status (progress)
     DB-->>JM: Processing Complete
-    Agent->>MPC: Request (action: "job-status", job_id: "...")
-    MPC->>JM: Get Job Status
+    Agent->>MCP: Request (action: "job-status", job_id: "...")
+    MCP->>JM: Get Job Status
     JM->>Agent: Job Status (completed)
 ```
 
-#### 2.4.1 MPC Actions
+#### 2.4.1 MCP Actions
 
 | Action | Description |
 |--------|-------------|
@@ -610,17 +613,17 @@ The system can be deployed as a Docker container with all necessary components:
 graph TD
     subgraph Docker Container
         API[API Server]
-        MPC[MPC Server]
+        MCP[MCP Server]
         Neo4j[Neo4j]
         ChromaDB[ChromaDB]
     end
 
     User[User/AI Agent] --> API
-    User --> MPC
+    User --> MCP
     API --> Neo4j
     API --> ChromaDB
-    MPC --> Neo4j
-    MPC --> ChromaDB
+    MCP --> Neo4j
+    MCP --> ChromaDB
 ```
 
 ##### Port Mappings
@@ -630,7 +633,7 @@ graph TD
 | Neo4j Browser | 7474 | 7475 |
 | Neo4j Bolt | 7687 | 7688 |
 | API Server | 5000 | 5001 |
-| MPC Server | 8765 | 8766 |
+| MCP Server | 8765 | 8766 |
 
 #### 3.3.2 Local Deployment
 
@@ -640,8 +643,8 @@ The system can also be run locally with Neo4j installed in `~/.local/neo4j/` and
 graph TD
     API[API Server] --> Neo4j[Neo4j]
     API --> ChromaDB[ChromaDB]
-    MPC[MPC Server] --> Neo4j
-    MPC --> ChromaDB
+    MCP[MCP Server] --> Neo4j
+    MCP --> ChromaDB
     Neo4j --> Neo4jData[~/.graphrag/neo4j/]
     ChromaDB --> ChromaDBData[./data/chromadb]
 ```
@@ -659,8 +662,8 @@ graph TD
     subgraph Application Servers
         API1[API Server 1]
         API2[API Server 2]
-        MPC1[MPC Server 1]
-        MPC2[MPC Server 2]
+        MCP1[MCP Server 1]
+        MCP2[MCP Server 2]
     end
 
     subgraph Database Servers
@@ -677,23 +680,23 @@ graph TD
     Client[Client] --> LB
     LB --> API1
     LB --> API2
-    LB --> MPC1
-    LB --> MPC2
+    LB --> MCP1
+    LB --> MCP2
 
     API1 --> Neo4j
     API2 --> Neo4j
-    MPC1 --> Neo4j
-    MPC2 --> Neo4j
+    MCP1 --> Neo4j
+    MCP2 --> Neo4j
 
     API1 --> ChromaDB
     API2 --> ChromaDB
-    MPC1 --> ChromaDB
-    MPC2 --> ChromaDB
+    MCP1 --> ChromaDB
+    MCP2 --> ChromaDB
 
     API1 -.-> |Job Queue| Worker1
     API2 -.-> |Job Queue| Worker2
-    MPC1 -.-> |Job Queue| Worker3
-    MPC2 -.-> |Job Queue| Worker1
+    MCP1 -.-> |Job Queue| Worker3
+    MCP2 -.-> |Job Queue| Worker1
 
     Worker1 --> Neo4j
     Worker2 --> Neo4j
@@ -770,7 +773,7 @@ if response.choices[0].message.function_call:
 
 The following items are still in progress:
 
-1. **MPC Server Issues** (3.6-spec-mpc-server-issues.md): Fix startup failures and improve reliability
+1. **MCP Server Issues** (3.6-spec-MCP-server-issues.md): Fix startup failures and improve reliability
 2. **LLM Integration** (3.10-spec-llm-integration.md): Consolidate LLM code to use local models properly
 3. **API Port Conflict** (3.7-spec-api-port-conflict.md): Resolve port conflicts when multiple instances start
 4. **ChromaDB Duplicate Detection** (3.8-spec-chromadb-duplicate-detection.md): Improve duplicate detection
@@ -805,8 +808,8 @@ uv pip install -r requirements.txt
 # Start the API server
 ./scripts/start_api_local.sh
 
-# Start the MPC server
-./scripts/start_mpc_local.sh
+# Start the MCP server
+./scripts/start_MCP_local.sh
 ```
 
 ### 6.2 Docker Installation
@@ -856,9 +859,9 @@ USE_LOCAL_LLM=true
 API_HOST=0.0.0.0
 API_PORT=5000
 
-# MPC Configuration
-MPC_HOST=0.0.0.0
-MPC_PORT=8765
+# MCP Configuration
+MCP_HOST=0.0.0.0
+MCP_PORT=8765
 ```
 
 ## 7. Maintenance and Operations
@@ -892,7 +895,7 @@ The system provides several endpoints for monitoring:
 Logs are stored in the following locations:
 
 - API Server: `./logs/api.log`
-- MPC Server: `./logs/mpc.log`
+- MCP Server: `./logs/MCP.log`
 - Neo4j: `~/.graphrag/neo4j/logs/`
 - Job Processing: `./logs/jobs.log`
 
@@ -915,7 +918,7 @@ Common issues and solutions:
    - Check permissions on the persist directory
    - Verify ChromaDB version compatibility
 
-3. **API/MPC Server Issues**:
+3. **API/MCP Server Issues**:
    - Check for port conflicts
    - Verify the server is running: `ps aux | grep server`
    - Check logs for errors
@@ -939,7 +942,7 @@ Common issues and solutions:
             return jsonify({"error": "Invalid or missing API key"}), 401
     ```
 
-- **MPC Server Authentication**:
+- **MCP Server Authentication**:
   - WebSocket connection requires initial authentication handshake
   - Session tokens for persistent connections
   - Automatic session expiration after inactivity
@@ -1135,9 +1138,57 @@ Get concept information.
 }
 ```
 
-### 10.2 MPC Protocol
+#### `POST /documents/folder`
 
-The MPC server uses WebSockets for communication. Messages are JSON objects with the following structure:
+Add all documents from a folder to the GraphRAG system. This endpoint processes documents asynchronously using the job management system.
+
+**Request:**
+
+```json
+{
+  "folder_path": "/path/to/documents",
+  "recursive": false,
+  "file_types": [".pdf", ".txt", ".md"],
+  "default_metadata": {
+    "category": "AI",
+    "source": "Research Papers"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "status": "accepted",
+  "message": "Folder processing started",
+  "job_id": "job-789012",
+  "total_files": 5
+}
+```
+
+#### `GET /jobs/{job_id}`
+
+Get the status of an asynchronous job.
+
+**Response:**
+
+```json
+{
+  "job_id": "job-789012",
+  "job_type": "add-folder",
+  "status": "running",
+  "progress": 40.0,
+  "processed_items": 2,
+  "total_items": 5,
+  "created_at": "2023-05-08T12:34:56Z",
+  "started_at": "2023-05-08T12:35:00Z"
+}
+```
+
+### 10.2 MCP Protocol
+
+The MCP server uses WebSockets for communication. Messages are JSON objects with the following structure:
 
 **Request:**
 
@@ -1361,7 +1412,7 @@ for result in results:
     print("---")
 ```
 
-#### Example 2: Using the MPC Server from a Client
+#### Example 2: Using the MCP Server from a Client
 
 ```python
 import asyncio
@@ -1369,7 +1420,7 @@ import json
 import websockets
 
 async def graphrag_client():
-    uri = "ws://localhost:${GRAPHRAG_PORT_MPC}"
+    uri = "ws://localhost:${GRAPHRAG_PORT_MCP}"
 
     async with websockets.connect(uri) as websocket:
         # Ping to test connection
@@ -1480,7 +1531,7 @@ The GraphRAG system has been benchmarked on various datasets and hardware config
 | **Concept Extraction** | Process of identifying key concepts from document text |
 | **Chunk** | A segment of a document, typically a paragraph or section |
 | **Embedding** | A vector representation of text that captures semantic meaning |
-| **MPC Server** | Message Passing Communication server for AI agent integration |
+| **MCP Server** | Message Passing Communication server for AI agent integration |
 | **Vector Database** | Database optimized for storing and querying vector embeddings |
 | **Graph Database** | Database that represents data as nodes and relationships |
 | **Job Manager** | System component that handles asynchronous processing tasks |
@@ -1599,7 +1650,7 @@ The system's key strengths include:
 - Rich concept extraction and relationship building
 - Asynchronous processing for handling large document collections
 - Flexible deployment options (Docker, local)
-- Comprehensive API and MPC interfaces for integration
+- Comprehensive API and MCP interfaces for integration
 
 Future development will focus on:
 

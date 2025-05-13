@@ -75,8 +75,19 @@ start_api() {
         return 1
     fi
 
-    cd "$(dirname "$0")/.." && \
-    .venv-py312/bin/gunicorn \
+    # Change to project root directory
+    cd "$(dirname "$0")/../.."
+
+    # Use absolute path to gunicorn
+    GUNICORN_PATH="$(pwd)/.venv-py312/bin/gunicorn"
+
+    if [ ! -f "$GUNICORN_PATH" ]; then
+        echo "❌ gunicorn not found at $GUNICORN_PATH"
+        echo "   Make sure gunicorn is installed in the virtual environment."
+        return 1
+    fi
+
+    $GUNICORN_PATH \
         --bind 0.0.0.0:$GRAPHRAG_PORT_API \
         --workers 2 \
         --threads 4 \
@@ -110,8 +121,19 @@ start_mpc() {
         return 1
     fi
 
-    cd "$(dirname "$0")/.." && \
-    .venv-py312/bin/python -m src.mpc.server --host 0.0.0.0 --port $GRAPHRAG_PORT_MPC > "$LOG_DIR/mpc.log" 2>&1 &
+    # Change to project root directory
+    cd "$(dirname "$0")/../.."
+
+    # Use absolute path to python
+    PYTHON_PATH="$(pwd)/.venv-py312/bin/python"
+
+    if [ ! -f "$PYTHON_PATH" ]; then
+        echo "❌ Python not found at $PYTHON_PATH"
+        echo "   Make sure the virtual environment is set up correctly."
+        return 1
+    fi
+
+    $PYTHON_PATH -m src.mpc.server --host 0.0.0.0 --port $GRAPHRAG_PORT_MPC > "$LOG_DIR/mpc.log" 2>&1 &
     echo $! > "$PID_DIR/mpc.pid"
 
     # Wait for MPC server to start

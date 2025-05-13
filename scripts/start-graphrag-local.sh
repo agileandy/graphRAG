@@ -12,8 +12,18 @@ fi
 
 # Check if the virtual environment exists
 if [ ! -d ".venv-py312" ]; then
-    echo "❌ Virtual environment not found. Please create it with: uv venv --python 3.12.8 .venv-py312"
+    echo "❌ Virtual environment not found. Please create it with: uv venv --python /Users/andyspamer/.local/share/uv/python/cpython-3.12.8-macos-aarch64-none/bin/python3.12 .venv-py312"
     exit 1
+fi
+
+# Check Python version in the virtual environment
+if [ -f "scripts/check_python_version.sh" ]; then
+    ./scripts/check_python_version.sh
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+else
+    echo "⚠️ Python version check script not found. Skipping version check."
 fi
 
 # Check if required Python packages are installed
@@ -23,11 +33,11 @@ if ! .venv-py312/bin/python -c "import neo4j, chromadb, flask, websockets" &> /d
 fi
 
 # Use the graphrag-service.sh script to start the services
-if [ -f "tools/graphrag-service.sh" ]; then
-    echo "Starting GraphRAG services using tools/graphrag-service.sh..."
-    ./tools/graphrag-service.sh start
+if [ -f "scripts/service_management/graphrag-service.sh" ]; then
+    echo "Starting GraphRAG services using scripts/service_management/graphrag-service.sh..."
+    ./scripts/service_management/graphrag-service.sh start
 else
-    echo "❌ tools/graphrag-service.sh not found. Please check your installation."
+    echo "❌ scripts/service_management/graphrag-service.sh not found. Please check your installation."
     exit 1
 fi
 
@@ -36,13 +46,13 @@ echo ""
 echo "GraphRAG service is starting..."
 echo ""
 echo "To check the status of the services:"
-echo "  ./tools/graphrag-service.sh status"
+echo "  ./scripts/service_management/graphrag-service.sh status"
 echo ""
 echo "To stop the services:"
-echo "  ./tools/graphrag-service.sh stop"
+echo "  ./scripts/service_management/graphrag-service.sh stop"
 echo ""
 echo "To restart the services:"
-echo "  ./tools/graphrag-service.sh restart"
+echo "  ./scripts/service_management/graphrag-service.sh restart"
 echo ""
 echo "To add a document:"
 echo "  uv run --python .venv-py312/bin/python scripts/add_document.py /path/to/document.pdf"

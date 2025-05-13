@@ -20,13 +20,13 @@ from src.config.ports import DEFAULT_PORTS
 # Define patterns for common port usages in documentation
 PORT_PATTERNS = [
     # localhost:8765
-    (r'localhost:(\d+)', r'localhost:${GRAPHRAG_PORT_{}'),
+    (r'localhost:(\d+)', 'localhost:${GRAPHRAG_PORT_SERVICE}'),
     # 127.0.0.1:8765
-    (r'127\.0\.0\.1:(\d+)', r'127.0.0.1:${GRAPHRAG_PORT_{}'),
+    (r'127\.0\.0\.1:(\d+)', '127.0.0.1:${GRAPHRAG_PORT_SERVICE}'),
     # --port 8765
-    (r'--port\s+(\d+)', r'--port ${GRAPHRAG_PORT_{}'),
+    (r'--port\s+(\d+)', '--port ${GRAPHRAG_PORT_SERVICE}'),
     # -p 8765
-    (r'-p\s+(\d+)', r'-p ${GRAPHRAG_PORT_{}'),
+    (r'-p\s+(\d+)', '-p ${GRAPHRAG_PORT_SERVICE}'),
 ]
 
 # Define file extensions to scan
@@ -46,22 +46,22 @@ def update_file(file_path):
         except UnicodeDecodeError:
             print(f"Warning: Could not read {file_path} as text")
             return False
-    
+
     original_content = content
-    
+
     for pattern, replacement_template in PORT_PATTERNS:
         for match in re.finditer(pattern, content):
             port = int(match.group(1))
             if port in PORT_TO_SERVICE:
                 service = PORT_TO_SERVICE[port]
-                replacement = replacement_template.format(service) + '}'
+                replacement = replacement_template.replace('SERVICE', service)
                 content = content.replace(match.group(0), replacement)
-    
+
     if content != original_content:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         return True
-    
+
     return False
 
 def scan_directory(directory):
@@ -73,19 +73,19 @@ def scan_directory(directory):
                 file_path = os.path.join(root, file)
                 if update_file(file_path):
                     updated_files.append(file_path)
-    
+
     return updated_files
 
 def main():
     """Main function."""
     updated_files = []
-    
+
     # Scan documentation directories
     for docs_dir in DOCS_DIRS:
         dir_path = os.path.join(project_root, docs_dir)
         if os.path.exists(dir_path):
             updated_files.extend(scan_directory(dir_path))
-    
+
     # Print the results
     if updated_files:
         print(f"Updated {len(updated_files)} files:")

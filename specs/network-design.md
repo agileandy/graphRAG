@@ -182,7 +182,7 @@ PORTS=(7475 7688 5001 8766)
 2. The agent tools in `src/agent-tools/utils.py` use port 8766 for MPC, but the MPC server runs on port 8765.
 3. The `docker-entrypoint.sh` script mentions "MPC Server: ws://localhost:8766" in its output, but starts the MPC server on port 8765.
 4. The `.env.docker` file sets `GRAPHRAG_MPC_PORT=8765`, but this value is not used in the Docker entrypoint script.
-5. The `tools/graphrag-service.sh` script uses `GRAPHRAG_MPC_PORT=8765` from config, but the MPC server is hardcoded to use port 8765 in `src/mpc/server.py`.
+5. The `scripts/service_management/graphrag-service.sh` script uses `GRAPHRAG_MPC_PORT=8765` from config, but the MPC server is hardcoded to use port 8765 in `src/mpc/server.py`.
 6. The `specs/todo/mcp-docker-and-service.md` file mentions `MCP_PORT=8766`, but the MCP server runs on port 8767.
 7. The `tools/generate-mcp-settings.py` script generates settings with port 8767 for MCP, which is correct according to the centralized configuration.
 8. The `$HOME/.graphrag/config.env` file sets `GRAPHRAG_MPC_PORT=8767`, which conflicts with the default MPC port of 8765.

@@ -1,0 +1,1 @@
+scripts/start-graphrag-local.sh
