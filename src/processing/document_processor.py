@@ -47,8 +47,11 @@ def smart_chunk_text(
     """
     chunks = []
 
-    # Clean text: normalize whitespace and line breaks
-    text = re.sub(r'\s+', ' ', text)
+    # Clean text: normalize whitespace while preserving paragraph breaks
+    # Replace multiple spaces with a single space, but preserve paragraph breaks
+    text = re.sub(r'([^\n])\s+([^\n])', r'\1 \2', text)
+    # Normalize paragraph breaks (multiple newlines become exactly two newlines)
+    text = re.sub(r'\n\s*\n\s*', '\n\n', text)
 
     if semantic_boundaries:
         # First try to split by paragraphs (double line breaks)
@@ -170,7 +173,7 @@ def optimize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
     return optimized
 
 def optimize_chunk_size(
-    document_text: str, 
+    document_text: str,
     default_size: int = DEFAULT_CHUNK_SIZE,
     very_large_doc_threshold: int = VERY_LARGE_DOC_THRESHOLD,
     large_doc_threshold: int = LARGE_DOC_THRESHOLD,
@@ -179,11 +182,11 @@ def optimize_chunk_size(
 ) -> int:
     """
     Determine optimal chunk size based on document characteristics.
-    
+
     This function implements adaptive chunk sizing based on:
     1. Document length - longer documents get smaller chunks
     2. Content complexity - more complex content gets smaller chunks
-    
+
     Args:
         document_text: The text content of the document
         default_size: Default chunk size for normal documents
@@ -191,13 +194,13 @@ def optimize_chunk_size(
         large_doc_threshold: Threshold for large documents (chars)
         small_chunk_size: Chunk size for very large documents
         medium_chunk_size: Chunk size for large documents
-        
+
     Returns:
         Optimized chunk size in characters
     """
     # Get document length
     doc_length = len(document_text)
-    
+
     # Base size adjustment on document length
     if doc_length > very_large_doc_threshold:
         base_size = small_chunk_size  # Smaller chunks for very large documents
@@ -205,13 +208,13 @@ def optimize_chunk_size(
         base_size = medium_chunk_size  # Medium chunks for large documents
     else:
         base_size = default_size  # Use default for smaller documents
-    
+
     # Further adjust based on content complexity
     # Check for complex content indicators
     has_tables = bool(re.search(r'\|\s*-+\s*\|', document_text))  # Markdown tables
     has_code_blocks = bool(re.search(r'```[\s\S]*?```', document_text))  # Code blocks
     has_lists = bool(re.search(r'^\s*[*\-+]\s+', document_text, re.MULTILINE))  # Lists
-    
+
     # Adjust size based on content complexity
     complexity_factor = 1.0
     if has_tables:
@@ -220,15 +223,15 @@ def optimize_chunk_size(
         complexity_factor *= 0.9  # Reduce size for documents with code blocks
     if has_lists:
         complexity_factor *= 0.95  # Slight reduction for documents with lists
-    
+
     # Apply complexity factor
     adjusted_size = int(base_size * complexity_factor)
-    
+
     # Ensure size is within reasonable bounds
     min_size = 250
     max_size = 2000
     final_size = max(min_size, min(adjusted_size, max_size))
-    
+
     return final_size
 
 def process_document_with_metadata(
@@ -264,7 +267,7 @@ def process_document_with_metadata(
 
     # Add content hash to metadata if not already present
     from src.processing.document_hash import generate_document_hash, enrich_metadata_with_hashes
-    
+
     # Enrich the document metadata with hashes for deduplication
     enriched_metadata = enrich_metadata_with_hashes(metadata, text)
 

@@ -261,13 +261,14 @@ class ConceptExtractor:
         # Remove duplicates and sort
         return sorted(list(set(concepts)))
 
-    def extract_concepts_llm(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
+    def extract_concepts_llm(self, text: str, max_concepts: int = 10, is_chunk: bool = False) -> List[Dict[str, Any]]:
         """
         Extract concepts using LLM-based approach.
 
         Args:
             text: Input text
             max_concepts: Maximum number of concepts to extract
+            is_chunk: Whether the text is already a chunk (to avoid unnecessary truncation)
 
         Returns:
             List of extracted concepts with metadata
@@ -275,7 +276,7 @@ class ConceptExtractor:
         # First try using the LLMManager if available
         if llm_manager is not None:
             try:
-                return self._extract_concepts_with_llm_manager(text, max_concepts)
+                return self._extract_concepts_with_llm_manager(text, max_concepts, is_chunk)
             except Exception as e:
                 logger.warning(f"Error using LLMManager for concept extraction: {e}")
                 # Fall back to OpenAI client if available
@@ -293,20 +294,21 @@ class ConceptExtractor:
         nlp_concepts = self.extract_concepts_nlp(text)
         return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in nlp_concepts[:max_concepts]]
 
-    def _extract_concepts_with_llm_manager(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
+    def _extract_concepts_with_llm_manager(self, text: str, max_concepts: int = 10, is_chunk: bool = False) -> List[Dict[str, Any]]:
         """
         Extract concepts using LLMManager with improved error handling for template issues.
 
         Args:
             text: Input text
             max_concepts: Maximum number of concepts to extract
+            is_chunk: Whether the text is already a chunk (to avoid unnecessary truncation)
 
         Returns:
             List of extracted concepts with metadata
         """
-        # Truncate text if too long
+        # Truncate text if too long and not already a chunk
         max_text_length = 4000
-        if len(text) > max_text_length:
+        if not is_chunk and len(text) > max_text_length:
             truncated_text = text[:max_text_length] + "..."
             logger.info(f"Text truncated from {len(text)} to {max_text_length} characters")
         else:
@@ -580,8 +582,8 @@ Focus on technical and domain-specific concepts."""
                 logger.info(f"Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
 
                 try:
-                    # Extract concepts from this chunk
-                    chunk_concepts = self.extract_concepts_llm(chunk, concepts_per_chunk)
+                    # Extract concepts from this chunk, indicating it's already a chunk
+                    chunk_concepts = self.extract_concepts_llm(chunk, concepts_per_chunk, is_chunk=True)
                     logger.info(f"Extracted {len(chunk_concepts)} concepts from chunk {i+1}")
 
                     # Merge with existing concepts
