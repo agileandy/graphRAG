@@ -116,23 +116,10 @@ try:
 except Exception as e:
     logger.warning(f"Error initializing LLM manager: {e}")
 
-# For backward compatibility - DEPRECATED
-# This will be removed in a future version
-try:
-    from openai import OpenAI
-    OPENAI_AVAILABLE = True
-    # Check if API key is available
-    if os.getenv("OPENAI_API_KEY"):
-        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        logger.info("Initialized OpenAI client for concept extraction (DEPRECATED)")
-    else:
-        logger.info("OpenAI API key not found. Using LLMManager for concept extraction.")
-        OPENAI_AVAILABLE = False
-        openai_client = None
-except ImportError:
-    logger.warning("OpenAI not available. LLM-based concept extraction will use LLMManager.")
-    OPENAI_AVAILABLE = False
-    openai_client = None
+# We only use local LLM providers, not OpenAI
+OPENAI_AVAILABLE = False
+openai_client = None
+logger.info("Using local LLM providers for concept extraction.")
 
 class ConceptExtractor:
     """
@@ -160,8 +147,8 @@ class ConceptExtractor:
             max_concept_length: Maximum concept length in words
         """
         self.use_nlp = use_nlp and SPACY_AVAILABLE
-        # Check if LLM is available through either method
-        self.use_llm = use_llm and (llm_manager is not None or OPENAI_AVAILABLE)
+        # Check if LLM is available through local providers
+        self.use_llm = use_llm and llm_manager is not None
         self.domain = domain
         self.min_concept_length = min_concept_length
         self.max_concept_length = max_concept_length
@@ -273,23 +260,14 @@ class ConceptExtractor:
         Returns:
             List of extracted concepts with metadata
         """
-        # First try using the LLMManager if available
+        # Try using the LLMManager if available
         if llm_manager is not None:
             try:
                 return self._extract_concepts_with_llm_manager(text, max_concepts, is_chunk)
             except Exception as e:
                 logger.warning(f"Error using LLMManager for concept extraction: {e}")
-                # Fall back to OpenAI client if available
-                if self.use_llm and openai_client is not None:
-                    logger.info("Falling back to OpenAI client for concept extraction (DEPRECATED)")
-                    return self._extract_concepts_with_openai(text, max_concepts)
 
-        # If LLMManager is not available, try using OpenAI client
-        if self.use_llm and openai_client is not None:
-            logger.warning("Using OpenAI client for concept extraction (DEPRECATED)")
-            return self._extract_concepts_with_openai(text, max_concepts)
-
-        # If neither is available, fall back to NLP-based extraction
+        # If LLM extraction fails, fall back to NLP-based extraction
         logger.warning("LLM-based extraction not available. Using NLP-based extraction instead.")
         nlp_concepts = self.extract_concepts_nlp(text)
         return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in nlp_concepts[:max_concepts]]
@@ -312,7 +290,12 @@ class ConceptExtractor:
             truncated_text = text[:max_text_length] + "..."
             logger.info(f"Text truncated from {len(text)} to {max_text_length} characters")
         else:
-            truncated_text = text
+            # Even if it's a chunk, ensure it's not too large for the LLM
+            if len(text) > max_text_length * 2:  # Allow chunks to be larger, but not excessively
+                truncated_text = text[:max_text_length * 2] + "..."
+                logger.info(f"Chunk truncated from {len(text)} to {max_text_length * 2} characters")
+            else:
+                truncated_text = text
 
         # Try with Phi-4 specific prompt format
         try:
@@ -432,71 +415,7 @@ Focus on technical and domain-specific concepts."""
 
         return concepts
 
-    def _extract_concepts_with_openai(self, text: str, max_concepts: int = 10) -> List[Dict[str, Any]]:
-        """
-        Extract concepts using OpenAI API (DEPRECATED).
-
-        Args:
-            text: Input text
-            max_concepts: Maximum number of concepts to extract
-
-        Returns:
-            List of extracted concepts with metadata
-        """
-        logger.warning("Using deprecated OpenAI API for concept extraction. This will be removed in a future version.")
-
-        if openai_client is None:
-            logger.warning("OpenAI client not available. Using NLP-based extraction instead.")
-            nlp_concepts = self.extract_concepts_nlp(text)
-            return [{"concept": c, "relevance": 1.0, "source": "nlp"} for c in nlp_concepts[:max_concepts]]
-
-        # Prepare prompt for OpenAI
-        prompt = f"""
-        Extract the most important domain-specific concepts from the following text.
-        Return the result as a JSON array of objects, each with the following properties:
-        - concept: The concept name
-        - relevance: A score from 0.0 to 1.0 indicating the relevance of the concept to the text
-        - definition: A brief definition of the concept based on the text
-
-        Text:
-        {text[:4000]}  # Limit text length to avoid token limits
-
-        Format:
-        [
-            {{"concept": "Concept 1", "relevance": 0.95, "definition": "Definition 1"}},
-            {{"concept": "Concept 2", "relevance": 0.85, "definition": "Definition 2"}},
-            ...
-        ]
-
-        Extract at most {max_concepts} concepts. Focus on technical and domain-specific concepts.
-        """
-
-        try:
-            # Call OpenAI API
-            response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a concept extraction assistant that identifies key technical and domain-specific concepts from text."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                max_tokens=1000
-            )
-
-            # Parse response
-            result = response.choices[0].message.content
-            try:
-                concepts = json.loads(result)
-                # Add source field
-                for concept in concepts:
-                    concept["source"] = "llm"
-                return concepts
-            except json.JSONDecodeError:
-                logger.error(f"Failed to parse LLM response as JSON: {result}")
-                return []
-        except Exception as e:
-            logger.error(f"Error calling OpenAI API: {e}")
-            return []
+    # OpenAI method removed - we only use local LLM providers
 
     def _chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 100) -> List[str]:
         """
@@ -534,7 +453,7 @@ Focus on technical and domain-specific concepts."""
         """
         # Determine method based on availability
         if method == "auto":
-            if self.use_llm and (llm_manager is not None or openai_client is not None):
+            if self.use_llm and llm_manager is not None:
                 method = "llm"
             elif self.use_nlp and nlp is not None:
                 method = "nlp"

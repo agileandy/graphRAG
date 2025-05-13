@@ -48,19 +48,56 @@ def smart_chunk_text(
     chunks = []
 
     # Clean text: normalize whitespace while preserving paragraph breaks
+    # First, ensure consistent line endings
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+
     # Replace multiple spaces with a single space, but preserve paragraph breaks
     text = re.sub(r'([^\n])\s+([^\n])', r'\1 \2', text)
+
     # Normalize paragraph breaks (multiple newlines become exactly two newlines)
     text = re.sub(r'\n\s*\n\s*', '\n\n', text)
+
+    # Ensure text doesn't start or end with excessive whitespace
+    text = text.strip()
 
     if semantic_boundaries:
         # First try to split by paragraphs (double line breaks)
         paragraphs = re.split(r'\n\s*\n', text)
 
+        # Handle very large paragraphs by splitting them further
+        processed_paragraphs = []
+        for paragraph in paragraphs:
+            # If paragraph is too large, split it into sentences
+            if len(paragraph) > chunk_size:
+                logger.info(f"Splitting large paragraph of size {len(paragraph)} into sentences")
+                # Split by sentence boundaries
+                sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+                processed_paragraphs.extend(sentences)
+            else:
+                processed_paragraphs.append(paragraph)
+
+        # Now process the paragraphs/sentences
         current_chunk = ""
         current_paragraphs = []
 
-        for paragraph in paragraphs:
+        for paragraph in processed_paragraphs:
+            # If this paragraph alone exceeds chunk size, we need to split it
+            if len(paragraph) > chunk_size:
+                # If we have content in the current chunk, save it first
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = ""
+                    current_paragraphs = []
+
+                # Split the large paragraph by character
+                logger.info(f"Paragraph of size {len(paragraph)} exceeds chunk size {chunk_size}, splitting by character")
+                for i in range(0, len(paragraph), chunk_size - overlap):
+                    if i + chunk_size >= len(paragraph):
+                        chunks.append(paragraph[i:].strip())
+                    else:
+                        chunks.append(paragraph[i:i + chunk_size].strip())
+                continue
+
             # If adding this paragraph would exceed chunk size, save current chunk and start a new one
             if len(current_chunk) + len(paragraph) > chunk_size and current_chunk:
                 chunks.append(current_chunk.strip())
