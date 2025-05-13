@@ -60,12 +60,17 @@ def load_llm_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         # Return default config
         return {
             "primary_provider": {
-                "type": "openai-compatible",
-                "api_base": "http://192.168.1.21:1234/v1",
-                "api_key": "dummy-key",
-                "model": "lmstudio-community/Phi-4-mini-reasoning-MLX-4bit",
+                "type": "openrouter",
+                "api_key": "REPLACE_WITH_YOUR_OPENROUTER_API_KEY",
+                "model": "google/gemini-2.0-flash-exp:free",
                 "temperature": 0.1,
                 "max_tokens": 1000,
+                "timeout": 60
+            },
+            "embedding_provider": {
+                "type": "ollama",
+                "api_base": "http://localhost:11434",
+                "model": "snowflake-arctic-embed2:latest",
                 "timeout": 60
             }
         }
@@ -297,12 +302,12 @@ class ConceptExtractor:
             else:
                 truncated_text = text
 
-        # Try with Phi-4 specific prompt format
+        # Try with generic LLM prompt format
         try:
-            # Phi-4 specific prompt format
-            phi4_system_prompt = """You are a concept extraction assistant that identifies key technical and domain-specific concepts from text. Your task is to extract important concepts, their relevance, and definitions from the provided text."""
+            # Generic LLM prompt format
+            system_prompt = """You are a concept extraction assistant that identifies key technical and domain-specific concepts from text. Your task is to extract important concepts, their relevance, and definitions from the provided text."""
 
-            phi4_user_prompt = f"""Extract up to {max_concepts} of the most important domain-specific concepts from the following text.
+            user_prompt = f"""Extract up to {max_concepts} of the most important domain-specific concepts from the following text.
 For each concept, provide:
 1. The concept name
 2. A relevance score from 0.0 to 1.0
@@ -326,10 +331,15 @@ Example format:
 Only extract concepts that are truly relevant to the domain of the text. Quality is more important than quantity.
 Focus on technical and domain-specific concepts."""
 
-            # Generate response with Phi-4 specific prompt
+            # Check if llm_manager is None
+            if llm_manager is None:
+                logger.error("LLM manager is not initialized")
+                return []
+
+            # Generate response with generic prompt
             response = llm_manager.generate(
-                phi4_user_prompt,
-                system_prompt=phi4_system_prompt,
+                user_prompt,
+                system_prompt=system_prompt,
                 max_tokens=1000,
                 temperature=0.2
             )
