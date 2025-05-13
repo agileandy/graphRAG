@@ -38,7 +38,6 @@ from src.config import get_port
 
 # Get ports from centralized configuration
 api_port = get_port('api')
-mpc_port = get_port('mpc')
 mcp_port = get_port('mcp')
 
 # API endpoints
@@ -120,7 +119,7 @@ def add_test_document(document_text: str, metadata: Dict[str, Any]) -> Tuple[boo
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def search_documents(query: str, n_results: int = 5, max_hops: int = 2) -> Tuple[bool, Dict[str, Any]]:
+def search_documents(query: str, n_results: int = 5, max_hops: int = 2, repair_index: bool = True) -> Tuple[bool, Dict[str, Any]]:
     """
     Search for documents using the GraphRAG API.
 
@@ -128,6 +127,7 @@ def search_documents(query: str, n_results: int = 5, max_hops: int = 2) -> Tuple
         query: Search query
         n_results: Number of vector results to return
         max_hops: Maximum number of hops in the graph
+        repair_index: Whether to attempt to repair the index if it's unhealthy
 
     Returns:
         Tuple of (success, response_data)
@@ -135,13 +135,32 @@ def search_documents(query: str, n_results: int = 5, max_hops: int = 2) -> Tuple
     search_data = {
         "query": query,
         "n_results": n_results,
-        "max_hops": max_hops
+        "max_hops": max_hops,
+        "repair_index": repair_index
     }
 
     try:
+        # First attempt
         response = requests.post(SEARCH_ENDPOINT, json=search_data, timeout=30)
         if response.status_code == 200:
-            return True, response.json()
+            result = response.json()
+
+            # Check if we got empty vector results
+            vector_results = result.get('vector_results', {})
+            documents = vector_results.get('documents', [])
+
+            if not documents or (isinstance(documents, list) and len(documents) > 0 and len(documents[0]) == 0):
+                print("First search attempt returned empty results. Waiting and trying again...")
+                # Wait a moment and try again - sometimes the index needs time to update
+                time.sleep(5)
+
+                # Second attempt
+                response = requests.post(SEARCH_ENDPOINT, json=search_data, timeout=30)
+                if response.status_code == 200:
+                    return True, response.json()
+
+            return True, result
+
         return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
     except requests.RequestException as e:
         return False, {"error": str(e)}
@@ -255,7 +274,7 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
 
         # Additional cleanup to make sure all processes are stopped
         subprocess.run(["pkill", "-f", "gunicorn"], check=False)
-        subprocess.run(["pkill", "-f", "src.mpc.server"], check=False)
+        subprocess.run(["pkill", "-f", "src.mcp.server"], check=False)
         subprocess.run(["pkill", "-f", "python.*server.py"], check=False)
 
         # Check if any GraphRAG processes are still running
@@ -266,10 +285,10 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
         )
 
         # Look for any remaining GraphRAG processes
-        if "gunicorn" in ps_result.stdout or "src.mpc.server" in ps_result.stdout:
+        if "gunicorn" in ps_result.stdout or "src.mcp.server" in ps_result.stdout:
             print("Warning: Some GraphRAG processes are still running. Attempting to force kill...")
             subprocess.run(["pkill", "-9", "-f", "gunicorn"], check=False)
-            subprocess.run(["pkill", "-9", "-f", "src.mpc.server"], check=False)
+            subprocess.run(["pkill", "-9", "-f", "src.mcp.server"], check=False)
 
         # Wait a moment for processes to terminate
         time.sleep(2)
@@ -338,92 +357,9 @@ def get_test_document_metadata() -> Dict[str, Any]:
         "source": "Regression Test"
     }
 
-# Message Passing Communication (MPC) server functions
-def test_mpc_connection(host="localhost", port=None, timeout=5) -> Tuple[bool, str]:
-    """
-    Test connection to the Message Passing Communication server.
 
-    Args:
-        host: Message Passing server host
-        port: Message Passing server port (default: from centralized configuration)
-        timeout: Connection timeout in seconds
 
-    Returns:
-        Tuple of (success, message)
-    """
-    # Use centralized port configuration if port is not specified
-    if port is None:
-        port = mpc_port
-    try:
-        async def test_connection():
-            uri = f"ws://{host}:{port}"
-            try:
-                # Create a connection with a timeout
-                try:
-                    websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
-                except asyncio.TimeoutError:
-                    return False, f"Connection to Message Passing server at {uri} timed out after {timeout} seconds"
 
-                async with websocket:
-                    # Send a ping message
-                    await websocket.send(json.dumps({"action": "ping"}))
-                    response = await websocket.recv()
-                    response_data = json.loads(response)
-                    return True, f"Connected to Message Passing server at {uri}. Response: {response_data}"
-            except Exception as e:
-                return False, f"Failed to connect to Message Passing server at {uri}: {e}"
-
-        return asyncio.run(test_connection())
-    except ImportError as e:
-        return False, f"Failed to import required modules: {e}"
-    except Exception as e:
-        return False, f"Unexpected error testing Message Passing connection: {e}"
-
-async def mpc_search(host="localhost", port=None, query="What is RAG?", n_results=3, max_hops=2, timeout=5) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Perform a search using the Message Passing Communication server.
-
-    Args:
-        host: Message Passing server host
-        port: Message Passing server port (default: from centralized configuration)
-        query: Search query
-        n_results: Number of results to return
-        max_hops: Maximum number of hops in the graph
-        timeout: Connection timeout in seconds
-
-    Returns:
-        Tuple of (success, response)
-    """
-    # Use centralized port configuration if port is not specified
-    if port is None:
-        port = mpc_port
-    uri = f"ws://{host}:{port}"
-    try:
-        # Create a connection with a timeout
-        try:
-            websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
-        except asyncio.TimeoutError:
-            return False, {"error": f"Connection to Message Passing server at {uri} timed out after {timeout} seconds"}
-
-        async with websocket:
-            # Prepare search message
-            message = {
-                'action': 'search',
-                'query': query,
-                'n_results': n_results,
-                'max_hops': max_hops
-            }
-
-            # Send search query
-            await websocket.send(json.dumps(message))
-
-            # Receive response
-            response = await websocket.recv()
-            response_data = json.loads(response)
-
-            return True, response_data
-    except Exception as e:
-        return False, {"error": str(e)}
 
 # Model Context Protocol (MCP) server functions
 def test_mcp_connection(host="localhost", port=None, timeout=5) -> Tuple[bool, str]:
@@ -483,6 +419,81 @@ def test_mcp_connection(host="localhost", port=None, timeout=5) -> Tuple[bool, s
         return False, f"Failed to import required modules: {e}"
     except Exception as e:
         return False, f"Unexpected error testing Model Context Protocol connection: {e}"
+
+async def mcp_search(host="localhost", port=None, query="What is RAG?", n_results=3, max_hops=2, timeout=5) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Perform a search using the Model Context Protocol server.
+
+    Args:
+        host: Model Context Protocol server host
+        port: Model Context Protocol server port (default: from centralized configuration)
+        query: Search query
+        n_results: Number of results to return
+        max_hops: Maximum number of hops in the graph
+        timeout: Connection timeout in seconds
+
+    Returns:
+        Tuple of (success, response)
+    """
+    # Use centralized port configuration if port is not specified
+    if port is None:
+        port = mcp_port
+    uri = f"ws://{host}:{port}"
+    try:
+        # Create a connection with a timeout
+        try:
+            websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
+        except asyncio.TimeoutError:
+            return False, {"error": f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"}
+
+        async with websocket:
+            # Initialize the connection
+            await websocket.send(json.dumps({
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "test-client",
+                        "version": "0.1.0"
+                    }
+                },
+                "id": 0
+            }))
+
+            # Receive initialization response
+            init_response = await websocket.recv()
+            init_data = json.loads(init_response)
+
+            if "error" in init_data:
+                return False, {"error": f"Failed to initialize: {init_data['error']}"}
+
+            # Prepare search message
+            message = {
+                "jsonrpc": "2.0",
+                "method": "executeToolCall",
+                "params": {
+                    "name": "search",
+                    "parameters": {
+                        "query": query,
+                        "n_results": n_results,
+                        "max_hops": max_hops
+                    }
+                },
+                "id": 1
+            }
+
+            # Send search query
+            await websocket.send(json.dumps(message))
+
+            # Receive response
+            response = await websocket.recv()
+            response_data = json.loads(response)
+
+            return True, response_data
+    except Exception as e:
+        return False, {"error": str(e)}
 
 async def mcp_get_tools(host="localhost", port=None, timeout=5) -> Tuple[bool, List[Dict[str, Any]]]:
     """
