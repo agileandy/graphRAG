@@ -68,10 +68,80 @@ def add_document_to_graphrag(
         # Generate a simple hash if no duplicate detector
         doc_hash = hashlib.sha256(text.encode()).hexdigest()
 
-    # 1. Extract concepts from the document
+    # 1. Extract concepts from the document using proper chunking
     from src.processing.concept_extractor import ConceptExtractor
+    from src.processing.document_processor import smart_chunk_text, optimize_chunk_size
+
+    # Determine optimal chunk size based on document length
+    text_length = len(text)
+    logger.info(f"Document length: {text_length} characters")
+
+    # Use smaller chunks for concept extraction to improve quality
+    if text_length > 50000:  # Very large document
+        chunk_size = 2000
+        overlap = 200
+    elif text_length > 10000:  # Large document
+        chunk_size = 3000
+        overlap = 300
+    else:  # Smaller document
+        chunk_size = 4000
+        overlap = 400
+
+    # For very small texts, don't chunk
+    if text_length <= 4000:
+        logger.info(f"Text is small ({text_length} chars), processing as a single chunk")
+        chunks = [text]
+    else:
+        logger.info(f"Chunking text with chunk_size={chunk_size}, overlap={overlap}")
+        # Use smart chunking to split at semantic boundaries
+        chunks = smart_chunk_text(text, chunk_size=chunk_size, overlap=overlap, semantic_boundaries=True)
+        logger.info(f"Split text into {len(chunks)} chunks for processing")
+
+    # Process each chunk
+    all_concepts = []
+    concepts_by_name = {}
+
+    # Initialize extractor
     extractor = ConceptExtractor(use_nlp=True, use_llm=True)
-    concept_data = extractor.extract_concepts(text, method="auto", max_concepts=20)
+
+    # Process each chunk
+    for i, chunk in enumerate(chunks):
+        logger.info(f"Processing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
+
+        try:
+            # Extract concepts from this chunk
+            chunk_concepts = extractor.extract_concepts_llm(chunk, max_concepts=15)
+            logger.info(f"Extracted {len(chunk_concepts)} concepts from chunk {i+1}")
+
+            # Merge with existing concepts
+            for concept in chunk_concepts:
+                concept_name = concept["concept"].lower()
+
+                if concept_name in concepts_by_name:
+                    # Update existing concept with higher relevance
+                    existing = concepts_by_name[concept_name]
+                    existing["relevance"] = max(existing["relevance"], concept["relevance"])
+
+                    # Merge definitions if they're different
+                    if concept.get("definition") and concept["definition"] != existing.get("definition", ""):
+                        existing["definition"] = (existing.get("definition", "") + " " + concept["definition"]).strip()
+                else:
+                    # Add new concept
+                    concepts_by_name[concept_name] = concept
+                    all_concepts.append(concept)
+        except Exception as e:
+            logger.error(f"Error processing chunk {i+1}: {e}")
+            # Continue with other chunks
+
+    # If LLM extraction failed, fall back to rule-based extraction
+    if not all_concepts:
+        logger.warning("LLM extraction failed to produce concepts, falling back to rule-based extraction")
+        rule_concepts = extractor.extract_concepts_rule_based(text)
+        all_concepts = [{"concept": c, "relevance": 1.0, "source": "rule"} for c in rule_concepts[:20]]
+
+    # Sort by relevance and limit to 20 concepts
+    all_concepts.sort(key=lambda x: x.get("relevance", 0), reverse=True)
+    concept_data = all_concepts[:20]
 
     # Convert to entities format
     entities = []
@@ -85,34 +155,121 @@ def add_document_to_graphrag(
             "relevance": concept.get("relevance", 1.0)
         })
 
-    # 2. Create relationships between entities (simple approach)
+    # 2. Create relationships between entities with richer relationship types
     relationships = []
+
+    # Define relationship patterns for different types
+    relationship_patterns = {
+        "DEFINES_CONCEPT": [" defines ", " is defined as ", " refers to ", " means "],
+        "IS_A": [" is a ", " is an ", " is type of ", " is kind of "],
+        "HAS_PART": [" has ", " contains ", " includes ", " consists of "],
+        "USED_FOR": [" is used for ", " is used to ", " enables ", " allows "],
+        "IMPLEMENTS_METHOD": [" implements ", " uses ", " employs ", " utilizes "],
+        "HAS_ATTRIBUTE": [" has attribute ", " has property ", " is characterized by "],
+        "EXAMPLE_OF": [" is example of ", " illustrates ", " demonstrates "],
+        "REQUIRES_INPUT": [" requires ", " needs ", " depends on "],
+        "STEP_IN_PROCESS": [" follows ", " precedes ", " comes after ", " comes before "],
+        "COMPARES_WITH": [" compared to ", " versus ", " as opposed to ", " in contrast to "]
+    }
+
+    text_lower = text.lower()
+
     for i, source in enumerate(entities):
+        source_name = source["name"].lower()
+
         for j, target in enumerate(entities):
             if i != j:
-                # Simple relationship with default strength
-                relationships.append((source["id"], target["id"], 0.5))
+                target_name = target["name"].lower()
+                rel_type = "RELATED_TO"  # Default type
+                strength = 0.5  # Default strength
+
+                # Check for specific relationship patterns
+                for pattern_type, patterns in relationship_patterns.items():
+                    for pattern in patterns:
+                        # Check if the pattern appears between the two concepts
+                        pattern1 = f"{source_name}{pattern}{target_name}"
+                        pattern2 = f"{target_name}{pattern}{source_name}"
+
+                        if pattern1 in text_lower:
+                            rel_type = pattern_type
+                            strength = 0.8  # Higher confidence for explicit patterns
+                            break
+                        elif pattern2 in text_lower and pattern_type not in ["IS_A", "HAS_PART", "USED_FOR"]:
+                            # For some relationships, we need to reverse the direction
+                            rel_type = pattern_type
+                            strength = 0.8
+                            break
+
+                # If no specific pattern was found, use relevance scores
+                if rel_type == "RELATED_TO":
+                    # Calculate strength based on relevance scores
+                    source_relevance = source.get("relevance", 0.5)
+                    target_relevance = target.get("relevance", 0.5)
+                    strength = (source_relevance + target_relevance) / 2
+
+                # Add the relationship
+                relationships.append((source["id"], target["id"], rel_type, strength))
 
     # 3. Create a unique ID for the document
     doc_id = f"doc-{uuid.uuid4()}"
 
-    # 4. Add entities to Neo4j
-    for entity in entities:
-        # Check if entity already exists
-        query = """
-        MATCH (c:Concept {name: $name})
-        RETURN c.id AS id
-        """
-        result = neo4j_db.run_query_and_return_single(query, {"name": entity["name"]})
+    # 4. Add entities to Neo4j with concept normalization
+    normalized_entities = []
 
-        if not result:
-            # Create new entity
+    for entity in entities:
+        # Normalize concept name for better matching
+        normalized_name = entity["name"].lower().strip()
+
+        # Check for similar concepts using fuzzy matching
+        query = """
+        MATCH (c:Concept)
+        WHERE toLower(c.name) = $normalized_name
+           OR toLower(c.name) CONTAINS $normalized_name
+           OR $normalized_name CONTAINS toLower(c.name)
+        RETURN c.id AS id, c.name AS name, c.description AS description,
+               c.type AS type, labels(c) AS labels
+        ORDER BY
+            CASE
+                WHEN toLower(c.name) = $normalized_name THEN 0
+                WHEN toLower(c.name) CONTAINS $normalized_name THEN 1
+                WHEN $normalized_name CONTAINS toLower(c.name) THEN 2
+                ELSE 3
+            END
+        LIMIT 1
+        """
+
+        similar_concepts = neo4j_db.run_query(query, {"normalized_name": normalized_name})
+
+        if similar_concepts:
+            # Use the existing concept
+            existing = similar_concepts[0]
+            logger.info(f"Found existing concept '{existing['name']}' similar to '{entity['name']}'")
+
+            # Update the entity ID to match the existing concept
+            entity["id"] = existing["id"]
+
+            # Merge descriptions if they're different
+            if entity["description"] and entity["description"] != existing.get("description", ""):
+                # Update description in Neo4j
+                update_query = """
+                MATCH (c:Concept {id: $id})
+                SET c.description = $description
+                RETURN c.id
+                """
+                neo4j_db.run_query(update_query, {
+                    "id": existing["id"],
+                    "description": existing.get("description", "") + " " + entity["description"]
+                })
+        else:
+            # Create new concept
             query = """
             CREATE (c:Concept {
                 id: $id,
                 name: $name,
                 type: $type,
-                description: $description
+                description: $description,
+                normalized_name: $normalized_name,
+                created_at: $created_at
             })
             RETURN c.id AS id
             """
@@ -120,8 +277,16 @@ def add_document_to_graphrag(
                 "id": entity["id"],
                 "name": entity["name"],
                 "type": entity.get("type", "Concept"),
-                "description": entity.get("description", "")
+                "description": entity.get("description", ""),
+                "normalized_name": normalized_name,
+                "created_at": datetime.now().isoformat()
             })
+
+        # Add to normalized entities
+        normalized_entities.append(entity)
+
+    # Replace original entities with normalized ones
+    entities = normalized_entities
 
     # 5. Create Document node in Neo4j
     doc_properties = {
@@ -164,13 +329,13 @@ def add_document_to_graphrag(
             "concept_id": entity["id"]
         })
 
-    # 7. Create relationships between entities
-    for source_id, target_id, strength in relationships:
-        query = """
-        MATCH (c1:Concept {id: $source_id})
-        MATCH (c2:Concept {id: $target_id})
-        MERGE (c1)-[r:RELATED_TO]->(c2)
-        ON CREATE SET r.strength = $strength
+    # 7. Create relationships between entities with specific relationship types
+    for source_id, target_id, rel_type, strength in relationships:
+        query = f"""
+        MATCH (c1:Concept {{id: $source_id}})
+        MATCH (c2:Concept {{id: $target_id}})
+        MERGE (c1)-[r:{rel_type}]->(c2)
+        ON CREATE SET r.strength = $strength, r.created_at = $created_at
         ON MATCH SET r.strength = CASE
             WHEN r.strength < $strength THEN $strength
             ELSE r.strength
@@ -180,7 +345,8 @@ def add_document_to_graphrag(
         neo4j_db.run_query(query, {
             "source_id": source_id,
             "target_id": target_id,
-            "strength": strength
+            "strength": strength,
+            "created_at": datetime.now().isoformat()
         })
 
     # 8. Add document to vector database
