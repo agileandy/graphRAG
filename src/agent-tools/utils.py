@@ -8,12 +8,7 @@ This module provides common functionality used by all agent tools:
 - Error handling
 """
 
-import os
-import sys
-import json
-import websockets.sync.client as ws
-from typing import Dict, Any, Optional
-from src.config import get_port
+from src.config import get_port, load_config
 
 # Get ports from centralized configuration
 mpc_port = get_port('mpc')
@@ -27,22 +22,6 @@ DEFAULT_CONFIG = {
     "NEO4J_USERNAME": "neo4j",
     "NEO4J_PASSWORD": "graphrag"
 }
-
-def load_config() -> Dict[str, str]:
-    """
-    Load configuration from environment variables with defaults.
-
-    Returns:
-        Dictionary with configuration values
-    """
-    config = DEFAULT_CONFIG.copy()
-
-    # Override defaults with environment variables if they exist
-    for key in config:
-        if key in os.environ:
-            config[key] = os.environ[key]
-
-    return config
 
 def get_mpc_url() -> str:
     """
