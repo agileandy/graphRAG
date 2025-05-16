@@ -479,7 +479,8 @@ https://aider.chat/docs/troubleshooting/edit-errors.html
 Committing ./project/audit/audit-report.md before applying edits.
 Commit 8f02783 docs: Add initial codebase audit report
 #Applied edit to ./project/audit/audit-report.md
-*Auditor:** AI Assistant (based on provided file summaries and selected file contents)
+Commit 7f8d286 docs: Update audit report with code review details
+ected file contents)
 **Scope:** This audit is based on the file names, paths, class names, function names provided in the initial summaries, and the full code content of `bin/graphrag-monitor.py`, `src/database/graph_db.py`, `src/database/neo4j_db.py`, `src/processing/document_hash.py`, `src/utils/db_utils.py`, and `tests/regression/test_utils.py`.
 
 ## 1. Introduction
