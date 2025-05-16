@@ -854,17 +854,26 @@ async def handle_job_status(parameters: dict[str, Any]) -> dict[str, Any]:
                 "error": f"Job not found: {job_id}"
             }
 
-        return {
-            "job_id": job.job_id,
-            "job_type": job.job_type,
-            "status": job.status,
-            "progress": job.progress,
-            "created_at": job.created_at.isoformat() if job.created_at else None,
-            "started_at": job.started_at.isoformat() if job.started_at else None,
-            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-            "result": job.result,
-            "error": job.error
+        # Create a response with job details
+        response = {
+            "status": "success",
+            "job": {
+                "job_id": job.job_id,
+                "job_type": job.job_type,
+                "status": job.status,
+                "progress": job.progress,
+                "processed_items": job.processed_items,
+                "total_items": job.total_items,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                "result": job.result,
+                "error": job.error
+            }
         }
+
+        logger.info(f"Job status for {job_id}: {job.status}, progress: {job.progress:.1f}%")
+        return response
     except Exception as e:
         logger.exception(f"Error getting job status: {e}")
         return {
@@ -1058,11 +1067,31 @@ async def handle_connection(websocket):
 
     """
     client_id = id(websocket)
-    logger.info(f"Client connected: {client_id}")
+    logger.info(f"Client connected: {client_id} from {websocket.remote_address}")
 
     try:
+        # Send a welcome message to confirm connection
+        try:
+            welcome_msg = {
+                "jsonrpc": "2.0",
+                "method": "notification",
+                "params": {
+                    "message": "Connected to GraphRAG MCP Server",
+                    "server": SERVER_NAME,
+                    "version": SERVER_VERSION
+                }
+            }
+            await websocket.send(json.dumps(welcome_msg))
+        except Exception as e:
+            logger.warning(f"Failed to send welcome message: {e}")
+
+        # Process messages
         async for message in websocket:
             try:
+                # Log received message (truncated for large messages)
+                msg_preview = message[:200] + "..." if len(message) > 200 else message
+                logger.debug(f"Received message from client {client_id}: {msg_preview}")
+
                 # Parse message
                 data = json.loads(message)
 
@@ -1074,11 +1103,12 @@ async def handle_connection(websocket):
 
                 # Validate JSON-RPC version
                 if jsonrpc != "2.0":
+                    logger.warning(f"Invalid JSON-RPC version from client {client_id}: {jsonrpc}")
                     response = {
                         "jsonrpc": "2.0",
                         "error": {
                             "code": -32600,
-                            "message": "Invalid JSON-RPC version"
+                            "message": "Invalid JSON-RPC version, expected 2.0"
                         },
                         "id": request_id
                     }
@@ -1088,6 +1118,8 @@ async def handle_connection(websocket):
                 # Handle method
                 result = None
                 error = None
+
+                logger.info(f"Processing method '{method}' from client {client_id}")
 
                 if method == "initialize":
                     result = await handle_initialize(params)
@@ -1100,6 +1132,7 @@ async def handle_connection(websocket):
                         "code": -32601,
                         "message": f"Method not found: {method}"
                     }
+                    logger.warning(f"Unknown method '{method}' from client {client_id}")
 
                 # Prepare response
                 response = {
@@ -1113,22 +1146,24 @@ async def handle_connection(websocket):
                     response["result"] = result
 
                 # Send response
+                logger.debug(f"Sending response to client {client_id} for method '{method}'")
                 await websocket.send(json.dumps(response))
 
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 # Invalid JSON
+                logger.warning(f"JSON parse error from client {client_id}: {e}")
                 response = {
                     "jsonrpc": "2.0",
                     "error": {
                         "code": -32700,
-                        "message": "Parse error"
+                        "message": f"Parse error: {str(e)}"
                     },
                     "id": None
                 }
                 await websocket.send(json.dumps(response))
             except Exception as e:
                 # Internal error
-                logger.exception("Error handling message")
+                logger.exception(f"Error handling message from client {client_id}")
                 response = {
                     "jsonrpc": "2.0",
                     "error": {
@@ -1138,10 +1173,12 @@ async def handle_connection(websocket):
                     "id": None
                 }
                 await websocket.send(json.dumps(response))
-    except websockets.exceptions.ConnectionClosed:
-        logger.info(f"Client disconnected: {client_id}")
-    except Exception:
-        logger.exception(f"Error handling connection for client {client_id}")
+    except websockets.exceptions.ConnectionClosed as e:
+        logger.info(f"Client {client_id} disconnected: {e.code} {e.reason}")
+    except Exception as e:
+        logger.exception(f"Error handling connection for client {client_id}: {str(e)}")
+    finally:
+        logger.info(f"Connection closed for client {client_id}")
 
 async def start_server(host: str = 'localhost', port: int = 8767):
     """Start the MCP server.

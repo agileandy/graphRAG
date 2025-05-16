@@ -27,23 +27,23 @@ services:
       - "7475:7474"  # Neo4j Browser
       - "7688:7687"  # Neo4j Bolt
       - "5001:5000"  # API Server
-      - "8766:8765"  # MPC Server
+      - "8766:8765"  # MCP Server
 ```
 
 - **Development Workflow**:
   ```bash
   # Start development environment
   docker-compose -f docker-compose.dev.yml up -d
-  
+
   # View logs
   docker-compose -f docker-compose.dev.yml logs -f
-  
+
   # Rebuild after Dockerfile changes
   docker-compose -f docker-compose.dev.yml up -d --build
-  
+
   # Stop containers without removing them
   docker-compose -f docker-compose.dev.yml stop
-  
+
   # Stop and remove containers
   docker-compose -f docker-compose.dev.yml down
   ```
@@ -70,7 +70,7 @@ services:
       environment:
         - TESTING=true
         - NEO4J_URI=bolt://neo4j-test:7687
-    
+
     neo4j-test:
       image: neo4j:5.18.1
       environment:
@@ -111,11 +111,11 @@ services:
   # Deploy to staging
   TAG=$(git rev-parse --short HEAD)
   REGISTRY=your-registry.com
-  
+
   # Build and push
   docker build -t ${REGISTRY}/graphrag:${TAG} .
   docker push ${REGISTRY}/graphrag:${TAG}
-  
+
   # Deploy
   docker-compose -f docker-compose.staging.yml up -d
   ```
@@ -211,19 +211,19 @@ Based on your GraphRAG project, here are specific recommendations:
    ```bash
    # Create a feature branch
    git checkout -b feature/new-feature
-   
+
    # Make changes to code
-   
+
    # Build and test locally
    docker-compose -f docker-compose.dev.yml up -d --build
-   
+
    # Run tests
    docker exec graphrag python -m pytest
-   
+
    # Commit changes
    git add .
    git commit -m "Add new feature"
-   
+
    # Push to remote
    git push origin feature/new-feature
    ```
@@ -245,10 +245,10 @@ Based on your GraphRAG project, here are specific recommendations:
    # Tag a release
    git tag -a v2.1.0 -m "Release v2.1.0"
    git push origin v2.1.0
-   
+
    # Build and tag Docker image
    docker build -t graphrag:v2.1.0 .
-   
+
    # Push to registry (if using)
    docker push your-registry.com/graphrag:v2.1.0
    ```
@@ -277,13 +277,13 @@ Based on your GraphRAG project, here are specific recommendations:
      ```bash
      # Example Makefile
      .PHONY: dev test prod
-     
+
      dev:
          docker-compose -f docker-compose.dev.yml up -d
-     
+
      test:
          docker-compose -f docker-compose.test.yml up --build
-     
+
      prod:
          docker-compose -f docker-compose.prod.yml up -d
      ```

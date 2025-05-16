@@ -13,7 +13,7 @@ The project has been reorganized to reduce duplication and improve maintainabili
   - **database/**: Database interfaces (Neo4j, ChromaDB)
   - **llm/**: Large Language Model integrations
   - **loaders/**: Document loaders for various formats
-  - **mpc/**: Message Passing Communication server
+  - **mcp/**: Model Context Protocol server
   - **processing/**: Document processing utilities
   - **search/**: Search implementations
   - **utils/**: Utility functions
@@ -32,7 +32,7 @@ The project has been reorganized to reduce duplication and improve maintainabili
   - **query/**: Query and search scripts
 
 - **examples/**: Example usage scripts
-  - Client examples (MPC, MCP)
+  - Client examples (MCP)
   - Integration examples (LangChain, OpenAI)
   - Simple demos
 
@@ -110,8 +110,8 @@ Or start individual services:
 # Start API server
 ./scripts/service_management/graphrag-service.sh start-api
 
-# Start MPC server
-./scripts/service_management/graphrag-service.sh start-mpc
+# Start MCP server
+./scripts/service_management/graphrag-service.sh start-mcp
 ```
 
 ### Adding Documents

@@ -1,0 +1,171 @@
+{
+  "meta": {
+    "generatedAt": "2025-05-14T12:17:13.016Z",
+    "tasksAnalyzed": 20,
+    "thresholdScore": 5,
+    "projectName": "Taskmaster",
+    "usedResearch": false
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Initialize Project Repository",
+      "complexityScore": 2,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Expand the task into subtasks for creating the repository, setting up the directory structure, and configuring the .gitignore file.",
+      "reasoning": "Relatively straightforward, but benefits from breaking down into smaller, manageable steps."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Setup Neo4j Graph Database",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for installation, configuration, schema definition, and index creation.",
+      "reasoning": "Involves multiple steps and requires understanding of Neo4j configuration and schema design."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Setup ChromaDB Vector Database",
+      "complexityScore": 4,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Expand the task into subtasks for installation, configuration, and choosing an embedding function.",
+      "reasoning": "Simpler than Neo4j setup, but still requires configuration and selection of an embedding model."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Implement Document Ingestion Module",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for handling different document formats (PDF, Markdown, text) and implementing error handling and metadata extraction.",
+      "reasoning": "Requires handling multiple file formats and potential errors, making it moderately complex."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Implement Text Chunking",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Expand the task into subtasks for defining a chunking strategy, implementing the chunking logic, and considering libraries for sentence splitting.",
+      "reasoning": "Requires careful consideration of chunking strategy and implementation details."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Implement Entity Extraction",
+      "complexityScore": 8,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for using NER libraries, identifying entities, handling errors, and considering pre-trained models.",
+      "reasoning": "Requires NLP expertise and potentially fine-tuning models."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Implement Relationship Extraction",
+      "complexityScore": 9,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Expand the task into subtasks for using NLP techniques, identifying relationships, handling errors, and considering pre-trained models.",
+      "reasoning": "More complex than entity extraction, requiring advanced NLP techniques."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Store Entities and Relationships in Neo4j",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for creating nodes, creating relationships, using the Neo4j driver, and handling errors.",
+      "reasoning": "Requires interaction with Neo4j and careful handling of database operations."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Generate Vector Embeddings",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Expand the task into subtasks for choosing an embedding model, generating embeddings, using the model, and handling errors.",
+      "reasoning": "Requires choosing and using an appropriate embedding model."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Store Embeddings in ChromaDB",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for storing embeddings, indexing embeddings, using the ChromaDB client, and handling errors.",
+      "reasoning": "Requires interaction with ChromaDB and indexing for efficient search."
+    },
+    {
+      "taskId": 11,
+      "taskTitle": "Implement Semantic Search",
+      "complexityScore": 7,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Expand the task into subtasks for encoding the query, performing the similarity search, and returning the results.",
+      "reasoning": "Requires understanding of vector similarity search and interaction with ChromaDB."
+    },
+    {
+      "taskId": 12,
+      "taskTitle": "Implement Graph-Based Retrieval",
+      "complexityScore": 8,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for parsing the query, constructing the Cypher query, executing the query, and returning the results.",
+      "reasoning": "Requires knowledge of Cypher and graph traversal techniques."
+    },
+    {
+      "taskId": 13,
+      "taskTitle": "Implement Hybrid Search",
+      "complexityScore": 8,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Expand the task into subtasks for combining the results, ranking the results, and providing the results to the LLM.",
+      "reasoning": "Requires combining results from different search methods and ranking them effectively."
+    },
+    {
+      "taskId": 14,
+      "taskTitle": "Implement API Endpoint",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for choosing a framework, defining the endpoint, implementing the logic, and handling errors.",
+      "reasoning": "Requires API development skills and error handling."
+    },
+    {
+      "taskId": 15,
+      "taskTitle": "Integrate with LLM",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Expand the task into subtasks for choosing an LLM, using the LLM API, formatting the prompt, and handling errors.",
+      "reasoning": "Requires interaction with an LLM API and prompt engineering."
+    },
+    {
+      "taskId": 16,
+      "taskTitle": "Link Graph and Vector Databases",
+      "complexityScore": 7,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Expand the task into subtasks for storing references, using the references, and ensuring link maintenance.",
+      "reasoning": "Requires careful design and implementation to maintain data consistency."
+    },
+    {
+      "taskId": 17,
+      "taskTitle": "Implement Database Maintenance Tools",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for implementing clearing scripts, verification scripts, backup scripts, and scheduling tasks.",
+      "reasoning": "Requires scripting and scheduling skills."
+    },
+    {
+      "taskId": 18,
+      "taskTitle": "Implement Duplicate Detection",
+      "complexityScore": 7,
+      "recommendedSubtasks": 3,
+      "expansionPrompt": "Expand the task into subtasks for detecting duplicates, handling duplicates, and maintaining a record of duplicates.",
+      "reasoning": "Requires choosing an appropriate duplicate detection method and handling duplicates effectively."
+    },
+    {
+      "taskId": 19,
+      "taskTitle": "Write Documentation",
+      "complexityScore": 5,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for writing API documentation, providing usage examples, writing deployment instructions, and including a troubleshooting guide.",
+      "reasoning": "Requires good writing skills and attention to detail."
+    },
+    {
+      "taskId": 20,
+      "taskTitle": "Implement Testing",
+      "complexityScore": 7,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "Break down the task into subtasks for writing unit tests, writing integration tests, using a testing framework, and setting up continuous integration.",
+      "reasoning": "Requires testing expertise and setting up a CI/CD pipeline."
+    }
+  ]
+}
