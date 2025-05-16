@@ -10,7 +10,7 @@ from typing import Dict, Any
 from unittest.mock import MagicMock, patch
 
 from src.database.vector_db import VectorDatabase
-from src.processing.duplicate_detector import ChromaDuplicateDetector, DuplicateDetector
+from src.processing.duplicate_detector import DuplicateDetector
 
 @pytest.fixture
 def vector_db():
@@ -171,73 +171,3 @@ def test_case_insensitive_path_detection(vector_db):
     assert "doc1" in kept_ids
     assert "doc2" in kept_ids
     assert "doc3" not in kept_ids  # Duplicate should be filtered out
-
-def test_chroma_duplicate_detector_query_building():
-    """Test ChromaDuplicateDetector query building with proper ChromaDB syntax."""
-    # Create a mock collection
-    mock_collection = MagicMock()
-    detector = ChromaDuplicateDetector(mock_collection)
-
-    # Test with a single field
-    single_field_metadata = {"title": "Test Document"}
-    single_field_query = detector._build_duplicate_query(single_field_metadata)
-
-    # For a single field, we expect a simple equality query
-    expected_single_query = {"title": {"$eq": "Test Document"}}
-    assert single_field_query == expected_single_query
-
-    # Test with multiple fields
-    multi_field_metadata = {
-        "title": "Neural Networks and Deep Learning: A Comprehensive Guide",
-        "author": "AI Researcher"
-    }
-    multi_field_query = detector._build_duplicate_query(multi_field_metadata)
-
-    # For multiple fields, we expect an $and query with proper operators
-    expected_multi_query = {
-        "$and": [
-            {"title": {"$eq": "Neural Networks and Deep Learning: A Comprehensive Guide"}},
-            {"author": {"$eq": "AI Researcher"}}
-        ]
-    }
-    assert multi_field_query == expected_multi_query
-
-def test_chroma_duplicate_detector_is_duplicate():
-    """Test ChromaDuplicateDetector is_duplicate method with proper query format."""
-    # Create a mock collection
-    mock_collection = MagicMock()
-    # Configure the mock to return a result for the first call and empty for the second
-    mock_collection.get.side_effect = [
-        {"ids": ["doc1"], "metadatas": [{"title": "Test", "author": "Author"}]},  # First call returns a match
-        {"ids": [], "metadatas": []}  # Second call returns no match
-    ]
-
-    detector = ChromaDuplicateDetector(mock_collection)
-
-    # Test with multiple fields that should match
-    metadata = {
-        "title": "Neural Networks and Deep Learning: A Comprehensive Guide",
-        "author": "AI Researcher"
-    }
-    is_dup, doc_id = detector.is_duplicate(metadata)
-
-    # Verify the query was built correctly with $and operator
-    expected_where = {
-        "$and": [
-            {"title": {"$eq": "Neural Networks and Deep Learning: A Comprehensive Guide"}},
-            {"author": {"$eq": "AI Researcher"}}
-        ]
-    }
-    mock_collection.get.assert_called_with(where=expected_where)
-
-    # Verify the result
-    assert is_dup is True
-    assert doc_id == "doc1"
-
-    # Test with metadata that should not match
-    metadata = {"title": "Non-existent Document"}
-    is_dup, doc_id = detector.is_duplicate(metadata)
-
-    # Verify the result
-    assert is_dup is False
-    assert doc_id is None

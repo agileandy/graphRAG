@@ -111,7 +111,7 @@ services:
       - "7475:7474"  # Neo4j Browser
       - "7688:7687"  # Neo4j Bolt
       - "5001:5000"  # API Server
-      - "8766:8765"  # MPC Server
+      - "8766:8765"  # MCP Server
     depends_on:
       - neo4j
 
@@ -153,7 +153,7 @@ services:
       - "7475:7474"  # Neo4j Browser
       - "7688:7687"  # Neo4j Bolt
       - "5001:5000"  # API Server
-      - "8766:8765"  # MPC Server
+      - "8766:8765"  # MCP Server
     depends_on:
       - neo4j
     deploy:

@@ -12,26 +12,20 @@
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
         
   @app.on_event("shutdown")
-2025-05-12 11:01:57,047 - bugAPI - INFO - Starting Bug Tracking API server on localhost:5007
-INFO:     Started server process [55979]
+2025-05-13 19:26:43,808 - bugAPI - INFO - Starting Bug Tracking API server on localhost:5005
+INFO:     Started server process [81004]
 INFO:     Waiting for application startup.
-2025-05-12 11:01:57,060 - bugAPI - INFO - Loaded 25 bugs from /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
+2025-05-13 19:26:43,847 - bugAPI - INFO - Loaded 42 bugs from /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://localhost:5007 (Press CTRL+C to quit)
-INFO:     ::1:61776 - "GET /bugs HTTP/1.1" 200 OK
-INFO:     ::1:65443 - "GET /bugs HTTP/1.1" 200 OK
-2025-05-12 12:56:17,543 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
-INFO:     ::1:65483 - "POST /bugs HTTP/1.1" 200 OK
-2025-05-12 12:56:34,462 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
-INFO:     ::1:65532 - "POST /bugs HTTP/1.1" 200 OK
-2025-05-12 12:56:43,264 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
-INFO:     ::1:49155 - "POST /bugs HTTP/1.1" 200 OK
-2025-05-12 12:56:58,749 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
-INFO:     ::1:49173 - "POST /bugs HTTP/1.1" 200 OK
-2025-05-12 12:57:02,969 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
-INFO:     ::1:49180 - "POST /bugs HTTP/1.1" 200 OK
-2025-05-12 12:57:11,592 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
-INFO:     ::1:49194 - "POST /bugs HTTP/1.1" 200 OK
-INFO:     ::1:49217 - "GET /bugs HTTP/1.1" 200 OK
-2025-05-12 15:01:19,714 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
-INFO:     ::1:53512 - "POST /bugs HTTP/1.1" 200 OK
+INFO:     Uvicorn running on http://localhost:5005 (Press CTRL+C to quit)
+2025-05-13 20:31:00,901 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
+INFO:     ::1:55312 - "POST /bugs HTTP/1.1" 200 OK
+INFO:     ::1:55323 - "GET /bugs/44 HTTP/1.1" 200 OK
+2025-05-13 20:31:42,811 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
+INFO:     ::1:55328 - "PUT /bugs/44 HTTP/1.1" 200 OK
+INFO:     ::1:55339 - "GET /bugs/44 HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2025-05-13 20:32:25,356 - bugAPI - INFO - Bugs saved to /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/bugMCP/bugs.json
+INFO:     Application shutdown complete.
+INFO:     Finished server process [81004]

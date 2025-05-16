@@ -16,9 +16,9 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **src/api/server.py**: REST API server implementation using Flask.
 - **src/api/wsgi.py**: WSGI entry point for the API server.
 
-### MPC Layer
+### MCP Layer
 
-- **src/mpc/server.py**: WebSocket-based MPC server implementation.
+- **src/mcp/server.py**: WebSocket-based MCP server implementation.
 
 ### Processing Layer
 
@@ -41,7 +41,7 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 
 ### Agent Tools
 
-- **src/agent-tools/*.py**: MPC tools for AI agents to interact with GraphRAG.
+- **src/agent-tools/*.py**: MCP tools for AI agents to interact with GraphRAG.
 
 ### Utility Functions
 
@@ -57,7 +57,7 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **scripts/service_management/start_all_services.sh**: Starts all services using tmux (alternative to graphrag-service.sh).
 - **scripts/service_management/start_neo4j.sh**: Starts Neo4j server (used by start_all_services.sh).
 - **scripts/service_management/start_api_server.sh**: Starts API server (used by start_all_services.sh).
-- **scripts/service_management/start_mpc_server.sh**: Starts MPC server (used by start_all_services.sh).
+- **scripts/service_management/start_mcp_server.sh**: Starts MCP server (used by start_all_services.sh).
 - **scripts/service_management/stop_neo4j.sh**: Stops Neo4j server.
 - **scripts/service_management/bugapi-service.sh**: Manages the Bug Tracking API server.
 - **scripts/service_management/bugmcp-service.sh**: Manages the Bug Tracking MCP server.
@@ -118,12 +118,12 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **tools/add_pdf_documents.py**: Adds PDF documents.
 - **tools/add_prompting_ebooks.py**: Adds ebooks about prompting.
 - **tools/graphrag**: Command-line interface for GraphRAG.
-- **tools/graphrag_mpc_client.py**: MPC client for GraphRAG.
+- **tools/graphrag_mcp_client.py**: MCP client for GraphRAG.
 - **tools/list_documents.py**: Lists documents in the system.
 - **tools/query_neo4j.py**: Queries Neo4j directly.
 - **tools/test_async_processing.py**: Tests asynchronous processing.
-- **tools/test_mpc_connection.py**: Tests MPC connection.
-- **tools/test_mpc_search.py**: Tests MPC search functionality.
+- **tools/test_mcp_connection.py**: Tests MCP connection.
+- **tools/test_mcp_search.py**: Tests MCP search functionality.
 
 ## Configuration Files
 
@@ -144,7 +144,7 @@ This document provides a comprehensive overview of the GraphRAG project's file s
 - **docs/database_optimizations.md**: Database optimization documentation.
 - **docs/docker_development.md**: Docker development documentation.
 - **docs/local_deployment.md**: Local deployment documentation.
-- **docs/mpc_server_setup.md**: MPC server setup documentation.
+- **docs/mcp_server_setup.md**: MCP server setup documentation.
 - **specs/Done/**: Completed specifications.
 - **specs/Todo/**: Pending specifications.
 
@@ -167,25 +167,25 @@ This document provides a comprehensive overview of the GraphRAG project's file s
    - `tools/add_all_ebooks.py` (specialized version)
    - `tools/add_prompting_ebooks.py` (specialized version)
 
-4. **MPC Testing Scripts**:
-   - `tools/test_mpc_connection.py` (primary)
-   - `tools/test_mpc_search.py` (specialized version)
+4. **MCP Testing Scripts**:
+   - `tools/test_mcp_connection.py` (primary)
+   - `tools/test_mcp_search.py` (specialized version)
 
 ## Deprecated Files
 
 1. **Old Test Files**:
    - `test_add_document_with_concepts.py`
    - `test_api_add_document.py`
-   - `test_mpc_add_document.py`
-   - `test_mpc_add_document_with_concepts.py`
-   - `test_mpc_concept.py`
-   - `test_mpc_connection.py`
-   - `test_mpc_search.py`
-   - `test_mpc_search_graphrag.py`
+   - `test_mcp_add_document.py`
+   - `test_mcp_add_document_with_concepts.py`
+   - `test_mcp_concept.py`
+   - `test_mcp_connection.py`
+   - `test_mcp_search.py`
+   - `test_mcp_search_graphrag.py`
 
 2. **Removed Scripts**:
    - `scripts/start_api_local.sh` (removed - functionality covered by graphrag-service.sh)
-   - `scripts/start_mpc_local.sh` (removed - functionality covered by graphrag-service.sh)
+   - `scripts/start_mcp_local.sh` (removed - functionality covered by graphrag-service.sh)
    - `scripts/reset_database.py` (removed - functionality covered by clean_database.py)
    - `tools/reset_databases.py` (removed - functionality covered by clean_database.py)
    - `scripts/check_neo4j_connection.py` (removed - functionality covered by verify_neo4j.py)
@@ -211,20 +211,20 @@ This document provides a comprehensive overview of the GraphRAG project's file s
   ```bash
   # Start all services
   ./scripts/service_management/graphrag-service.sh start
-  
+
   # Check status
   ./scripts/service_management/graphrag-service.sh status
-  
+
   # Stop all services
   ./scripts/service_management/graphrag-service.sh stop
-  
+
   # Restart all services
   ./scripts/service_management/graphrag-service.sh restart
-  
+
   # Start individual services
   ./scripts/service_management/graphrag-service.sh start-neo4j
   ./scripts/service_management/graphrag-service.sh start-api
-  ./scripts/service_management/graphrag-service.sh start-mpc
+  ./scripts/service_management/graphrag-service.sh start-mcp
   ```
 
 ### Database Management
@@ -233,13 +233,13 @@ This document provides a comprehensive overview of the GraphRAG project's file s
   ```bash
   # Clear both databases with confirmation
   python scripts/clean_database.py
-  
+
   # Clear both databases without confirmation
   python scripts/clean_database.py --yes
-  
+
   # Clear only Neo4j
   python scripts/clean_database.py --neo4j
-  
+
   # Clear only ChromaDB
   python scripts/clean_database.py --chromadb
   ```

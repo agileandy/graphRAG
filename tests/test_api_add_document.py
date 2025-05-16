@@ -56,7 +56,31 @@ def test_api_add_document():
 
     return response.status_code == 200 or response.status_code == 201
 
+def test_api_add_folder():
+    """Test adding a folder via the API."""
+    api_url = f"http://localhost:{api_port}/folders" # Assuming /folders endpoint for adding folders
+
+    # Prepare data for adding a folder - specify the path to a test folder
+    folder_data = {
+        "folder_path": "example_docs/" # Use an existing folder with test documents
+    }
+
+    print(f"Sending folder path to {api_url}...")
+    response = requests.post(api_url, json=folder_data)
+
+    print(f"Status code: {response.status_code}")
+    print("\nResponse:")
+    try:
+        print(json.dumps(response.json(), indent=2))
+    except:
+        print(response.text)
+
+    # Expecting a success status code (e.g., 200 or 201)
+    return response.status_code == 200 or response.status_code == 201
+
 if __name__ == "__main__":
-    success = test_api_add_document()
-    if not success:
+    success_document = test_api_add_document()
+    success_folder = test_api_add_folder() # Add the new test call
+
+    if not success_document or not success_folder:
         sys.exit(1)

@@ -37,9 +37,6 @@ DEFAULT_PORTS = {
     # API Services
     "api": 5001,                # Main GraphRAG API
 
-    # MPC Services
-    "mpc": 8765,                # Message Passing Communication server
-
     # MCP Services
     "mcp": 8767,                # Model Context Protocol server
     "bug_mcp": 5005,            # Bug tracking MCP server

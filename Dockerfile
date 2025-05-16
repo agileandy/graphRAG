@@ -37,7 +37,7 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install websockets for MPC server
+# Install websockets for MCP server
 RUN pip install --no-cache-dir websockets
 
 # Copy the entire project
@@ -96,8 +96,8 @@ RUN chown -R graphrag:graphrag /app/data && \
 EXPOSE 7474 7687
 # API Server
 EXPOSE 5001
-# MPC Server
-EXPOSE 8765
+# MCP Server
+EXPOSE 8767
 
 # Create a startup script
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh

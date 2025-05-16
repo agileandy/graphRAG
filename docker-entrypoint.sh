@@ -148,18 +148,9 @@ else
   echo "✅ API server is running and responding to health checks."
 fi
 
-# Start the MPC server in the background
-echo "Starting MPC server..."
-cd /app && python -m src.mpc.server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MPC} &
-MPC_PID=$!
-
-# Give the MPC server a moment to start
-sleep 3
-echo "✅ MPC server started (PID: $MPC_PID)."
-
 # Start the MCP server in the background
 echo "Starting MCP server..."
-cd /app && python -m src.mpc.mcp_server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MCP} &
+cd /app && python -m src.mcp.server --host 0.0.0.0 --port ${GRAPHRAG_PORT_MCP} &
 MCP_PID=$!
 
 # Give the MCP server a moment to start
@@ -180,18 +171,15 @@ echo ""
 echo "Service Endpoints:"
 echo "- Neo4j Browser: http://localhost:${GRAPHRAG_PORT_NEO4J_HTTP}"
 echo "- API Server: http://localhost:${GRAPHRAG_PORT_API}"
-echo "- MPC Server: ws://localhost:${GRAPHRAG_PORT_MPC}"
 echo "- MCP Server: ws://localhost:${GRAPHRAG_PORT_MCP}"
 echo ""
 echo "Health Status:"
 echo "- Neo4j: Running"
 echo "- API Server: Running"
-echo "- MPC Server: Running"
 echo "- MCP Server: Running"
 echo ""
 echo "Use the following commands to interact with the system:"
 echo "- API: curl http://localhost:${GRAPHRAG_PORT_API}/health"
-echo "- MPC: python scripts/mpc_client_example.py --port ${GRAPHRAG_PORT_MPC}"
 echo "- MCP: python scripts/mcp_client_example.py --port ${GRAPHRAG_PORT_MCP}"
 echo ""
 echo "Log Files:"

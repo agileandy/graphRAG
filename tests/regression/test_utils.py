@@ -47,6 +47,7 @@ SEARCH_ENDPOINT = f"{API_BASE_URL}/search"
 DOCUMENTS_ENDPOINT = f"{API_BASE_URL}/documents"
 CONCEPTS_ENDPOINT = f"{API_BASE_URL}/concepts"
 BOOKS_ENDPOINT = f"{API_BASE_URL}/books"
+JOBS_ENDPOINT = f"{API_BASE_URL}/jobs"
 
 def wait_for_api_ready(max_retries: int = 30, retry_interval: int = 2) -> bool:
     """
@@ -623,6 +624,104 @@ async def mcp_invoke_tool(host="localhost", port=None, tool_name="search", param
             else:
                 return False, {"error": response_data.get("error", {})}
     except Exception as e:
+        return False, {"error": str(e)}
+
+async def check_document_exists(source: str, host="localhost", port=None, timeout=5) -> bool:
+    """
+    Check if a document with the given source exists via the MCP server.
+
+    Args:
+        source: The source identifier of the document.
+        host: Model Context Protocol server host
+        port: Model Context Protocol server port (default: from centralized configuration)
+        timeout: Connection timeout in seconds
+
+    Returns:
+        True if the document exists, False otherwise.
+    """
+    # Use centralized port configuration if port is not specified
+    if port is None:
+        port = mcp_port
+
+    # Assuming an MCP tool named 'get_document_by_source' exists
+    success, response = await mcp_invoke_tool(
+        host=host,
+        port=port,
+        tool_name="get_document_by_source",
+        parameters={"source": source},
+        timeout=timeout
+    )
+
+    # Assuming the tool returns a result if the document is found, and an error or empty result otherwise
+    return success and response is not None and response.get("document") is not None
+
+async def get_document_count(host="localhost", port=None, timeout=5) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Get the total number of documents via the MCP server.
+
+    Args:
+        host: Model Context Protocol server host
+        port: Model Context Protocol server port (default: from centralized configuration)
+        timeout: Connection timeout in seconds
+
+    Returns:
+        Tuple of (success, response_data)
+    """
+    # Use centralized port configuration if port is not specified
+    if port is None:
+        port = mcp_port
+
+    # Assuming an MCP tool named 'get_document_count' exists
+    success, response = await mcp_invoke_tool(
+        host=host,
+        port=port,
+        tool_name="get_document_count",
+        parameters={},
+        timeout=timeout
+    )
+
+    # Assuming the tool returns a dictionary with a 'count' key on success
+    if success and response is not None and "count" in response:
+        return True, {"count": response["count"]}
+    else:
+        return False, {"error": response.get("error", "Failed to get document count via MCP")}
+
+
+def get_job_status(job_id: str) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Get the status of a specific job via the API.
+
+    Args:
+        job_id: The ID of the job
+
+    Returns:
+        Tuple of (success, response_data)
+    """
+    try:
+        response = requests.get(f"{JOBS_ENDPOINT}/{job_id}", timeout=10)
+        if response.status_code == 200:
+            return True, response.json()
+        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+    except requests.RequestException as e:
+        return False, {"error": str(e)}
+
+def cancel_job(job_id: str) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Cancel a specific job via the API.
+
+    Args:
+        job_id: The ID of the job
+
+    Returns:
+        Tuple of (success, response_data)
+    """
+    try:
+        # Assuming the API uses a POST request to a /cancel endpoint for cancellation
+        response = requests.post(f"{JOBS_ENDPOINT}/{job_id}/cancel", timeout=10)
+        if response.status_code == 200:
+            return True, response.json()
+        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+    except requests.RequestException as e:
         return False, {"error": str(e)}
 
 def print_test_result(test_name: str, success: bool, message: str = None) -> None:

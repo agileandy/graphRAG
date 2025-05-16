@@ -8,12 +8,16 @@ import os
 import sys
 import logging
 import glob
+import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging with more detailed format
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG for more verbose logging
+    format='%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Explicitly load environment variables from the config file
@@ -283,7 +287,7 @@ def add_document():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/documents/folder', methods=['POST'])
+@app.route('/folders', methods=['POST'])
 def add_folder():
     """
     Add all documents from a folder to the GraphRAG system.
@@ -345,7 +349,7 @@ def add_folder():
     # Define the task function
     def process_folder_task(job):
         """
-        Process all files in a folder.
+        Process all files in a folder using multithreading.
 
         Args:
             job: Job object
@@ -356,6 +360,8 @@ def add_folder():
         from scripts.document_processing.add_document_core import add_document_to_graphrag
         from src.processing.duplicate_detector import DuplicateDetector
         import time
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
 
         # Initialize duplicate detector
         duplicate_detector = DuplicateDetector(vector_db)
@@ -370,15 +376,24 @@ def add_folder():
             "details": []
         }
 
-        # Process each file
-        for i, file_path in enumerate(files):
-            # Extract filename for logging
+        # Create a lock for thread-safe updates to results
+        results_lock = threading.Lock()
+        # Create a lock for thread-safe progress updates
+        progress_lock = threading.Lock()
+        # Track processed files count
+        processed_count = 0
+
+        # Define a function to process a single file
+        def process_file(file_info):
+            nonlocal processed_count
+            i, file_path = file_info
             filename = os.path.basename(file_path)
+            file_result = {
+                "file": filename,
+                "success": False
+            }
 
             try:
-                # Update job progress
-                job.update_progress(i, len(files))
-
                 logger.info(f"Processing file {i+1}/{len(files)}: {filename}")
 
                 # Read file content based on file type
@@ -399,31 +414,25 @@ def add_folder():
 
                             if not text.strip():
                                 logger.warning(f"PDF extraction returned empty text for {filename}")
-                                results["failed_count"] += 1
-                                results["details"].append({
-                                    "file": filename,
-                                    "success": False,
-                                    "error": "PDF extraction returned empty text"
-                                })
-                                continue
+                                file_result["error"] = "PDF extraction returned empty text"
+                                with results_lock:
+                                    results["failed_count"] += 1
+                                    results["details"].append(file_result)
+                                return
                         except ImportError:
                             logger.error("PyPDF2 is not installed. Please install it with 'pip install PyPDF2'.")
-                            results["failed_count"] += 1
-                            results["details"].append({
-                                "file": filename,
-                                "success": False,
-                                "error": "PyPDF2 is not installed"
-                            })
-                            continue
+                            file_result["error"] = "PyPDF2 is not installed"
+                            with results_lock:
+                                results["failed_count"] += 1
+                                results["details"].append(file_result)
+                            return
                         except Exception as e:
                             logger.error(f"Failed to extract text from PDF {filename}: {str(e)}")
-                            results["failed_count"] += 1
-                            results["details"].append({
-                                "file": filename,
-                                "success": False,
-                                "error": f"Failed to extract text from PDF: {str(e)}"
-                            })
-                            continue
+                            file_result["error"] = f"Failed to extract text from PDF: {str(e)}"
+                            with results_lock:
+                                results["failed_count"] += 1
+                                results["details"].append(file_result)
+                            return
                     # Handle text files
                     else:
                         try:
@@ -436,22 +445,18 @@ def add_folder():
                                     text = f.read()
                             except Exception as e:
                                 logger.error(f"Failed to read file {filename}: {str(e)}")
-                                results["failed_count"] += 1
-                                results["details"].append({
-                                    "file": filename,
-                                    "success": False,
-                                    "error": f"Failed to read file: {str(e)}"
-                                })
-                                continue
+                                file_result["error"] = f"Failed to read file: {str(e)}"
+                                with results_lock:
+                                    results["failed_count"] += 1
+                                    results["details"].append(file_result)
+                                return
                 except Exception as e:
                     logger.error(f"Failed to process file {filename}: {str(e)}")
-                    results["failed_count"] += 1
-                    results["details"].append({
-                        "file": filename,
-                        "success": False,
-                        "error": f"Failed to process file: {str(e)}"
-                    })
-                    continue
+                    file_result["error"] = f"Failed to process file: {str(e)}"
+                    with results_lock:
+                        results["failed_count"] += 1
+                        results["details"].append(file_result)
+                    return
 
                 # Create metadata for the document
                 metadata = default_metadata.copy()
@@ -484,48 +489,85 @@ def add_folder():
                     metadata['filename'] = filename
 
                 # Add document to GraphRAG system
-                result = add_document_to_graphrag(
-                    text=text,
-                    metadata=metadata,
-                    neo4j_db=neo4j_db,
-                    vector_db=vector_db,
-                    duplicate_detector=duplicate_detector
-                )
+                logger.debug(f"Adding document to GraphRAG: {filename}, text length: {len(text)}, metadata: {metadata}")
+                try:
+                    # Force rule-based concept extraction for folder add
+                    # This is a workaround for the LLM-based extraction issues
+                    metadata["force_rule_based"] = True
 
-                if result:
-                    # Document was added successfully
-                    logger.info(f"Added document: {filename}")
-                    results["added_count"] += 1
-                    results["details"].append({
-                        "file": filename,
-                        "success": True,
-                        "document_id": result.get("document_id"),
-                        "entities_count": len(result.get("entities", [])),
-                        "relationships_count": len(result.get("relationships", []))
-                    })
-                else:
-                    # Document was a duplicate
-                    logger.info(f"Skipped duplicate document: {filename}")
-                    results["skipped_count"] += 1
-                    results["details"].append({
-                        "file": filename,
-                        "success": True,
-                        "status": "duplicate"
-                    })
+                    result = add_document_to_graphrag(
+                        text=text,
+                        metadata=metadata,
+                        neo4j_db=neo4j_db,
+                        vector_db=vector_db,
+                        duplicate_detector=duplicate_detector
+                    )
 
-                # Wait a bit between files to avoid overwhelming the system
-                time.sleep(0.5)
+                    # Log the raw result for debugging
+                    logger.debug(f"Raw result from add_document_to_graphrag: {result}")
+
+                    if result:
+                        # Document was added successfully
+                        logger.info(f"Added document: {filename}, document_id: {result.get('document_id')}")
+                        file_result["success"] = True
+                        file_result["document_id"] = result.get("document_id")
+                        file_result["entities_count"] = len(result.get("entities", []))
+                        file_result["relationships_count"] = len(result.get("relationships", []))
+                        with results_lock:
+                            results["added_count"] += 1
+                            results["details"].append(file_result)
+                    else:
+                        # Document was a duplicate or failed
+                        logger.warning(f"Document not added: {filename}. Result was: {result}")
+                        if isinstance(result, dict) and result.get("status") == "duplicate":
+                            logger.info(f"Skipped duplicate document: {filename}")
+                            file_result["success"] = True
+                            file_result["status"] = "duplicate"
+                            with results_lock:
+                                results["skipped_count"] += 1
+                                results["details"].append(file_result)
+                        else:
+                            logger.error(f"Failed to add document: {filename}. Unknown result: {result}")
+                            file_result["success"] = False
+                            file_result["error"] = f"Unknown result from add_document_to_graphrag: {result}"
+                            with results_lock:
+                                results["failed_count"] += 1
+                                results["details"].append(file_result)
+                except Exception as e:
+                    logger.error(f"Exception in add_document_to_graphrag for {filename}: {str(e)}")
+                    logger.error(traceback.format_exc())
+                    file_result["success"] = False
+                    file_result["error"] = f"Exception in add_document_to_graphrag: {str(e)}"
+                    with results_lock:
+                        results["failed_count"] += 1
+                        results["details"].append(file_result)
 
             except Exception as e:
                 logger.error(f"Error processing file {filename}: {str(e)}")
-                results["failed_count"] += 1
-                results["details"].append({
-                    "file": filename,
-                    "success": False,
-                    "error": str(e)
-                })
+                file_result["error"] = str(e)
+                with results_lock:
+                    results["failed_count"] += 1
+                    results["details"].append(file_result)
+            finally:
+                # Update progress
+                with progress_lock:
+                    nonlocal processed_count
+                    processed_count += 1
+                    job.update_progress(processed_count, len(files))
 
-        # Update final job progress
+        # Start the job
+        job.start()
+
+        # Determine the number of worker threads (limit to a reasonable number)
+        max_workers = min(10, len(files))  # Use at most 10 threads or number of files, whichever is smaller
+
+        # Process files in parallel using a thread pool
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all files for processing
+            file_infos = [(i, file_path) for i, file_path in enumerate(files)]
+            executor.map(process_file, file_infos)
+
+        # Ensure final progress is 100%
         job.update_progress(len(files), len(files))
 
         return results

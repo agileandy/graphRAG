@@ -425,7 +425,11 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                 client_jobs[client_id].add(job.job_id)
 
             # Start the job
-            job_manager.run_job_async(job, _process_add_folder_job)
+            # Use threading to avoid coroutine issues
+            import threading
+            thread = threading.Thread(target=_process_add_folder_job, args=(job,))
+            thread.daemon = True
+            thread.start()
 
             return {
                 'status': 'accepted',
@@ -537,7 +541,7 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
     except Exception as e:
         return {'error': str(e)}
 
-async def _process_add_folder_job(job) -> Dict[str, Any]:
+def _process_add_folder_job(job) -> Dict[str, Any]:
     """
     Process an add folder job.
 
@@ -561,9 +565,14 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
     all_entities = []
     all_relationships = []
 
+    # Mark job as started
+    job.start()
+    print(f"Starting job {job.job_id} to process {len(all_files)} files from {folder_path}")
+
     for i, file_path in enumerate(all_files):
         # Update job progress
         job.update_progress(i, len(all_files))
+        print(f"Processing file {i+1}/{len(all_files)}: {file_path}")
 
         file_name = os.path.basename(file_path)
         file_ext = os.path.splitext(file_path)[1].lower()
@@ -592,6 +601,7 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
                 # Extract text and metadata
                 text = data.pop("text", "")
                 if not text:
+                    print(f"No text found in JSON file: {file_path}")
                     skipped_files += 1
                     continue
 
@@ -620,13 +630,14 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
                 continue
 
             # Check for duplicates
-            is_duplicate, _, method = duplicate_detector.is_duplicate(text, metadata)
+            is_duplicate, existing_id, method = duplicate_detector.is_duplicate(text, metadata)
             if is_duplicate:
-                print(f"Skipping duplicate file: {file_path} (detected by {method})")
+                print(f"Skipping duplicate file: {file_path} (detected by {method}, existing ID: {existing_id})")
                 duplicate_files += 1
                 continue
 
             # Add document to GraphRAG system
+            print(f"Adding document to GraphRAG system: {file_path}")
             result = add_document_to_graphrag(
                 text=text,
                 metadata=metadata,
@@ -635,9 +646,15 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
                 duplicate_detector=duplicate_detector
             )
 
-            processed_files += 1
-            all_entities.extend(result.get('entities', []) if result else [])
-            all_relationships.extend(result.get('relationships', []) if result else [])
+            if result:
+                processed_files += 1
+                doc_id = result.get('document_id', 'unknown')
+                print(f"Document added successfully with ID: {doc_id}")
+                all_entities.extend(result.get('entities', []))
+                all_relationships.extend(result.get('relationships', []))
+            else:
+                print(f"Document was not added (likely a duplicate): {file_path}")
+                duplicate_files += 1
 
         except Exception as e:
             print(f"Error processing file {file_path}: {e}")
@@ -646,7 +663,8 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
     # Update final job progress
     job.update_progress(len(all_files), len(all_files))
 
-    return {
+    # Create result object
+    result = {
         'message': f"Processed {processed_files} files from {folder_path}",
         'processed_files': processed_files,
         'skipped_files': skipped_files,
@@ -655,6 +673,12 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
         'entities_count': len(all_entities),
         'relationships_count': len(all_relationships)
     }
+
+    # Mark job as completed with the result
+    job.complete(result)
+    print(f"Job {job.job_id} completed: {result['message']}")
+
+    return result
 
 async def handle_books_by_concept(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -775,7 +799,7 @@ async def handle_ping(_: Dict[str, Any]) -> Dict[str, Any]:
         'neo4j_connected': neo4j_db.verify_connection()
     }
 
-async def handle_job_status(data: Dict[str, Any]) -> Dict[str, Any]:
+def handle_job_status(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle job status request.
 
@@ -795,17 +819,26 @@ async def handle_job_status(data: Dict[str, Any]) -> Dict[str, Any]:
     if not job:
         return {'error': f"Job not found: {job_id}"}
 
-    return {
-        'status': job.status,
-        'progress': job.progress,
-        'total_items': job.total_items,
-        'processed_items': job.processed_items,
-        'created_at': job.created_at.isoformat() if job.created_at else None,
-        'started_at': job.started_at.isoformat() if job.started_at else None,
-        'completed_at': job.completed_at.isoformat() if job.completed_at else None,
-        'result': job.result,
-        'error': job.error
+    # Create a response with job details
+    response = {
+        'status': 'success',
+        'job': {
+            'job_id': job.job_id,
+            'job_type': job.job_type,
+            'status': job.status,
+            'progress': job.progress,
+            'total_items': job.total_items,
+            'processed_items': job.processed_items,
+            'created_at': job.created_at.isoformat() if job.created_at else None,
+            'started_at': job.started_at.isoformat() if job.started_at else None,
+            'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+            'result': job.result,
+            'error': job.error
+        }
     }
+
+    print(f"Job status for {job_id}: {job.status}, progress: {job.progress:.1f}%")
+    return response
 
 async def handle_list_jobs(data: Dict[str, Any], client_id: Optional[int] = None) -> Dict[str, Any]:
     """

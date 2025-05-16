@@ -19,7 +19,7 @@ Environment Variables:
 
 import sys
 import argparse
-from utils import connect_to_mpc, send_request, get_mpc_url, format_json
+from utils import connect_to_mpc, send_request, get_mcp_url, format_json
 from typing import Dict, Any
 
 def display_passages(result: Dict[str, Any]) -> None:
@@ -68,7 +68,7 @@ def main():
     args = parser.parse_args()
     
     # Get the MPC URL
-    url = args.url or get_mpc_url()
+    url = args.url or get_mcp_url()
     
     # Connect to the MPC server
     conn = connect_to_mpc(url)
