@@ -1,13 +1,13 @@
 # GraphRAG Agent Tools
 
-This directory contains standalone command-line tools for interacting with the GraphRAG MPC server. These tools can be used by AI agents or directly by users to perform various operations on the GraphRAG system.
+This directory contains standalone command-line tools for interacting with the GraphRAG MCP server. These tools can be used by AI agents or directly by users to perform various operations on the GraphRAG system.
 
 ## Configuration
 
 All tools use the following environment variables for configuration:
 
-- `MPC_HOST`: MPC server host (default: localhost)
-- `MPC_PORT`: MPC server port (default: from centralized port configuration)
+- `MCP_HOST`: MCP server host (default: localhost)
+- `MCP_PORT`: MCP server port (default: from centralized port configuration)
 - `NEO4J_URI`: Neo4j database URI (default: from centralized port configuration)
 - `NEO4J_USERNAME`: Neo4j username (default: neo4j)
 - `NEO4J_PASSWORD`: Neo4j password (default: graphrag)
@@ -18,7 +18,7 @@ You can override these defaults by setting the environment variables or by using
 
 ### Utility Tools
 
-- **ping.py**: Test if the MPC server is alive and responding
+- **ping.py**: Test if the MCP server is alive and responding
   ```
   python ping.py [--url URL]
   ```
@@ -88,7 +88,7 @@ You can override these defaults by setting the environment variables or by using
 
 All tools support the following common options:
 
-- `--url URL`: Override the MPC server URL (default: from centralized port configuration or environment variables)
+- `--url URL`: Override the MCP server URL (default: from centralized port configuration or environment variables)
 - `--raw`: Display the raw JSON response instead of formatted output
 
 ## Examples

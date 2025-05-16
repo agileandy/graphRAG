@@ -33,7 +33,7 @@ graph TD
 - **Vector Database**: ChromaDB 1.0.8+
 - **API Server**: Flask
 - **MCP Server**: WebSockets
-- **LLM Integration**: OpenAI API and local models via LM Studio
+- **LLM Integration**: OpenRouter (Google Gemini 2.0 Flash with Meta Llama 4 Maverick fallback), OpenAI API, and local models via LM Studio and Ollama
 - **Containerization**: Docker
 
 ### 1.3 System Requirements
@@ -244,25 +244,66 @@ flowchart TD
 3. **Embedding Generation**: Generate embeddings for each chunk
    - Uses Ollama with "snowflake-arctic-embed2:latest" model (1024 dimensions) by default
    - Optional reranking capability via Ollama with "qllama/bge-reranker-large:latest"
-   - Phi-4 model reserved for concept extraction and NLP processing tasks
    - Batch processing to optimize API calls
    - Caching to avoid re-embedding identical content
 
-4. **Concept Extraction**: Extract key concepts using NLP and/or LLM
+4. **LLM Integration**: Multiple LLM providers for different tasks
+   - **OpenRouter Integration**:
+     - Primary provider for concept extraction and relationship identification
+     - Uses Google Gemini 2.0 Flash model with Meta Llama 4 Maverick as fallback
+     - Configured via `config/openrouter_config.json`
+     - Provides higher quality concept extraction and relationship identification
+     - Leverages Meta Llama 4 Maverick's strength in relationship scoring for more accurate relationship strengths
+   - **LM Studio Integration**:
+     - Local Phi-4 model for concept extraction when OpenRouter is unavailable
+     - Configured via `config/llm_config.json`
+     - Provides fallback capabilities for offline operation
+   - **Ollama Integration**:
+     - Used primarily for embeddings and reranking
+     - Provides local models for various NLP tasks
+     - Configured in the respective provider configurations
+
+5. **Concept Extraction**: Extract key concepts using NLP and/or LLM
    - **NLP-based extraction**:
      - spaCy for named entity recognition and noun phrase extraction
      - TF-IDF for statistical importance scoring
      - Domain-specific entity recognition for specialized fields
-   - **LLM-based extraction**:
-     - Structured prompting to identify key concepts
-     - Example prompt template:
+   - **Enhanced LLM-based extraction**:
+     - **Two-Pass Approach**:
+       - First pass: Extract concepts from individual chunks
+       - Second pass: Analyze the entire document to identify relationships between concepts across chunks
+     - **Context-Aware Extraction**:
+       - Provide the LLM with information about existing concepts in the knowledge base
+       - Encourage identification of connections to existing concepts
+     - **Semantic Relationship Identification**:
+       - Explicitly ask for relationship types between concepts
+       - Use the defined semantic relationship types (DEFINES_CONCEPT, IS_A, HAS_PART, etc.)
+     - **Improved Prompt Template**:
 
        ```text
-       Identify the 5-10 most important concepts in the following text.
+       Extract the most important concepts from the following text and identify relationships between them.
+
        For each concept, provide:
        1. The concept name
        2. A category (e.g., technique, theory, tool, person)
        3. A confidence score (0-1)
+       4. A brief definition or explanation
+
+       Then, identify relationships between these concepts and any relevant concepts in the existing knowledge base.
+       Use specific relationship types such as:
+       - DEFINES_CONCEPT/EXPLAINS_TERM (concept explains or defines another)
+       - IS_A/TYPE_OF (hierarchical relationship)
+       - HAS_PART/CONTAINS_COMPONENT (compositional relationship)
+       - USED_FOR/APPLIES_TO (functional relationship)
+       - IMPLEMENTS_METHOD/USES_TECHNIQUE (implementation relationship)
+       - HAS_ATTRIBUTE/HAS_PROPERTY (characteristic relationship)
+       - EXAMPLE_OF/ILLUSTRATES_CONCEPT (exemplification relationship)
+       - REQUIRES_INPUT/PRODUCES_OUTPUT (I/O relationship)
+       - STEP_IN_PROCESS/PRECEDES/FOLLOWS (sequential relationship)
+       - COMPARES_WITH/ALTERNATIVE_TO (comparative relationship)
+
+       Existing concepts in the knowledge base:
+       {existing_concepts}
 
        Text: {chunk_text}
        ```
@@ -271,8 +312,12 @@ flowchart TD
      - Fuzzy matching to identify similar concepts
      - Embedding similarity to group related concepts
      - Manual curation interface for reviewing and merging concepts
+   - **Chunking Strategy Improvements**:
+     - Smaller chunks (500-1000 tokens) for more focused concept extraction
+     - Overlapping chunks to maintain context across boundaries
+     - Structure-aware chunking that respects document sections and headings
 
-5. **Relationship Building**: Create relationships between concepts and documents
+6. **Relationship Building**: Create relationships between concepts and documents
    - **Explicit Relationships**:
      - MENTIONS: Links sections to concepts they contain
      - CONTAINS: Hierarchical document structure (book → chapter → section)
@@ -282,11 +327,49 @@ flowchart TD
        - Embedding similarity
        - LLM-generated relationship suggestions
      - Relationship strength scoring (0-1) based on evidence
-   - **Relationship Types**:
-     - Basic RELATED_TO for general connections
-     - Specialized relationships (IS_A, PART_OF, USES, etc.) for domain-specific knowledge
+   - **Semantic Relationship Types**:
+     - **DEFINES_CONCEPT / EXPLAINS_TERM**:
+       - NLP Technique: Identifying definitions (e.g., "X is...", "X refers to...", "The term Y means..."), glossary extraction, key phrase extraction linked to explanatory text.
+       - Description: Connects a term, acronym, or concept to its definition or a more detailed explanation. Crucial for technical understanding.
+       - Example: [GradientDescent] --DEFINES_CONCEPT--> ["An iterative optimization algorithm..."], [API] --EXPLAINS_TERM--> ["Application Programming Interface, a way for two or more computer programs to communicate..."]
+     - **IS_A / TYPE_OF / SUBCLASS_OF**:
+       - NLP Technique: NER, hyponymy/hypernymy extraction, parsing sentences like "X is a Y."
+       - Description: Essential for building hierarchies of concepts, tools, or methods.
+       - Example: [Python] --IS_A--> [ProgrammingLanguage], [Scrum] --IS_A--> [AgileFramework], [CandlestickChart] --TYPE_OF--> [FinancialChart]
+     - **HAS_PART / CONTAINS_COMPONENT / MODULE_OF**:
+       - NLP Technique: Meronymy/Holonymy, looking for compositional language ("X consists of Y, Z", "A's components include B").
+       - Description: Describes the structure of systems, software, frameworks, or even sections of a book.
+       - Example: [NeuralNetwork] --HAS_PART--> [NeuronLayer], [PythonStandardLibrary] --CONTAINS_COMPONENT--> [MathModule], [AgileManifesto] --HAS_PART--> [Principle]
+     - **USED_FOR / APPLIES_TO / PURPOSE_IS**:
+       - NLP Technique: Analyzing verb phrases, prepositional phrases ("used for X," "tool for Y"), functional description extraction.
+       - Description: Links a tool, technique, command, function, or concept to its intended purpose or application area.
+       - Example: [PandasDataFrame] --USED_FOR--> [DataManipulation], [TLSProtocol] --USED_FOR--> [SecuringNetworkCommunication], [RuleOfThirds] --APPLIES_TO--> [PhotographicComposition]
+     - **IMPLEMENTS_METHOD / USES_TECHNIQUE / EMPLOYS_ALGORITHM**:
+       - NLP Technique: Relation extraction focusing on how a system, tool, or standard achieves its purpose.
+       - Description: Connects a higher-level concept or tool to the specific methods, algorithms, or techniques it uses.
+       - Example: [SupportVectorMachine] --IMPLEMENTS_METHOD--> [KernelTrick], [MSExcelSolver] --USES_TECHNIQUE--> [OptimizationAlgorithms], [WPA3] --EMPLOYS_ALGORITHM--> [SAEHandshake]
+     - **HAS_ATTRIBUTE / HAS_PROPERTY / CHARACTERIZED_BY**:
+       - NLP Technique: Adjective-noun pairing, attribute extraction, "X has Y" patterns.
+       - Description: Describes features, parameters, or characteristics of a concept, tool, or entity.
+       - Example: [PythonList] --HAS_ATTRIBUTE--> [Mutable], [SHA256] --HAS_PROPERTY--> [OutputSize(256bits)], [FStop] --CHARACTERIZED_BY--> [ApertureSize]
+     - **EXAMPLE_OF / ILLUSTRATES_CONCEPT / DEMONSTRATES_USAGE**:
+       - NLP Technique: Identifying code blocks, figures, or specific scenarios that are explicitly linked to a concept or explanation. Pattern matching for "For example...", "As an illustration...".
+       - Description: Links a general concept or technique to a concrete example, code snippet, or case study.
+       - Example: [CodeSnippet_PythonListComp] --EXAMPLE_OF--> [ListComprehensionConcept], [Scenario_PhishingAttack] --ILLUSTRATES_CONCEPT--> [SocialEngineering]
+     - **REQUIRES_INPUT / PRODUCES_OUTPUT / HAS_PARAMETER**:
+       - NLP Technique: Analyzing function/method signatures in programming books, descriptions of processes that take inputs and produce outputs.
+       - Description: Specific to processes, functions, algorithms, or tools that consume inputs and/or produce outputs, or have configurable parameters.
+       - Example: [PythonPrintFunction] --REQUIRES_INPUT--> [StringOrObject], [MachineLearningModel] --PRODUCES_OUTPUT--> [Prediction], [NetworkRouter] --HAS_PARAMETER--> [IPAddress]
+     - **STEP_IN_PROCESS / PRECEDES / FOLLOWS**:
+       - NLP Technique: Identifying ordered lists, procedural language ("first... then... finally"), temporal markers.
+       - Description: Orders steps in a workflow, tutorial, algorithm, or phase in a methodology.
+       - Example: [DataCleaning] --STEP_IN_PROCESS--> [DataAnalysisWorkflow], [RequirementGathering] --PRECEDES--> [SprintPlanning_Agile]
+     - **COMPARES_WITH / ALTERNATIVE_TO / DIFFERENTIATED_FROM**:
+       - NLP Technique: Identifying comparative language ("unlike X, Y does...", "A vs. B", "an alternative is...").
+       - Description: Useful for understanding the differences and similarities between related tools, techniques, or concepts.
+       - Example: [Agile] --COMPARES_WITH--> [WaterfallModel], [JPEG] --ALTERNATIVE_TO--> [PNG], [Python] --DIFFERENTIATED_FROM--> [Java_ForScripting]
 
-6. **Storage**: Store chunks in ChromaDB and concepts/relationships in Neo4j
+7. **Storage**: Store chunks in ChromaDB and concepts/relationships in Neo4j
    - Transactional processing ensures consistency across both databases
    - Rollback mechanisms for failed processing
    - Idempotent operations to prevent duplicates

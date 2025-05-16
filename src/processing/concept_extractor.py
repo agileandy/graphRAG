@@ -211,8 +211,68 @@ class ConceptExtractor:
             matches = re.findall(pattern, text)
             concepts.extend([match for match in matches if self._is_valid_concept(match)])
 
-        # Remove duplicates and sort
-        return sorted(list(set(concepts)))
+        # Extract common technical terms and phrases
+        # Look for phrases with technical keywords
+        tech_keywords = [
+            "algorithm", "framework", "model", "system", "network", "protocol",
+            "architecture", "platform", "language", "interface", "database",
+            "learning", "intelligence", "neural", "data", "cloud", "computing",
+            "security", "encryption", "blockchain", "internet", "web", "api",
+            "software", "hardware", "device", "sensor", "robot", "automation",
+            "prompt", "engineering", "llm", "gpt", "ai", "ml", "nlp", "rag"
+        ]
+
+        # Create patterns for technical terms
+        for keyword in tech_keywords:
+            # Look for phrases where the keyword is the main term
+            # e.g., "machine learning", "neural network", "cloud computing"
+            pattern = fr'\b[a-zA-Z]+ {keyword}\b'
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            concepts.extend([match.strip() for match in matches if self._is_valid_concept(match)])
+
+            # Look for phrases where the keyword is a modifier
+            # e.g., "learning algorithm", "network architecture", "data model"
+            pattern = fr'\b{keyword} [a-zA-Z]+\b'
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            concepts.extend([match.strip() for match in matches if self._is_valid_concept(match)])
+
+        # Extract multi-word technical terms (2-3 words)
+        # This catches phrases like "artificial neural network", "deep learning model"
+        multi_word_patterns = [
+            r'\b[A-Za-z]+ [A-Za-z]+ [A-Za-z]+\b',  # 3-word phrases
+            r'\b[A-Za-z]+ [A-Za-z]+\b'             # 2-word phrases
+        ]
+
+        for pattern in multi_word_patterns:
+            matches = re.findall(pattern, text)
+            # Filter matches to only include those with technical relevance
+            for match in matches:
+                match = match.strip()
+                # Check if the phrase contains any technical keywords or is capitalized
+                if (any(keyword in match.lower() for keyword in tech_keywords) or
+                    match[0].isupper()) and self._is_valid_concept(match):
+                    concepts.append(match)
+
+        # Extract acronyms that might be technical terms
+        acronyms = re.findall(r'\b[A-Z]{2,5}\b', text)
+        concepts.extend([acronym for acronym in acronyms if len(acronym) >= 2])
+
+        # Remove duplicates and normalize
+        unique_concepts = set()
+        normalized_concepts = []
+
+        for concept in concepts:
+            # Normalize concept (capitalize first letter of each word)
+            words = concept.split()
+            normalized = ' '.join(word.capitalize() if not word.isupper() else word for word in words)
+
+            # Add to list if not already present
+            if normalized.lower() not in unique_concepts:
+                unique_concepts.add(normalized.lower())
+                normalized_concepts.append(normalized)
+
+        # Sort alphabetically
+        return sorted(normalized_concepts)
 
     def extract_concepts_nlp(self, text: str) -> List[str]:
         """
@@ -471,9 +531,63 @@ Focus on technical and domain-specific concepts."""
             else:
                 method = "rule"
 
+:start_line:534
+-------
         # Log the text length and method
+:start_line:537
+-------
+:start_line:539
+-------
+:start_line:539
+-------
+:start_line:541
+-------
+:start_line:543
+-------
+:start_line:545
+-------
+:start_line:547
+-------
+:start_line:549
+-------
+:start_line:551
+-------
+:start_line:553
+-------
+:start_line:555
+-------
+:start_line:557
+-------
+:start_line:559
+-------
+:start_line:561
+-------
+:start_line:563
+-------
+:start_line:565
+-------
+:start_line:567
+-------
+:start_line:569
+-------
+:start_line:571
+-------
+:start_line:573
+-------
+:start_line:575
+-------
+:start_line:577
+-------
+:start_line:579
+-------
+:start_line:581
+-------
+:start_line:583
+-------
+:start_line:585
+-------
         text_length = len(text)
-        logger.info(f"Extracting concepts from text of length {text_length} using method: {method}")
+        logger.info(f"ConceptExtractor: Extracting concepts from text of length {text_length} using method: {method}")
 
         # For LLM method, always chunk the text for consistent processing
         if method == "llm" and self.use_llm:

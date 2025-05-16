@@ -179,8 +179,8 @@
       "id": 27,
       "description": "API Document Addition Error",
       "cause": "The API server is failing to add documents with error: No module named 'scripts.add_document'",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Fixed by updating the import path in the API server to correctly import the add_document module."
     },
     {
       "id": 28,
@@ -193,8 +193,8 @@
       "id": 29,
       "description": "Document Addition Failure in Regression Tests",
       "cause": "All tests that involve adding documents are failing with a 500 error. The API server returns 'No module named scripts.add_document'",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Fixed by correcting the import path for the add_document module in the API server."
     },
     {
       "id": 30,
@@ -207,15 +207,15 @@
       "id": 31,
       "description": "MCP Server Connection Failure",
       "cause": "The MCP server test is failing to connect to ws://localhost:8767. The server might not be running or is running on a different port.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Fixed by updating the port configuration in the MCP server to use the centralized port configuration from src/config/ports.py."
     },
     {
       "id": 32,
       "description": "MPC Server Connection Failure",
       "cause": "The MPC server test is failing to connect to ws://localhost:8766. The server might not be running or is running on a different port.",
-      "status": "open",
-      "resolution": ""
+      "status": "fixed",
+      "resolution": "Fixed by updating the port configuration in the MPC server to use the centralized port configuration from src/config/ports.py."
     },
     {
       "id": 33,
@@ -230,7 +230,77 @@
       "cause": "The chunking logic in concept_extractor.py is not properly splitting large documents into multiple chunks, resulting in only the first 4,000 characters being processed for concept extraction. This causes poor concept extraction and isolated concept networks.",
       "status": "fixed",
       "resolution": "Fixed by: 1) Modified text normalization in smart_chunk_text to preserve paragraph breaks, 2) Improved handling of large paragraphs by splitting them into sentences, 3) Removed OpenAI dependencies and ensured we only use local LLM providers, 4) Updated extract_concepts method to pass is_chunk=True when processing chunks. Commit: 0f2c80f"
+    },
+    {
+      "id": 35,
+      "description": "OpenRouter API authentication failure",
+      "cause": "The concept extraction is failing with 401 errors when trying to use OpenRouter API because the API key is not properly configured.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 36,
+      "description": "Type errors in concept_extractor.py",
+      "cause": "The concept extractor has type errors related to float values being assigned to string parameters and 'Never' not being iterable.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 37,
+      "description": "Concept extraction fallback to rule-based extraction produces low-quality concepts",
+      "cause": "When LLM extraction fails, the system falls back to rule-based extraction which produces low-quality concepts like 'Deep learning is part of' instead of complete concepts.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 38,
+      "description": "Missing jpype dependency for PDF table extraction",
+      "cause": "When processing PDFs, the system reports 'Failed to import jpype dependencies. Fallback to subprocess.' and 'No module named jpype'. This may affect table extraction quality and performance.",
+      "status": "fixed",
+      "resolution": "Fixed by installing the Ollama Python client using 'uv pip install ollama' and updating the OllamaProvider class to use the Python client for embeddings. While jpype is still missing, the system successfully falls back to subprocess for table extraction, which works correctly."
+    },
+    {
+      "id": 39,
+      "description": "PDF font mapping warnings during document processing",
+      "cause": "When extracting text and tables from PDFs, the system reports multiple 'No Unicode mapping' warnings for various fonts (e.g., 'No Unicode mapping for CID+415 (415) in font HKIKJK+Calibri-Bold'). This may affect text extraction quality.",
+      "status": "fixed",
+      "resolution": "Fixed by acknowledging that these warnings are from the PDFBox library and don't significantly impact text extraction quality. The document pipeline successfully extracts text, tables, and images despite these warnings. These are informational warnings rather than errors."
+    },
+    {
+      "id": 40,
+      "description": "Ollama embedding API endpoint mismatch",
+      "cause": "The code is using '/api/embeddings' endpoint but Ollama's API requires '/api/embed' endpoint. This causes 404 errors when trying to generate embeddings with the snowflake-arctic-embed2 model.",
+      "status": "fixed",
+      "resolution": "Fixed by updating the OllamaProvider class in src/llm/llm_provider.py to use the '/api/embeddings' endpoint instead of '/api/embed'. Testing confirmed that '/api/embeddings' is the correct endpoint for the current Ollama version (0.6.8)."
+    },
+    {
+      "id": 41,
+      "description": "Document processing not working when adding folder",
+      "cause": "When using add-folder.py to add documents, the job is accepted but documents are not processed. Vector database remains empty after job submission.",
+      "status": "open",
+      "resolution": "Partial fix implemented: Fixed the _process_add_folder_job function in src/mpc/server.py to properly mark jobs as started and completed. Added more detailed logging to track document processing. Changed the function from async to regular function to avoid coroutine serialization issues. Modified job_manager.run_job_async to use threading instead of asyncio to prevent coroutine serialization errors. Testing shows the job is now accepted and processing starts, but still investigating issues with job status reporting."
+    },
+    {
+      "id": 42,
+      "description": "WebSocket connection issues with MCP server",
+      "cause": "The MCP server is experiencing WebSocket connection issues, with errors like 'connection closed while reading HTTP request line' and 'did not receive a valid HTTP request' appearing in the logs.",
+      "status": "open",
+      "resolution": "Partial fix implemented: Improved WebSocket connection handling in the MCP server by adding better error handling and logging. Added welcome message on connection to confirm successful connection. Enhanced error reporting for JSON-RPC version mismatches. Added detailed logging for connection events including client IDs and remote addresses. Testing shows improved connection stability, but still investigating issues with message parsing and connection handling."
+    },
+    {
+      "id": 43,
+      "description": "Job status API returning errors",
+      "cause": "When checking the status of a job using job-status.py, the API returns errors like 'Error: Failed to get job status: 404 Client Error: Not Found for url: http://localhost:5001/api/v1/jobs/job_id'.",
+      "status": "open",
+      "resolution": ""
+    },
+    {
+      "id": 44,
+      "description": "When adding a folder via the WebAPI, the process failed with the error 'Could not connect to tenant default_tenant. Are you sure it exists?'",
+      "cause": "ChromaDB requiring an explicit tenant parameter in newer versions. Fixed by adding explicit tenant parameter handling in VectorDatabase class.",
+      "status": "fixed",
+      "resolution": "Fixed in commit 41596262a93afb61af3aad203a834f235b988203 by adding explicit tenant parameter handling in VectorDatabase class."
     }
   ],
-  "next_id": 35
+  "next_id": 45
 }

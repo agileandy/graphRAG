@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for asynchronous processing in the GraphRAG MPC server.
+Test script for asynchronous processing in the GraphRAG MCP server.
 
 This script demonstrates how to:
 1. Add a document asynchronously
@@ -18,19 +18,19 @@ import argparse
 import websockets.sync.client as ws
 from typing import Dict, Any, List, Optional
 
-# Default MPC server URL
-DEFAULT_MPC_URL = "ws://localhost:8766"
+# Default MCP server URL
+DEFAULT_MCP_URL = "ws://localhost:8767"
 
-def connect_to_mpc(url: str = DEFAULT_MPC_URL):
-    """Connect to the MPC server."""
+def connect_to_mcp(url: str = DEFAULT_MCP_URL):
+    """Connect to the MCP server."""
     try:
         return ws.connect(url)
     except Exception as e:
-        print(f"Error connecting to MPC server at {url}: {e}")
+        print(f"Error connecting to MCP server at {url}: {e}")
         sys.exit(1)
 
 def send_request(conn, action: str, **kwargs) -> Dict[str, Any]:
-    """Send a request to the MPC server and return the response."""
+    """Send a request to the MCP server and return the response."""
     # Create the message
     message = {"action": action, **kwargs}
 
@@ -42,7 +42,7 @@ def send_request(conn, action: str, **kwargs) -> Dict[str, Any]:
         response = conn.recv()
         return json.loads(response)
     except Exception as e:
-        print(f"Error communicating with MPC server: {e}")
+        print(f"Error communicating with MCP server: {e}")
         sys.exit(1)
 
 def add_document_async(conn, text: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -246,8 +246,8 @@ def check_job_status(conn, job_id: str):
     return status
 
 def main():
-    parser = argparse.ArgumentParser(description="Test asynchronous processing in the GraphRAG MPC server")
-    parser.add_argument("--url", default=DEFAULT_MPC_URL, help="MPC server URL")
+    parser = argparse.ArgumentParser(description="Test asynchronous processing in the GraphRAG MCP server")
+    parser.add_argument("--url", default=DEFAULT_MCP_URL, help="MCP server URL")
     parser.add_argument("--test-document", action="store_true", help="Test adding a document asynchronously")
     parser.add_argument("--test-folder", help="Test adding a folder asynchronously")
     parser.add_argument("--recursive", action="store_true", help="Process folder recursively")
@@ -259,8 +259,8 @@ def main():
                         help="File types to process (e.g., .txt .pdf .md)")
     args = parser.parse_args()
 
-    # Connect to the MPC server
-    conn = connect_to_mpc(args.url)
+    # Connect to the MCP server
+    conn = connect_to_mcp(args.url)
 
     try:
         # Run tests based on arguments

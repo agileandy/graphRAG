@@ -215,45 +215,60 @@ def extract_entities(text: str, metadata: Optional[Dict[str, Any]] = None) -> Li
     # Extract domain from metadata if available
     domain = metadata.get("category") if metadata else None
 
-    # Initialize the concept extractor with LLM support
-    concept_extractor = ConceptExtractor(use_nlp=True, use_llm=True, domain=domain or "general")
+    # Check if rule-based extraction is forced
+    force_rule_based = metadata.get("force_rule_based", False) if metadata else False
 
-    # Extract concepts using LLM if available, falling back to NLP and rule-based methods
+    # Initialize the concept extractor with LLM support (unless rule-based is forced)
+    concept_extractor = ConceptExtractor(
+        use_nlp=True,
+        use_llm=not force_rule_based,
+        domain=domain or "general"
+    )
+
+    # Extract concepts using LLM if available and not forced to use rule-based,
+    # falling back to NLP and rule-based methods
     llm_concepts = []
-    try:
-        # Try to extract concepts using LLM with chunking for large documents
-        logger.info("Extracting concepts using LLM...")
 
-        # Determine max concepts based on document size
-        text_length = len(text)
-        if text_length < 5000:
-            max_concepts = 10
-        elif text_length < 20000:
-            max_concepts = 15
-        else:
-            max_concepts = 20
+    # Determine max concepts based on document size
+    text_length = len(text)
+    if text_length < 5000:
+        max_concepts = 10
+    elif text_length < 20000:
+        max_concepts = 15
+    else:
+        max_concepts = 20
 
-        logger.info(f"Using max_concepts={max_concepts} for document of length {text_length}")
+    logger.info(f"Using max_concepts={max_concepts} for document of length {text_length}")
 
-        # For very large documents, log a warning
-        if text_length > 500000:  # > 500K chars
-            logger.warning(f"Document is very large ({text_length} chars). Processing may take a while.")
+    # For very large documents, log a warning
+    if text_length > 500000:  # > 500K chars
+        logger.warning(f"Document is very large ({text_length} chars). Processing may take a while.")
 
-        # Extract concepts - the chunking is handled internally by the extract_concepts method
-        llm_concepts = concept_extractor.extract_concepts(text, method="llm", max_concepts=max_concepts)
-        logger.info(f"Extracted {len(llm_concepts)} concepts using LLM")
-
-        # If no concepts were extracted, fall back to rule-based extraction
-        if not llm_concepts:
-            logger.warning("LLM extraction returned no concepts. Falling back to rule-based extraction.")
-            llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=max_concepts)
-            logger.info(f"Extracted {len(llm_concepts)} concepts using rule-based method")
-
-    except Exception as e:
-        logger.warning(f"LLM-based concept extraction failed: {e}. Falling back to rule-based extraction.")
-        # Fall back to rule-based extraction
-        llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=15)
+    if force_rule_based:
+        # Skip LLM extraction and use rule-based directly
+        logger.info("Force rule-based extraction requested. Skipping LLM extraction.")
+        llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=max_concepts)
         logger.info(f"Extracted {len(llm_concepts)} concepts using rule-based method")
+    else:
+        try:
+            # Try to extract concepts using LLM with chunking for large documents
+            logger.info("Extracting concepts using LLM...")
+
+            # Extract concepts - the chunking is handled internally by the extract_concepts method
+            llm_concepts = concept_extractor.extract_concepts(text, method="llm", max_concepts=max_concepts)
+            logger.info(f"Extracted {len(llm_concepts)} concepts using LLM")
+
+            # If no concepts were extracted, fall back to rule-based extraction
+            if not llm_concepts:
+                logger.warning("LLM extraction returned no concepts. Falling back to rule-based extraction.")
+                llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=max_concepts)
+                logger.info(f"Extracted {len(llm_concepts)} concepts using rule-based method")
+
+        except Exception as e:
+            logger.warning(f"LLM-based concept extraction failed: {e}. Falling back to rule-based extraction.")
+            # Fall back to rule-based extraction
+            llm_concepts = concept_extractor.extract_concepts(text, method="rule", max_concepts=15)
+            logger.info(f"Extracted {len(llm_concepts)} concepts using rule-based method")
 
     # Convert LLM concepts to entities
     text_entities = []
@@ -394,237 +409,298 @@ def add_document_to_graphrag(
         vector_db: Vector database instance
         duplicate_detector: DuplicateDetector instance
 
+:start_line:415
+-------
     Returns:
         Dictionary with document ID and extracted entities, or None if duplicate
     """
-    # Calculate document hash and add to metadata
-    doc_hash = duplicate_detector.generate_document_hash(text)
-    metadata["hash"] = doc_hash
+    doc_title = metadata.get('title', 'Unknown Title')
+    doc_source = metadata.get('source', 'Unknown Source')
+    logger.info(f"Attempting to add document: {doc_title} from {doc_source}")
 
-    # Check for duplicates
-    is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(text, metadata)
+    try:
+        # Calculate document hash and add to metadata
+        doc_hash = duplicate_detector.generate_document_hash(text)
+        metadata["hash"] = doc_hash
+        logger.debug(f"Calculated hash for {doc_title}: {doc_hash}")
 
-    if is_dup:
-        logger.info(f"Skipping duplicate document: {metadata.get('title', 'Unknown Title')} (ID: {existing_doc_id}, Method: {method})")
-        return None # Indicate that the document was a duplicate and not added
+        # Check for duplicates
+        is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(text, metadata)
 
-    logger.info(f"Adding new document: {metadata.get('title', 'Unknown Title')}")
+        if is_dup:
+            logger.info(f"Skipping duplicate document: {doc_title} (ID: {existing_doc_id}, Method: {method})")
+            return None # Indicate that the document was a duplicate and not added
 
-    # 1. Extract entities from the document and metadata
-    entities = extract_entities(text, metadata)
+        logger.info(f"Adding new document: {doc_title}")
 
-    # 2. Extract relationships between entities
-    relationships = extract_relationships(entities, text)
+        # 1. Extract entities from the document and metadata
+        try:
+            entities = extract_entities(text, metadata)
+            logger.info(f"Extracted {len(entities)} entities for {doc_title}")
+        except Exception as e:
+            logger.error(f"Error extracting entities for document {doc_title}: {e}", exc_info=True)
+            # Depending on requirements, we might return None here or continue with empty entities
+            # For now, let's continue with an empty list of entities
+            entities = []
 
-    # 3. Create a unique ID for the document
-    doc_id = f"doc-{uuid.uuid4()}"
+        # 2. Extract relationships between entities
+        try:
+            relationships = extract_relationships(entities, text)
+            logger.info(f"Extracted {len(relationships)} relationships for {doc_title}")
+        except Exception as e:
+            logger.error(f"Error extracting relationships for document {doc_title}: {e}", exc_info=True)
+            # Continue with an empty list of relationships
+            relationships = []
 
-    # 4. Add entities to Neo4j with improved deduplication
-    for entity in entities:
-        # First, check if a concept with the same normalized name already exists
-        normalized_name = entity["name"].lower()
-        query = """
-        MATCH (c:Concept)
-        WHERE toLower(c.name) = $normalized_name
-        RETURN c
-        """
-        existing_concepts = neo4j_db.run_query(query, {"normalized_name": normalized_name})
+        # 3. Create a unique ID for the document
+        doc_id = f"doc-{uuid.uuid4()}"
+        logger.debug(f"Generated document ID: {doc_id}")
 
-        if existing_concepts:
-            # Use the existing concept ID instead of creating a new one
-            existing_concept = existing_concepts[0]
-            logger.info(f"Found existing concept with name '{entity['name']}' (ID: {existing_concept['c']['id']})")
-
-            # Update the entity ID to match the existing concept
-            entity["id"] = existing_concept['c']['id']
-
-            # Update the existing concept with any new properties
-            query = """
-            MATCH (c:Concept {id: $id})
-            SET c.name = $name,
-                c.abbreviation = $abbreviation,
-                c.relevance = $relevance,
-                c.definition = $definition,
-                c.source = $source,
-                c.domain = $domain
-            RETURN c
-            """
-            neo4j_db.run_query(query, {
-                "id": entity["id"],
-                "name": entity["name"],
-                "abbreviation": entity.get("abbreviation", ""),
-                "relevance": entity.get("relevance", 1.0),
-                "definition": entity.get("definition", ""),
-                "source": entity.get("source", "rule"),
-                "domain": entity.get("domain", "")
-            })
-            logger.info(f"Updated existing concept: {entity['name']}")
-        else:
-            # Check if entity with this ID already exists
-            query = """
-            MATCH (c:Concept {id: $id})
-            RETURN c
-            """
-            results = neo4j_db.run_query(query, {"id": entity["id"]})
-
-            if not results:
-                # Create the entity
+        # 4. Add entities to Neo4j with improved deduplication
+        try:
+            for entity in entities:
+                # First, check if a concept with the same normalized name already exists
+                normalized_name = entity["name"].lower()
                 query = """
-                CREATE (c:Concept {
-                    id: $id,
-                    name: $name,
-                    abbreviation: $abbreviation,
-                    relevance: $relevance,
-                    definition: $definition,
-                    source: $source,
-                    domain: $domain
-                })
+                MATCH (c:Concept)
+                WHERE toLower(c.name) = $normalized_name
                 RETURN c
                 """
-                neo4j_db.run_query(query, {
-                    "id": entity["id"],
-                    "name": entity["name"],
-                    "abbreviation": entity.get("abbreviation", ""),
-                    "relevance": entity.get("relevance", 1.0),
-                    "definition": entity.get("definition", ""),
-                    "source": entity.get("source", "rule"),
-                    "domain": entity.get("domain", "")
-                })
-                logger.info(f"Created new concept: {entity['name']}")
-            else:
-                # Update the existing entity
+                existing_concepts = neo4j_db.run_query(query, {"normalized_name": normalized_name})
+
+                if existing_concepts:
+                    # Use the existing concept ID instead of creating a new one
+                    existing_concept = existing_concepts[0]
+                    logger.info(f"Found existing concept with name '{entity['name']}' (ID: {existing_concept['c']['id']})")
+
+                    # Update the entity ID to match the existing concept
+                    entity["id"] = existing_concept['c']['id']
+
+                    # Update the existing concept with any new properties
+                    query = """
+                    MATCH (c:Concept {id: $id})
+                    SET c.name = $name,
+                        c.abbreviation = $abbreviation,
+                        c.relevance = $relevance,
+                        c.definition = $definition,
+                        c.source = $source,
+                        c.domain = $domain
+                    RETURN c
+                    """
+                    neo4j_db.run_query(query, {
+                        "id": entity["id"],
+                        "name": entity["name"],
+                        "abbreviation": entity.get("abbreviation", ""),
+                        "relevance": entity.get("relevance", 1.0),
+                        "definition": entity.get("definition", ""),
+                        "source": entity.get("source", "rule"),
+                        "domain": entity.get("domain", "")
+                    })
+                    logger.info(f"Updated existing concept: {entity['name']}")
+                else:
+                    # Check if entity with this ID already exists
+                    query = """
+                    MATCH (c:Concept {id: $id})
+                    RETURN c
+                    """
+                    results = neo4j_db.run_query(query, {"id": entity["id"]})
+
+                    if not results:
+                        # Create the entity
+                        query = """
+                        CREATE (c:Concept {
+                            id: $id,
+                            name: $name,
+                            abbreviation: $abbreviation,
+                            relevance: $relevance,
+                            definition: $definition,
+                            source: $source,
+                            domain: $domain
+                        })
+                        RETURN c
+                        """
+                        neo4j_db.run_query(query, {
+                            "id": entity["id"],
+                            "name": entity["name"],
+                            "abbreviation": entity.get("abbreviation", ""),
+                            "relevance": entity.get("relevance", 1.0),
+                            "definition": entity.get("definition", ""),
+                            "source": entity.get("source", "rule"),
+                            "domain": entity.get("domain", "")
+                        })
+                        logger.info(f"Created new concept: {entity['name']}")
+                    else:
+                        # Update the existing entity
+                        query = """
+                        MATCH (c:Concept {id: $id})
+                        SET c.name = $name,
+                            c.abbreviation = $abbreviation,
+                            c.relevance = $relevance,
+                            c.definition = $definition,
+                            c.source = $source,
+                            c.domain = $domain
+                        RETURN c
+                        """
+                        neo4j_db.run_query(query, {
+                            "id": entity["id"],
+                            "name": entity["name"],
+                            "abbreviation": entity.get("abbreviation", ""),
+                            "relevance": entity.get("relevance", 1.0),
+                            "definition": entity.get("definition", ""),
+                            "source": entity.get("source", "rule"),
+                            "domain": entity.get("domain", "")
+                        })
+                        logger.info(f"Updated concept: {entity['name']}")
+            logger.info(f"Processed {len(entities)} entities in Neo4j for {doc_title}")
+        except Exception as e:
+            logger.error(f"Error adding entities to Neo4j for document {doc_title}: {e}", exc_info=True)
+            # Decide whether to return None or continue. Continuing might lead to orphaned Document nodes.
+            # For now, let's return None to indicate failure.
+            return None
+
+
+        # 5. Create Document node in Neo4j
+        try:
+            doc_properties = {
+                "id": doc_id,
+                "title": doc_title,
+                "author": metadata.get("author", "Unknown"),
+                "category": metadata.get("category", ""),
+                "subcategory": metadata.get("subcategory", ""),
+                "source": doc_source,
+                "hash": doc_hash,
+                "created_at": metadata.get("created_at", datetime.now().isoformat())
+            }
+
+            # Create Document node
+            query = """
+            CREATE (d:Document {
+                id: $id,
+                title: $title,
+                author: $author,
+                category: $category,
+                subcategory: $subcategory,
+                source: $source,
+                hash: $hash,
+                created_at: $created_at
+            })
+            RETURN d
+            """
+            neo4j_db.run_query(query, doc_properties)
+            logger.info(f"Created Document node in Neo4j with ID: {doc_id} for {doc_title}")
+        except Exception as e:
+            logger.error(f"Error creating Document node in Neo4j for document {doc_title}: {e}", exc_info=True)
+            # This is a critical failure, the document cannot be fully added.
+            return None
+
+        # 6. Create MENTIONS relationships between Document and Concepts
+        try:
+            for entity in entities:
                 query = """
-                MATCH (c:Concept {id: $id})
-                SET c.name = $name,
-                    c.abbreviation = $abbreviation,
-                    c.relevance = $relevance,
-                    c.definition = $definition,
-                    c.source = $source,
-                    c.domain = $domain
-                RETURN c
+                MATCH (d:Document {id: $doc_id})
+                MATCH (c:Concept {id: $concept_id})
+                CREATE (d)-[r:MENTIONS {relevance: $relevance}]->(c)
+                RETURN r
                 """
                 neo4j_db.run_query(query, {
-                    "id": entity["id"],
-                    "name": entity["name"],
-                    "abbreviation": entity.get("abbreviation", ""),
-                    "relevance": entity.get("relevance", 1.0),
-                    "definition": entity.get("definition", ""),
-                    "source": entity.get("source", "rule"),
-                    "domain": entity.get("domain", "")
+                    "doc_id": doc_id,
+                    "concept_id": entity["id"],
+                    "relevance": entity.get("relevance", 1.0)
                 })
-                logger.info(f"Updated concept: {entity['name']}")
+                logger.debug(f"Created MENTIONS relationship: {doc_id} -> {entity['id']}")
+            logger.info(f"Created MENTIONS relationships for {doc_title}")
+        except Exception as e:
+            logger.error(f"Error creating MENTIONS relationships in Neo4j for document {doc_title}: {e}", exc_info=True)
+            # Decide whether to return None or continue. Continuing means the document node exists but isn't linked to concepts.
+            # For now, let's continue but log the error.
 
-    # 5. Create Document node in Neo4j
-    doc_properties = {
-        "id": doc_id,
-        "title": metadata.get("title", "Untitled Document"),
-        "author": metadata.get("author", "Unknown"),
-        "category": metadata.get("category", ""),
-        "subcategory": metadata.get("subcategory", ""),
-        "source": metadata.get("source", ""),
-        "hash": doc_hash,
-        "created_at": metadata.get("created_at", datetime.now().isoformat())
-    }
+        # 7. Add relationships between concepts to Neo4j
+        try:
+            for rel in relationships:
+                source_id = rel["source_id"]
+                target_id = rel["target_id"]
+                rel_type = rel["type"]
+                strength = rel["strength"]
 
-    # Create Document node
-    query = """
-    CREATE (d:Document {
-        id: $id,
-        title: $title,
-        author: $author,
-        category: $category,
-        subcategory: $subcategory,
-        source: $source,
-        hash: $hash,
-        created_at: $created_at
-    })
-    RETURN d
-    """
-    neo4j_db.run_query(query, doc_properties)
-    logger.info(f"Created Document node in Neo4j with ID: {doc_id}")
+                # Check if relationship already exists
+                query = f"""
+                MATCH (a:Concept {{id: $source_id}})-[r:{rel_type}]->(b:Concept {{id: $target_id}})
+                RETURN r
+                """
+                results = neo4j_db.run_query(query, {"source_id": source_id, "target_id": target_id})
 
-    # 6. Create MENTIONS relationships between Document and Concepts
-    for entity in entities:
-        query = """
-        MATCH (d:Document {id: $doc_id})
-        MATCH (c:Concept {id: $concept_id})
-        CREATE (d)-[r:MENTIONS {relevance: $relevance}]->(c)
-        RETURN r
-        """
-        neo4j_db.run_query(query, {
-            "doc_id": doc_id,
-            "concept_id": entity["id"],
-            "relevance": entity.get("relevance", 1.0)
-        })
-        logger.info(f"Created MENTIONS relationship: {doc_id} -> {entity['id']}")
+                if not results:
+                    # Create the relationship
+                    query = f"""
+                    MATCH (a:Concept {{id: $source_id}})
+                    MATCH (b:Concept {{id: $target_id}})
+                    CREATE (a)-[r:{rel_type} {{strength: $strength}}]->(b)
+                    RETURN r
+                    """
+                    neo4j_db.run_query(query, {
+                        "source_id": source_id,
+                        "target_id": target_id,
+                        "strength": strength
+                    })
+                    logger.debug(f"Created relationship: {source_id} -{rel_type}-> {target_id}")
+                else:
+                    # Update the existing relationship
+                    query = f"""
+                    MATCH (a:Concept {{id: $source_id}})-[r:{rel_type}]->(b:Concept {{id: $target_id}})
+                    SET r.strength = $strength
+                    RETURN r
+                    """
+                    neo4j_db.run_query(query, {
+                        "source_id": source_id,
+                        "target_id": target_id,
+                        "strength": strength
+                    })
+                    logger.debug(f"Updated relationship: {source_id} -{rel_type}-> {target_id}")
+            logger.info(f"Processed {len(relationships)} concept relationships in Neo4j for {doc_title}")
+        except Exception as e:
+            logger.error(f"Error adding concept relationships to Neo4j for document {doc_title}: {e}", exc_info=True)
+            # Decide whether to return None or continue. Continuing means concept relationships might be incomplete.
+            # For now, let's continue but log the error.
 
-    # 7. Add relationships between concepts to Neo4j
-    for rel in relationships:
-        source_id = rel["source_id"]
-        target_id = rel["target_id"]
-        rel_type = rel["type"]
-        strength = rel["strength"]
 
-        # Check if relationship already exists
-        query = f"""
-        MATCH (a:Concept {{id: $source_id}})-[r:{rel_type}]->(b:Concept {{id: $target_id}})
-        RETURN r
-        """
-        results = neo4j_db.run_query(query, {"source_id": source_id, "target_id": target_id})
+        # 8. Add document to vector database
+        try:
+            # Update metadata with entity IDs
+            doc_metadata = metadata.copy()
+            doc_metadata["doc_id"] = doc_id
 
-        if not results:
-            # Create the relationship
-            query = f"""
-            MATCH (a:Concept {{id: $source_id}})
-            MATCH (b:Concept {{id: $target_id}})
-            CREATE (a)-[r:{rel_type} {{strength: $strength}}]->(b)
-            RETURN r
-            """
-            neo4j_db.run_query(query, {
-                "source_id": source_id,
-                "target_id": target_id,
-                "strength": strength
-            })
-            logger.info(f"Created relationship: {source_id} -{rel_type}-> {target_id}")
-        else:
-            # Update the existing relationship
-            query = f"""
-            MATCH (a:Concept {{id: $source_id}})-[r:{rel_type}]->(b:Concept {{id: $target_id}})
-            SET r.strength = $strength
-            RETURN r
-            """
-            neo4j_db.run_query(query, {
-                "source_id": source_id,
-                "target_id": target_id,
-                "strength": strength
-            })
-            logger.info(f"Updated relationship: {source_id} -{rel_type}-> {target_id}")
+            # Add concept IDs to metadata
+            if entities:
+                # ChromaDB doesn't support lists in metadata, so we'll join them into a string
+                doc_metadata["concept_ids"] = ",".join([entity["id"] for entity in entities])
+                if entities: # Ensure entities list is not empty before accessing index 0
+                    doc_metadata["concept_id"] = entities[0]["id"]  # Primary concept
 
-    # 8. Add document to vector database
-    # Update metadata with entity IDs
-    doc_metadata = metadata.copy()
-    doc_metadata["doc_id"] = doc_id
+            # Add document to vector database
+            vector_db.add_documents(
+                documents=[text],
+                metadatas=[doc_metadata],
+                ids=[doc_id]
+            )
+            logger.info(f"Added document to vector database with ID: {doc_id} for {doc_title}")
+        except Exception as e:
+            logger.error(f"Error adding document to vector database for document {doc_title}: {e}", exc_info=True)
+            # This is a critical failure, the document is not searchable via vector search.
+            # Decide whether to return None or continue. Returning None is safer.
+            return None
 
-    # Add concept IDs to metadata
-    if entities:
-        # ChromaDB doesn't support lists in metadata, so we'll join them into a string
-        doc_metadata["concept_ids"] = ",".join([entity["id"] for entity in entities])
-        doc_metadata["concept_id"] = entities[0]["id"]  # Primary concept
 
-    # Add document to vector database
-    vector_db.add_documents(
-        documents=[text],
-        metadatas=[doc_metadata],
-        ids=[doc_id]
-    )
-    logger.info(f"Added document to vector database with ID: {doc_id}")
+        logger.info(f"Successfully added document: {doc_title} with ID: {doc_id}")
+        return {
+            "document_id": doc_id,
+            "entities": entities,
+            "relationships": relationships
+        }
 
-    return {
-        "document_id": doc_id,
-        "entities": entities,
-        "relationships": relationships
-    }
-
+    except Exception as e:
+        # Catch any unexpected errors during the process
+        logger.error(f"An unexpected error occurred while processing document {doc_title}: {e}", exc_info=True)
+        return None # Indicate failure
 def main():
     """
     Main function to demonstrate adding a document to the GraphRAG system.
