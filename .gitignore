@@ -21,8 +21,22 @@ var/
 .installed.cfg
 *.egg
 
-# Environment variables
+# Environment variables and secrets
 .env
+.env.*
+*.env
+config/*_config.json
+!config/*_config.json.example
+!config/*_config.json.sample
+*.pem
+*.key
+id_rsa*
+*.pfx
+*.p12
+*.cer
+*.crt
+*.keystore
+*.jks
 
 # Data directories
 data/
@@ -82,3 +96,14 @@ node_modules/
 tasks.json
 tasks/ 
 .aider*
+
+# Credentials and secrets
+credentials/
+secrets/
+*secret*
+*password*
+*api_key*
+*apikey*
+*token*
+*auth*
+*.credentials

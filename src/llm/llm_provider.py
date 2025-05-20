@@ -36,13 +36,17 @@ class OpenAICompatibleProvider(LLMProvider):
     """Provider for OpenAI-compatible API endpoints (including LM Studio)."""
 
     def __init__(self,
-                 api_base: str = "http://localhost:1234/v1",
-                 api_key: str = "dummy-key",
-                 model: str = "local-model",
+                 api_base: str = None,
+                 api_key: str = None,
+                 model: str = None,
                  embedding_model: Optional[str] = None,
                  temperature: float = 0.0,
                  max_tokens: int = 1000,
                  timeout: int = 60):
+        # Load from environment if not provided
+        self.api_base = api_base or os.getenv("LLM_API_BASE", "http://localhost:1234/v1")
+        self.api_key = api_key or os.getenv("LLM_API_KEY")
+        self.model = model or os.getenv("LLM_MODEL", "local-model")
         """
         Initialize OpenAI-compatible provider.
 

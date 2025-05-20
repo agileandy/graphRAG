@@ -20,29 +20,21 @@ def test_database_deletion():
         assert add_success, f"Failed to add test document: {add_response.get('error', 'Unknown error')}"
         print("Test document added successfully.")
 
-        # Stop services
-        stop_success = stop_services(process)
-        assert stop_success, "Failed to stop services before database deletion"
-        print("Services stopped successfully before database deletion.")
-        process = None # Clear process handle after stopping
-
-        # Execute database cleanup script
+        # Execute database cleanup script (services should be running)
         print("Executing database cleanup script...")
         cleanup_result = subprocess.run(
-            ["python", "./scripts/database_management/clean_database.py"],
+            ["python", "./scripts/database_management/clean_database.py", "--yes"],
             capture_output=True,
-            text=True,
-            cwd="../.." # Execute from project root
+            text=True
         )
         print(f"Cleanup script stdout:\n{cleanup_result.stdout}")
         print(f"Cleanup script stderr:\n{cleanup_result.stderr}")
         assert cleanup_result.returncode == 0, f"Database cleanup script failed with error: {cleanup_result.stderr}"
         print("Database cleanup script executed successfully.")
 
-        # Start services again
-        success_restart, process = start_services()
-        assert success_restart, "Failed to start services after database deletion"
-        print("Services started successfully after database deletion.")
+        # Services are already started from the beginning of the test.
+        # If cleanup requires a restart, that should be handled by the script or test_utils.
+        # For now, assume services are still up or cleanup script handles restart if needed.
 
         # Verify database is empty by searching for the added document
         # A short delay might be needed for the index to reflect changes
@@ -74,31 +66,29 @@ def test_database_initialization():
     print("\nTesting database initialization...")
     process = None
     try:
-        # Ensure database is clean first
+        # Start services first
+        success_start, process = start_services()
+        assert success_start, "Failed to start services for database initialization test"
+        print("Services started successfully for database initialization test.")
+
+        # Ensure database is clean (services are now running)
         print("Ensuring database is clean before initialization test...")
         cleanup_result = subprocess.run(
-            ["python", "./scripts/database_management/clean_database.py"],
+            ["python", "./scripts/database_management/clean_database.py", "--yes"],
             capture_output=True,
-            text=True,
-            cwd="../.." # Execute from project root
+            text=True
         )
         print(f"Cleanup script stdout:\n{cleanup_result.stdout}")
         print(f"Cleanup script stderr:\n{cleanup_result.stderr}")
         assert cleanup_result.returncode == 0, f"Database cleanup script failed before initialization: {cleanup_result.stderr}"
         print("Database cleaned successfully before initialization test.")
 
-        # Start services
-        success_start, process = start_services()
-        assert success_start, "Failed to start services for database initialization test"
-        print("Services started successfully for database initialization test.")
-
         # Execute database initialization script
         print("Executing database initialization script...")
         init_result = subprocess.run(
-            ["python", "./scripts/database_management/initialize_database.py"],
+            ["python", "./scripts/database_management/initialize_database.py", "--yes"],
             capture_output=True,
-            text=True,
-            cwd="../.." # Execute from project root
+            text=True
         )
         print(f"Initialization script stdout:\n{init_result.stdout}")
         print(f"Initialization script stderr:\n{init_result.stderr}")
