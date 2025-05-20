@@ -12,10 +12,9 @@ import asyncio
 import json
 import os
 import sys
-from typing import Tuple
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # Import port configuration
 try:
@@ -26,6 +25,7 @@ except ImportError:
         default_ports = {"mcp": 8767}
         return default_ports.get(service_name, 8767)
 
+
 # Import test utilities
 from tests.regression.test_utils import (
     mcp_get_tools,
@@ -33,8 +33,9 @@ from tests.regression.test_utils import (
     print_header,
     print_section,
     print_test_result,
-    test_mcp_connection
+    test_mcp_connection,
 )
+
 
 def run_test() -> bool:
     """Run the Model Context Protocol server test.
@@ -54,16 +55,22 @@ def run_test() -> bool:
     print(f"Model Context Protocol Server Connection: {message}")
 
     if not success:
-        print_test_result("Model Context Protocol Server Test", False,
-                         "Failed to connect to Model Context Protocol server")
+        print_test_result(
+            "Model Context Protocol Server Test",
+            False,
+            "Failed to connect to Model Context Protocol server",
+        )
         return False
 
     # Get available tools
     success, tools = asyncio.run(mcp_get_tools(host="localhost", port=mcp_port))
 
     if not success:
-        print_test_result("Model Context Protocol Server Test", False,
-                         "Failed to get tools from Model Context Protocol server")
+        print_test_result(
+            "Model Context Protocol Server Test",
+            False,
+            "Failed to get tools from Model Context Protocol server",
+        )
         return False
 
     print(f"Available tools: {len(tools)}")
@@ -75,36 +82,39 @@ def run_test() -> bool:
 
     # Test ping tool
     print("\nTesting ping tool...")
-    success, result = asyncio.run(mcp_invoke_tool(
-        host="localhost",
-        port=mcp_port,
-        tool_name="ping",
-        parameters={}
-    ))
+    success, result = asyncio.run(
+        mcp_invoke_tool(
+            host="localhost", port=mcp_port, tool_name="ping", parameters={}
+        )
+    )
 
     print(f"Success: {success}")
     print(f"Result: {json.dumps(result, indent=2)}")
 
     # Test search tool
     print("\nTesting search tool...")
-    success, result = asyncio.run(mcp_invoke_tool(
-        host="localhost",
-        port=mcp_port,
-        tool_name="search",
-        parameters={"query": "What is GraphRAG?", "n_results": 3}
-    ))
+    success, result = asyncio.run(
+        mcp_invoke_tool(
+            host="localhost",
+            port=mcp_port,
+            tool_name="search",
+            parameters={"query": "What is GraphRAG?", "n_results": 3},
+        )
+    )
 
     print(f"Success: {success}")
     print(f"Result: {json.dumps(result, indent=2)}")
 
     # Test concept tool
     print("\nTesting concept tool...")
-    success, result = asyncio.run(mcp_invoke_tool(
-        host="localhost",
-        port=mcp_port,
-        tool_name="concept",
-        parameters={"concept_name": "GraphRAG"}
-    ))
+    success, result = asyncio.run(
+        mcp_invoke_tool(
+            host="localhost",
+            port=mcp_port,
+            tool_name="concept",
+            parameters={"concept_name": "GraphRAG"},
+        )
+    )
 
     print(f"Success: {success}")
     print(f"Result: {json.dumps(result, indent=2)}")
@@ -114,6 +124,7 @@ def run_test() -> bool:
     print("All tests passed")
 
     return True
+
 
 if __name__ == "__main__":
     success = run_test()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-GraphRAG Agent Tool: search
+"""GraphRAG Agent Tool: search.
 
 This tool performs a hybrid search using both vector and graph databases.
 
@@ -16,14 +15,17 @@ Arguments:
 Environment Variables:
     MCP_HOST     MCP server host (default: localhost)
     MCP_PORT     MCP server port (default: 8767)
+
 """
 
-import sys
 import argparse
-from utils import connect_to_mcp, send_request, get_mcp_url, format_json
-from typing import Dict, Any
+import sys
+from typing import Any
 
-def display_search_results(results: Dict[str, Any]) -> None:
+from utils import connect_to_mcp, format_json, get_mcp_url, send_request
+
+
+def display_search_results(results: dict[str, Any]) -> None:
     """Display search results in a readable format."""
     if "error" in results:
         print(f"❌ Error: {results['error']}")
@@ -36,7 +38,7 @@ def display_search_results(results: Dict[str, Any]) -> None:
 
         if "documents" in vector_results:
             for i, doc in enumerate(vector_results["documents"]):
-                print(f"\n[{i+1}] Document:")
+                print(f"\n[{i + 1}] Document:")
                 # Truncate long documents for display
                 if len(doc) > 300:
                     print(f"{doc[:300]}...")
@@ -44,7 +46,9 @@ def display_search_results(results: Dict[str, Any]) -> None:
                     print(doc)
 
                 # Display metadata if available
-                if "metadatas" in vector_results and i < len(vector_results["metadatas"]):
+                if "metadatas" in vector_results and i < len(
+                    vector_results["metadatas"]
+                ):
                     metadata = vector_results["metadatas"][i]
                     print("\nMetadata:")
                     for key, value in metadata.items():
@@ -56,7 +60,7 @@ def display_search_results(results: Dict[str, Any]) -> None:
         graph_results = results["graph_results"]
 
         for i, (node, score) in enumerate(graph_results):
-            print(f"\n[{i+1}] {node.get('name', 'Unnamed')} (Score: {score:.2f})")
+            print(f"\n[{i + 1}] {node.get('name', 'Unnamed')} (Score: {score:.2f})")
             print(f"  Type: {node.get('type', 'Unknown')}")
             if "properties" in node:
                 print("  Properties:")
@@ -64,13 +68,22 @@ def display_search_results(results: Dict[str, Any]) -> None:
                     if key != "name":  # Skip name as it's already displayed
                         print(f"    {key}: {value}")
 
-def main():
+
+def main() -> int | None:
     """Main function."""
-    parser = argparse.ArgumentParser(description="Perform a hybrid search in the GraphRAG system")
+    parser = argparse.ArgumentParser(
+        description="Perform a hybrid search in the GraphRAG system"
+    )
     parser.add_argument("--query", required=True, help="Search query")
-    parser.add_argument("--n-results", type=int, default=5, help="Number of vector results to return")
-    parser.add_argument("--max-hops", type=int, default=2, help="Maximum number of hops in the graph")
-    parser.add_argument("--url", default=None, help="MCP server URL (overrides environment variables)")
+    parser.add_argument(
+        "--n-results", type=int, default=5, help="Number of vector results to return"
+    )
+    parser.add_argument(
+        "--max-hops", type=int, default=2, help="Maximum number of hops in the graph"
+    )
+    parser.add_argument(
+        "--url", default=None, help="MCP server URL (overrides environment variables)"
+    )
     parser.add_argument("--raw", action="store_true", help="Display raw JSON response")
     args = parser.parse_args()
 
@@ -85,10 +98,13 @@ def main():
         print(f"Searching for: '{args.query}'")
         print(f"Parameters: n_results={args.n_results}, max_hops={args.max_hops}")
 
-        response = send_request(conn, "search",
-                               query=args.query,
-                               n_results=args.n_results,
-                               max_hops=args.max_hops)
+        response = send_request(
+            conn,
+            "search",
+            query=args.query,
+            n_results=args.n_results,
+            max_hops=args.max_hops,
+        )
 
         # Display results
         if args.raw:
@@ -101,6 +117,7 @@ def main():
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     sys.exit(main())

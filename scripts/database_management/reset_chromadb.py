@@ -1,28 +1,31 @@
 #!/usr/bin/env python3
-"""
-Script to reset ChromaDB database.
+"""Script to reset ChromaDB database.
 
 This script:
 1. Deletes the ChromaDB database directory
 2. Recreates the directory
 3. Initializes a new ChromaDB database
 """
-import sys
+
+import logging
 import os
 import shutil
-import logging
+import sys
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from src.utils.db_utils import check_chromadb_version
 from src.database.vector_db import VectorDatabase
+from src.utils.db_utils import check_chromadb_version
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-def reset_chromadb():
+
+def reset_chromadb() -> bool | None:
     """Reset ChromaDB database."""
     # Get ChromaDB directory
     chroma_dir = os.getenv("CHROMA_PERSIST_DIRECTORY", "./data/chromadb")
@@ -63,7 +66,8 @@ def reset_chromadb():
         print(f"❌ Error initializing ChromaDB: {e}")
         return False
 
-def main():
+
+def main() -> None:
     """Main function."""
     print("Resetting ChromaDB database...")
 
@@ -80,6 +84,7 @@ def main():
         print("\n✅ ChromaDB reset completed successfully!")
     else:
         print("\n❌ ChromaDB reset failed.")
+
 
 if __name__ == "__main__":
     main()

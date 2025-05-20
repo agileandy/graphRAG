@@ -1,22 +1,29 @@
-"""
-LLM-based concept extraction module for GraphRAG project.
+"""LLM-based concept extraction module for GraphRAG project.
 
 This module provides utilities for extracting concepts from text using LLMs,
 analyzing relationships between concepts, and enhancing the knowledge graph.
 """
+
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from src.llm.llm_provider import LLMManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-def extract_concepts_with_llm(text: str, llm_manager: LLMManager, existing_concepts: Optional[List[Dict[str, Any]]] = None, is_chunk: bool = False) -> List[Dict[str, Any]]:
-    """
-    Extract concepts from text using LLM with enhanced context awareness.
+
+def extract_concepts_with_llm(
+    text: str,
+    llm_manager: LLMManager,
+    existing_concepts: list[dict[str, Any]] | None = None,
+    is_chunk: bool = False,
+) -> list[dict[str, Any]]:
+    """Extract concepts from text using LLM with enhanced context awareness.
 
     Args:
         text: Input text
@@ -26,6 +33,7 @@ def extract_concepts_with_llm(text: str, llm_manager: LLMManager, existing_conce
 
     Returns:
         List of extracted concepts with metadata
+
     """
     # Truncate text if too long and not already a chunk
     max_text_length = 3000  # Reduced to allow more room for existing concepts
@@ -45,7 +53,9 @@ def extract_concepts_with_llm(text: str, llm_manager: LLMManager, existing_conce
             concept_name = concept.get("name", "")
             concept_type = concept.get("type", "")
             concept_desc = concept.get("description", "")
-            existing_concepts_text += f"- {concept_name} ({concept_type}): {concept_desc[:100]}...\n"
+            existing_concepts_text += (
+                f"- {concept_name} ({concept_type}): {concept_desc[:100]}...\n"
+            )
 
     # Prepare prompt for enhanced concept extraction
     prompt = f"""
@@ -78,7 +88,7 @@ def extract_concepts_with_llm(text: str, llm_manager: LLMManager, existing_conce
         response = llm_manager.generate(
             prompt,
             system_prompt="You are an expert in knowledge extraction and ontology creation. Focus on identifying technical and domain-specific concepts that are truly relevant to the text.",
-            max_tokens=2000
+            max_tokens=2000,
         )
 
         # Check if the response is an error message
@@ -93,8 +103,8 @@ def extract_concepts_with_llm(text: str, llm_manager: LLMManager, existing_conce
     # Parse JSON from response
     try:
         # Find JSON in the response (it might be embedded in text)
-        json_start = response.find('[')
-        json_end = response.rfind(']') + 1
+        json_start = response.find("[")
+        json_end = response.rfind("]") + 1
 
         if json_start >= 0 and json_end > json_start:
             json_str = response[json_start:json_end]
@@ -108,9 +118,13 @@ def extract_concepts_with_llm(text: str, llm_manager: LLMManager, existing_conce
         logger.debug(f"LLM response: {response}")
         return []
 
-def analyze_concept_relationships(concepts: List[Dict[str, Any]], llm_manager: LLMManager, existing_concepts: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
-    """
-    Analyze relationships between concepts using LLM with enhanced semantic relationship types.
+
+def analyze_concept_relationships(
+    concepts: list[dict[str, Any]],
+    llm_manager: LLMManager,
+    existing_concepts: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Analyze relationships between concepts using LLM with enhanced semantic relationship types.
 
     Args:
         concepts: List of concepts
@@ -119,13 +133,16 @@ def analyze_concept_relationships(concepts: List[Dict[str, Any]], llm_manager: L
 
     Returns:
         List of relationships with metadata
+
     """
     # Extract concept names
     concept_names = [concept["name"] for concept in concepts]
 
     # If too many concepts, limit to the first 15
     if len(concept_names) > 15:
-        logger.info(f"Limiting relationship analysis to first 15 of {len(concept_names)} concepts")
+        logger.info(
+            f"Limiting relationship analysis to first 15 of {len(concept_names)} concepts"
+        )
         concept_names = concept_names[:15]
 
     # Format existing concepts if provided
@@ -133,15 +150,17 @@ def analyze_concept_relationships(concepts: List[Dict[str, Any]], llm_manager: L
     if existing_concepts and len(existing_concepts) > 0:
         # Limit to 10 most relevant existing concepts
         relevant_concepts = existing_concepts[:10]
-        existing_concepts_text = "\nExisting concepts in the knowledge base that might be related:\n"
+        existing_concepts_text = (
+            "\nExisting concepts in the knowledge base that might be related:\n"
+        )
         for concept in relevant_concepts:
             existing_concepts_text += f"- {concept.get('name', '')}\n"
-        concept_names.extend([concept.get('name', '') for concept in relevant_concepts])
+        concept_names.extend([concept.get("name", "") for concept in relevant_concepts])
 
     # Prepare prompt for enhanced relationship analysis
     prompt = f"""
     Analyze the relationships between the following concepts:
-    {', '.join(concept_names)}
+    {", ".join(concept_names)}
 
     For each pair of related concepts, identify:
     1. The source concept
@@ -187,7 +206,7 @@ def analyze_concept_relationships(concepts: List[Dict[str, Any]], llm_manager: L
         response = llm_manager.generate(
             prompt,
             system_prompt="You are an expert in knowledge graph construction and relationship analysis. Your task is to identify precise, meaningful relationships between concepts using specific relationship types.",
-            max_tokens=2500
+            max_tokens=2500,
         )
 
         # Check if the response is an error message
@@ -202,8 +221,8 @@ def analyze_concept_relationships(concepts: List[Dict[str, Any]], llm_manager: L
     # Parse JSON from response
     try:
         # Find JSON in the response
-        json_start = response.find('[')
-        json_end = response.rfind(']') + 1
+        json_start = response.find("[")
+        json_end = response.rfind("]") + 1
 
         if json_start >= 0 and json_end > json_start:
             json_str = response[json_start:json_end]
@@ -217,9 +236,11 @@ def analyze_concept_relationships(concepts: List[Dict[str, Any]], llm_manager: L
         logger.debug(f"LLM response: {response}")
         return []
 
-def summarize_text_with_llm(text: str, llm_manager: LLMManager, max_length: int = 200) -> str:
-    """
-    Generate a concise summary of text using LLM.
+
+def summarize_text_with_llm(
+    text: str, llm_manager: LLMManager, max_length: int = 200
+) -> str:
+    """Generate a concise summary of text using LLM.
 
     Args:
         text: Input text
@@ -228,12 +249,15 @@ def summarize_text_with_llm(text: str, llm_manager: LLMManager, max_length: int 
 
     Returns:
         Text summary
+
     """
     # Truncate text if too long
     max_text_length = 4000
     if len(text) > max_text_length:
         truncated_text = text[:max_text_length] + "..."
-        logger.info(f"Text truncated from {len(text)} to {max_text_length} characters for summarization")
+        logger.info(
+            f"Text truncated from {len(text)} to {max_text_length} characters for summarization"
+        )
     else:
         truncated_text = text
 
@@ -250,14 +274,16 @@ def summarize_text_with_llm(text: str, llm_manager: LLMManager, max_length: int 
     summary = llm_manager.generate(
         prompt,
         system_prompt="You are an expert in summarizing complex information clearly and concisely.",
-        max_tokens=500
+        max_tokens=500,
     )
 
     return summary.strip()
 
-def translate_nl_to_graph_query(question: str, llm_manager: LLMManager) -> Dict[str, Any]:
-    """
-    Translate natural language question to graph query.
+
+def translate_nl_to_graph_query(
+    question: str, llm_manager: LLMManager
+) -> dict[str, Any]:
+    """Translate natural language question to graph query.
 
     Args:
         question: Natural language question
@@ -265,6 +291,7 @@ def translate_nl_to_graph_query(question: str, llm_manager: LLMManager) -> Dict[
 
     Returns:
         Dictionary with query information
+
     """
     # Prepare prompt for query translation
     prompt = f"""
@@ -290,14 +317,14 @@ def translate_nl_to_graph_query(question: str, llm_manager: LLMManager) -> Dict[
     response = llm_manager.generate(
         prompt,
         system_prompt="You are an expert in Neo4j and Cypher query language.",
-        max_tokens=1000
+        max_tokens=1000,
     )
 
     # Parse JSON from response
     try:
         # Find JSON in the response
-        json_start = response.find('{')
-        json_end = response.rfind('}') + 1
+        json_start = response.find("{")
+        json_end = response.rfind("}") + 1
 
         if json_start >= 0 and json_end > json_start:
             json_str = response[json_start:json_end]
@@ -308,7 +335,7 @@ def translate_nl_to_graph_query(question: str, llm_manager: LLMManager) -> Dict[
             return {
                 "cypher_query": "",
                 "parameters": {},
-                "explanation": "Failed to parse query from LLM response"
+                "explanation": "Failed to parse query from LLM response",
             }
     except json.JSONDecodeError:
         logger.warning("Failed to parse JSON from LLM response")
@@ -316,14 +343,19 @@ def translate_nl_to_graph_query(question: str, llm_manager: LLMManager) -> Dict[
         return {
             "cypher_query": "",
             "parameters": {},
-            "explanation": "Failed to parse query from LLM response"
+            "explanation": "Failed to parse query from LLM response",
         }
 
-def extract_concepts_two_pass(document_text: str, llm_manager: LLMManager, chunk_size: int = 3000, overlap: int = 500) -> List[Dict[str, Any]]:
-    """
-    Implement a two-pass approach for concept extraction:
+
+def extract_concepts_two_pass(
+    document_text: str,
+    llm_manager: LLMManager,
+    chunk_size: int = 3000,
+    overlap: int = 500,
+) -> list[dict[str, Any]]:
+    """Implement a two-pass approach for concept extraction:
     1. First pass: Extract concepts from individual chunks
-    2. Second pass: Analyze relationships between concepts across chunks
+    2. Second pass: Analyze relationships between concepts across chunks.
 
     Args:
         document_text: Full document text
@@ -333,20 +365,23 @@ def extract_concepts_two_pass(document_text: str, llm_manager: LLMManager, chunk
 
     Returns:
         List of extracted concepts with metadata and relationships
+
     """
     # Split document into overlapping chunks
     chunks = []
     for i in range(0, len(document_text), chunk_size - overlap):
-        chunk = document_text[i:i + chunk_size]
+        chunk = document_text[i : i + chunk_size]
         if chunk:  # Ensure chunk is not empty
             chunks.append(chunk)
 
-    logger.info(f"Split document into {len(chunks)} chunks for two-pass concept extraction")
+    logger.info(
+        f"Split document into {len(chunks)} chunks for two-pass concept extraction"
+    )
 
     # First pass: Extract concepts from each chunk
     all_concepts = []
     for i, chunk in enumerate(chunks):
-        logger.info(f"Processing chunk {i+1}/{len(chunks)}")
+        logger.info(f"Processing chunk {i + 1}/{len(chunks)}")
 
         # Extract concepts from this chunk, indicating it's already a chunk
         chunk_concepts = extract_concepts_with_llm(chunk, llm_manager, is_chunk=True)
@@ -371,12 +406,16 @@ def extract_concepts_two_pass(document_text: str, llm_manager: LLMManager, chunk
             related.update(concept.get("related_concepts", []))
             existing["related_concepts"] = list(related)
             # Use the more detailed description
-            if len(concept.get("description", "")) > len(existing.get("description", "")):
+            if len(concept.get("description", "")) > len(
+                existing.get("description", "")
+            ):
                 existing["description"] = concept["description"]
 
     # Convert back to list
     deduplicated_concepts = list(unique_concepts.values())
-    logger.info(f"Extracted {len(deduplicated_concepts)} unique concepts from {len(all_concepts)} total concepts")
+    logger.info(
+        f"Extracted {len(deduplicated_concepts)} unique concepts from {len(all_concepts)} total concepts"
+    )
 
     # Second pass: Analyze relationships between concepts
     relationships = analyze_concept_relationships(deduplicated_concepts, llm_manager)
@@ -387,18 +426,20 @@ def extract_concepts_two_pass(document_text: str, llm_manager: LLMManager, chunk
         concept["relationships"] = []
         for rel in relationships:
             if rel["source"] == concept["name"]:
-                concept["relationships"].append({
-                    "target": rel["target"],
-                    "type": rel["type"],
-                    "strength": rel["strength"],
-                    "description": rel["description"]
-                })
+                concept["relationships"].append(
+                    {
+                        "target": rel["target"],
+                        "type": rel["type"],
+                        "strength": rel["strength"],
+                        "description": rel["description"],
+                    }
+                )
 
     return deduplicated_concepts
 
+
 def analyze_sentiment(text: str, llm_manager: LLMManager) -> str:
-    """
-    Analyze sentiment of text using LLM.
+    """Analyze sentiment of text using LLM.
 
     Args:
         text: Input text
@@ -406,12 +447,15 @@ def analyze_sentiment(text: str, llm_manager: LLMManager) -> str:
 
     Returns:
         Sentiment label (POSITIVE, NEGATIVE, NEUTRAL, or MIXED)
+
     """
     # Truncate text if too long
     max_text_length = 1000
     if len(text) > max_text_length:
         truncated_text = text[:max_text_length] + "..."
-        logger.info(f"Text truncated from {len(text)} to {max_text_length} characters for sentiment analysis")
+        logger.info(
+            f"Text truncated from {len(text)} to {max_text_length} characters for sentiment analysis"
+        )
     else:
         truncated_text = text
 
@@ -425,9 +469,7 @@ def analyze_sentiment(text: str, llm_manager: LLMManager) -> str:
 
     # Generate response
     response = llm_manager.generate(
-        prompt,
-        system_prompt="You are an expert in sentiment analysis.",
-        max_tokens=50
+        prompt, system_prompt="You are an expert in sentiment analysis.", max_tokens=50
     )
 
     # Extract sentiment

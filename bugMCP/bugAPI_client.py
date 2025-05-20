@@ -1,36 +1,41 @@
 #!/usr/bin/env python3
-"""
-Bug Tracking API Client
+"""Bug Tracking API Client.
 
 This script provides a command-line interface to interact with the Bug Tracking API server.
 """
 
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
+from typing import Any
+
 import requests
-from typing import Dict, Any, List, Optional
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.config import get_port
 
-def add_bug(host: str, port: int, description: str, cause: str) -> Dict[str, Any]:
+
+def add_bug(host: str, port: int, description: str, cause: str) -> dict[str, Any]:
     """Add a new bug."""
     url = f"http://{host}:{port}/bugs"
-    data = {
-        "description": description,
-        "cause": cause
-    }
+    data = {"description": description, "cause": cause}
 
     response = requests.post(url, json=data)
     response.raise_for_status()
 
     return response.json()
 
-def update_bug(host: str, port: int, bug_id: int, status: Optional[str] = None, resolution: Optional[str] = None) -> Dict[str, Any]:
+
+def update_bug(
+    host: str,
+    port: int,
+    bug_id: int,
+    status: str | None = None,
+    resolution: str | None = None,
+) -> dict[str, Any]:
     """Update an existing bug."""
     url = f"http://{host}:{port}/bugs/{bug_id}"
     data = {}
@@ -46,7 +51,8 @@ def update_bug(host: str, port: int, bug_id: int, status: Optional[str] = None, 
 
     return response.json()
 
-def delete_bug(host: str, port: int, bug_id: int) -> Dict[str, Any]:
+
+def delete_bug(host: str, port: int, bug_id: int) -> dict[str, Any]:
     """Delete a bug."""
     url = f"http://{host}:{port}/bugs/{bug_id}"
 
@@ -55,7 +61,8 @@ def delete_bug(host: str, port: int, bug_id: int) -> Dict[str, Any]:
 
     return response.json()
 
-def get_bug(host: str, port: int, bug_id: int) -> Dict[str, Any]:
+
+def get_bug(host: str, port: int, bug_id: int) -> dict[str, Any]:
     """Get a specific bug."""
     url = f"http://{host}:{port}/bugs/{bug_id}"
 
@@ -64,7 +71,8 @@ def get_bug(host: str, port: int, bug_id: int) -> Dict[str, Any]:
 
     return response.json()
 
-def list_bugs(host: str, port: int) -> Dict[str, Any]:
+
+def list_bugs(host: str, port: int) -> dict[str, Any]:
     """List all bugs."""
     url = f"http://{host}:{port}/bugs"
 
@@ -73,7 +81,8 @@ def list_bugs(host: str, port: int) -> Dict[str, Any]:
 
     return response.json()
 
-def interactive_mode(host: str, port: int):
+
+def interactive_mode(host: str, port: int) -> None:
     """Run in interactive mode."""
     while True:
         print("\nBug Tracking API Client")
@@ -95,7 +104,9 @@ def interactive_mode(host: str, port: int):
                 print("\nBug List:")
                 if result.get("total_records", 0) > 0:
                     for bug in result.get("bugs", []):
-                        print(f"ID: {bug['id']}, Status: {bug['status']}, Description: {bug['description']}")
+                        print(
+                            f"ID: {bug['id']}, Status: {bug['status']}, Description: {bug['description']}"
+                        )
                 else:
                     print("No bugs found.")
 
@@ -165,7 +176,8 @@ def interactive_mode(host: str, port: int):
         except Exception as e:
             print(f"❌ Error: {e}")
 
-def command_mode(host: str, port: int, args):
+
+def command_mode(host: str, port: int, args) -> None:
     """Run in command mode."""
     try:
         if args.action == "list":
@@ -212,19 +224,25 @@ def command_mode(host: str, port: int, args):
     except Exception as e:
         print(f"❌ Error: {e}")
 
-def main():
+
+def main() -> None:
     """Main function."""
     # Get bug_mcp_port from centralized configuration
-    bug_mcp_port = get_port('bug_mcp')
+    bug_mcp_port = get_port("bug_mcp")
 
     parser = argparse.ArgumentParser(description="Bug Tracking API Client")
     parser.add_argument("--host", type=str, default="localhost", help="API server host")
-    parser.add_argument("--port", type=int, default=bug_mcp_port, help=f"API server port (default: {bug_mcp_port})")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=bug_mcp_port,
+        help=f"API server port (default: {bug_mcp_port})",
+    )
 
     subparsers = parser.add_subparsers(dest="action", help="Action to perform")
 
     # List bugs
-    list_parser = subparsers.add_parser("list", help="List all bugs")
+    subparsers.add_parser("list", help="List all bugs")
 
     # Add bug
     add_parser = subparsers.add_parser("add", help="Add a new bug")
@@ -234,7 +252,9 @@ def main():
     # Update bug
     update_parser = subparsers.add_parser("update", help="Update an existing bug")
     update_parser.add_argument("--id", type=int, help="Bug ID")
-    update_parser.add_argument("--status", type=str, choices=["open", "fixed"], help="Bug status")
+    update_parser.add_argument(
+        "--status", type=str, choices=["open", "fixed"], help="Bug status"
+    )
     update_parser.add_argument("--resolution", type=str, help="Bug resolution")
 
     # Delete bug
@@ -253,6 +273,7 @@ def main():
     else:
         # Interactive mode
         interactive_mode(args.host, args.port)
+
 
 if __name__ == "__main__":
     main()

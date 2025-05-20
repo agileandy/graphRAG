@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
-"""
-Script to select 50 random ebooks from a directory and add them to the GraphRAG system.
+"""Script to select 50 random ebooks from a directory and add them to the GraphRAG system.
 
 This script uses the functionality from add_ebooks_batch.py to process individual files.
 It requires the project's Python virtual environment to be activated.
 """
 
-import os
-import sys
-import random
 import glob
-import websockets.sync.client as ws
-import json
+import os
+import random
+import sys
 import time
+
+import websockets.sync.client as ws
 
 # Assuming add_ebooks_batch is in the same directory or accessible in the path
 try:
-    from add_ebooks_batch import process_pdf_file, DEFAULT_MPC_URL
+    from add_ebooks_batch import DEFAULT_MPC_URL, process_pdf_file
 except ImportError:
     print("❌ Could not import necessary functions from add_ebooks_batch.py.")
-    print("Please ensure add_ebooks_batch.py is in the same directory or accessible in the Python path.")
+    print(
+        "Please ensure add_ebooks_batch.py is in the same directory or accessible in the Python path."
+    )
     sys.exit(1)
+
 
 def connect_to_mpc(url=DEFAULT_MPC_URL):
     """Connect to the MPC server."""
@@ -31,7 +33,8 @@ def connect_to_mpc(url=DEFAULT_MPC_URL):
         print(f"❌ Error connecting to MPC server: {e}")
         sys.exit(1)
 
-def main():
+
+def main() -> None:
     ebooks_directory = "/Users/andyspamer/ebooks"
     num_books_to_process = 50
 
@@ -51,10 +54,14 @@ def main():
     print(f"Found {len(pdf_files)} PDF files in {ebooks_directory}")
 
     if len(pdf_files) <= num_books_to_process:
-        print(f"Processing all {len(pdf_files)} found files as it's less than or equal to the requested {num_books_to_process}.")
+        print(
+            f"Processing all {len(pdf_files)} found files as it's less than or equal to the requested {num_books_to_process}."
+        )
         selected_files = pdf_files
     else:
-        print(f"Selecting {num_books_to_process} random files out of {len(pdf_files)} found.")
+        print(
+            f"Selecting {num_books_to_process} random files out of {len(pdf_files)} found."
+        )
         selected_files = random.sample(pdf_files, num_books_to_process)
 
     # Connect to the MPC server
@@ -70,7 +77,9 @@ def main():
             print(f"\n[{i}/{len(selected_files)}] Processing: {filename}")
 
             # Process the file using the function from add_ebooks_batch.py
-            result = process_pdf_file(conn, file_path, verbose=False) # Set verbose to True for more output
+            result = process_pdf_file(
+                conn, file_path, verbose=False
+            )  # Set verbose to True for more output
 
             # Print response summary
             status = result.get("status", "unknown")
@@ -97,6 +106,7 @@ def main():
         # Close the connection
         conn.close()
         print("Connection closed.")
+
 
 if __name__ == "__main__":
     # Note: This script needs to be run within the project's Python virtual environment.

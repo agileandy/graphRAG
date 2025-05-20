@@ -1,20 +1,20 @@
-"""
-Example client for the GraphRAG MPC server.
-"""
-import json
+"""Example client for the GraphRAG MPC server."""
+
 import asyncio
-import websockets
-import sys
+import json
 import os
-from typing import Dict, Any
+import sys
+from typing import Any
+
+import websockets
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import get_port
 
-async def send_message(websocket, action: str, **kwargs) -> Dict[str, Any]:
-    """
-    Send a message to the MPC server.
+
+async def send_message(websocket, action: str, **kwargs) -> dict[str, Any]:
+    """Send a message to the MPC server.
 
     Args:
         websocket: WebSocket connection
@@ -23,12 +23,10 @@ async def send_message(websocket, action: str, **kwargs) -> Dict[str, Any]:
 
     Returns:
         Server response
+
     """
     # Prepare message
-    message = {
-        'action': action,
-        **kwargs
-    }
+    message = {"action": action, **kwargs}
 
     # Send message
     await websocket.send(json.dumps(message))
@@ -39,15 +37,17 @@ async def send_message(websocket, action: str, **kwargs) -> Dict[str, Any]:
     # Parse response
     return json.loads(response)
 
-# Get MPC port from centralized configuration
-mpc_port = get_port('mpc')
 
-async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
-    """
-    Run an interactive client for the MPC server.
+# Get MPC port from centralized configuration
+mpc_port = get_port("mpc")
+
+
+async def interactive_client(uri: str = f"ws://localhost:{mpc_port}") -> None:
+    """Run an interactive client for the MPC server.
 
     Args:
         uri: WebSocket URI
+
     """
     print(f"Connecting to {uri}...")
 
@@ -74,9 +74,9 @@ async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
             try:
                 # Send an invalid action to get available actions
                 response = await send_message(websocket, "get-available-actions")
-                if 'available_actions' in response:
+                if "available_actions" in response:
                     print("\nServer supports these actions:")
-                    print(", ".join(response['available_actions']))
+                    print(", ".join(response["available_actions"]))
                     print()
             except Exception as e:
                 print(f"Error retrieving available actions: {e}")
@@ -97,33 +97,26 @@ async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
                         "search",
                         query=query,
                         n_results=n_results,
-                        max_hops=max_hops
+                        max_hops=max_hops,
                     )
                 elif action == "2" or action.lower() == "concept":
                     concept_name = input("Enter concept name: ")
 
                     response = await send_message(
-                        websocket,
-                        "concept",
-                        concept_name=concept_name
+                        websocket, "concept", concept_name=concept_name
                     )
                 elif action == "3" or action.lower() == "documents":
                     concept_name = input("Enter concept name: ")
                     limit = int(input("Maximum documents (default: 5): ") or "5")
 
                     response = await send_message(
-                        websocket,
-                        "documents",
-                        concept_name=concept_name,
-                        limit=limit
+                        websocket, "documents", concept_name=concept_name, limit=limit
                     )
                 elif action == "4" or action.lower() == "books-by-concept":
                     concept_name = input("Enter concept name: ")
 
                     response = await send_message(
-                        websocket,
-                        "books-by-concept",
-                        concept_name=concept_name
+                        websocket, "books-by-concept", concept_name=concept_name
                     )
                 elif action == "5" or action.lower() == "related-concepts":
                     concept_name = input("Enter concept name: ")
@@ -133,7 +126,7 @@ async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
                         websocket,
                         "related-concepts",
                         concept_name=concept_name,
-                        max_hops=max_hops
+                        max_hops=max_hops,
                     )
                 elif action == "6" or action.lower() == "passages-about-concept":
                     concept_name = input("Enter concept name: ")
@@ -143,7 +136,7 @@ async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
                         websocket,
                         "passages-about-concept",
                         concept_name=concept_name,
-                        limit=limit
+                        limit=limit,
                     )
                 elif action == "7" or action.lower() == "add-document":
                     text = input("Enter document text: ")
@@ -157,27 +150,32 @@ async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
                         metadata["source"] = source
 
                     response = await send_message(
-                        websocket,
-                        "add-document",
-                        text=text,
-                        metadata=metadata
+                        websocket, "add-document", text=text, metadata=metadata
                     )
                 elif action == "8" or action.lower() == "add-folder":
                     folder_path = input("Enter folder path: ")
-                    recursive = input("Process subfolders? (y/n, default: n): ").lower() == 'y'
-                    file_types_input = input("File types to process (comma-separated, default: .txt,.json): ")
+                    recursive = (
+                        input("Process subfolders? (y/n, default: n): ").lower() == "y"
+                    )
+                    file_types_input = input(
+                        "File types to process (comma-separated, default: .txt,.json): "
+                    )
 
                     file_types = [".txt", ".json"]
                     if file_types_input:
-                        file_types = [ft.strip() if ft.strip().startswith('.') else f'.{ft.strip()}'
-                                     for ft in file_types_input.split(',')]
+                        file_types = [
+                            ft.strip()
+                            if ft.strip().startswith(".")
+                            else f".{ft.strip()}"
+                            for ft in file_types_input.split(",")
+                        ]
 
                     response = await send_message(
                         websocket,
                         "add-folder",
                         folder_path=folder_path,
                         recursive=recursive,
-                        file_types=file_types
+                        file_types=file_types,
                     )
                 else:
                     print("Invalid action.")
@@ -192,14 +190,15 @@ async def interactive_client(uri: str = f"ws://localhost:{mpc_port}"):
         print(f"Error: {e}")
         print("Make sure the MPC server is running.")
 
+
 async def non_interactive_client(uri: str, action: str, **kwargs):
-    """
-    Run a non-interactive client for the MPC server.
+    """Run a non-interactive client for the MPC server.
 
     Args:
         uri: WebSocket URI
         action: Action to perform
         **kwargs: Additional parameters for the action
+
     """
     print(f"Connecting to {uri}...")
 
@@ -222,19 +221,26 @@ async def non_interactive_client(uri: str, action: str, **kwargs):
         print("Make sure the MPC server is running.")
         return None
 
-def main():
-    """
-    Main function to run the MPC client example.
-    """
+
+def main() -> None:
+    """Main function to run the MPC client example."""
     import argparse
 
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Example client for the GraphRAG MPC server")
+    parser = argparse.ArgumentParser(
+        description="Example client for the GraphRAG MPC server"
+    )
     parser.add_argument("--host", type=str, default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=mpc_port, help=f"Server port (default: {mpc_port})")
+    parser.add_argument(
+        "--port", type=int, default=mpc_port, help=f"Server port (default: {mpc_port})"
+    )
 
     # Add action-specific arguments
-    parser.add_argument("--action", type=str, help="Action to perform (search, concept, documents, books-by-concept, related-concepts, passages-about-concept, add-document, add-folder)")
+    parser.add_argument(
+        "--action",
+        type=str,
+        help="Action to perform (search, concept, documents, books-by-concept, related-concepts, passages-about-concept, add-document, add-folder)",
+    )
 
     # Search arguments
     parser.add_argument("--query", type=str, help="Search query")
@@ -243,7 +249,9 @@ def main():
 
     # Concept arguments
     parser.add_argument("--concept-name", type=str, help="Concept name")
-    parser.add_argument("--limit", type=int, default=5, help="Maximum documents/passages")
+    parser.add_argument(
+        "--limit", type=int, default=5, help="Maximum documents/passages"
+    )
 
     # Document arguments
     parser.add_argument("--text", type=str, help="Document text")
@@ -252,8 +260,15 @@ def main():
 
     # Folder arguments
     parser.add_argument("--folder-path", type=str, help="Folder path")
-    parser.add_argument("--recursive", type=bool, default=False, help="Process subfolders")
-    parser.add_argument("--file-types", type=str, default=".txt,.json", help="File types to process (comma-separated)")
+    parser.add_argument(
+        "--recursive", type=bool, default=False, help="Process subfolders"
+    )
+    parser.add_argument(
+        "--file-types",
+        type=str,
+        default=".txt,.json",
+        help="File types to process (comma-separated)",
+    )
 
     args = parser.parse_args()
 
@@ -272,31 +287,23 @@ def main():
             kwargs = {
                 "query": args.query,
                 "n_results": args.n_results,
-                "max_hops": args.max_hops
+                "max_hops": args.max_hops,
             }
         elif args.action in ["concept", "books-by-concept"]:
             if not args.concept_name:
                 print(f"Error: --concept-name is required for {args.action} action")
                 return
-            kwargs = {
-                "concept_name": args.concept_name
-            }
+            kwargs = {"concept_name": args.concept_name}
         elif args.action in ["documents", "passages-about-concept"]:
             if not args.concept_name:
                 print(f"Error: --concept-name is required for {args.action} action")
                 return
-            kwargs = {
-                "concept_name": args.concept_name,
-                "limit": args.limit
-            }
+            kwargs = {"concept_name": args.concept_name, "limit": args.limit}
         elif args.action == "related-concepts":
             if not args.concept_name:
                 print(f"Error: --concept-name is required for {args.action} action")
                 return
-            kwargs = {
-                "concept_name": args.concept_name,
-                "max_hops": args.max_hops
-            }
+            kwargs = {"concept_name": args.concept_name, "max_hops": args.max_hops}
         elif args.action == "add-document":
             if not args.text:
                 print("Error: --text is required for add-document action")
@@ -306,20 +313,19 @@ def main():
                 metadata["title"] = args.title
             if args.source:
                 metadata["source"] = args.source
-            kwargs = {
-                "text": args.text,
-                "metadata": metadata
-            }
+            kwargs = {"text": args.text, "metadata": metadata}
         elif args.action == "add-folder":
             if not args.folder_path:
                 print("Error: --folder-path is required for add-folder action")
                 return
-            file_types = [ft.strip() if ft.strip().startswith('.') else f'.{ft.strip()}'
-                         for ft in args.file_types.split(',')]
+            file_types = [
+                ft.strip() if ft.strip().startswith(".") else f".{ft.strip()}"
+                for ft in args.file_types.split(",")
+            ]
             kwargs = {
                 "folder_path": args.folder_path,
                 "recursive": args.recursive,
-                "file_types": file_types
+                "file_types": file_types,
             }
         else:
             print(f"Error: Unknown action: {args.action}")
@@ -330,6 +336,7 @@ def main():
     else:
         # Run interactive client
         asyncio.run(interactive_client(uri))
+
 
 if __name__ == "__main__":
     main()

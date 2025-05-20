@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to update port references in documentation files.
+"""Script to update port references in documentation files.
 
 This script scans documentation files for hardcoded port numbers and
 replaces them with references to the centralized port configuration.
@@ -20,27 +19,28 @@ from src.config.ports import DEFAULT_PORTS
 # Define patterns for common port usages in documentation
 PORT_PATTERNS = [
     # localhost:8765
-    (r'localhost:(\d+)', 'localhost:${GRAPHRAG_PORT_SERVICE}'),
+    (r"localhost:(\d+)", "localhost:${GRAPHRAG_PORT_SERVICE}"),
     # 127.0.0.1:8765
-    (r'127\.0\.0\.1:(\d+)', '127.0.0.1:${GRAPHRAG_PORT_SERVICE}'),
+    (r"127\.0\.0\.1:(\d+)", "127.0.0.1:${GRAPHRAG_PORT_SERVICE}"),
     # --port 8765
-    (r'--port\s+(\d+)', '--port ${GRAPHRAG_PORT_SERVICE}'),
+    (r"--port\s+(\d+)", "--port ${GRAPHRAG_PORT_SERVICE}"),
     # -p 8765
-    (r'-p\s+(\d+)', '-p ${GRAPHRAG_PORT_SERVICE}'),
+    (r"-p\s+(\d+)", "-p ${GRAPHRAG_PORT_SERVICE}"),
 ]
 
 # Define file extensions to scan
-FILE_EXTENSIONS = ['.md', '.txt', '.json']
+FILE_EXTENSIONS = [".md", ".txt", ".json"]
 
 # Define directories to scan
-DOCS_DIRS = ['docs', 'specs', 'bugMCP']
+DOCS_DIRS = ["docs", "specs", "bugMCP"]
 
 # Create a reverse mapping from port to service
 PORT_TO_SERVICE = {port: service.upper() for service, port in DEFAULT_PORTS.items()}
 
-def update_file(file_path):
+
+def update_file(file_path) -> bool:
     """Update port references in a file."""
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding="utf-8") as f:
         try:
             content = f.read()
         except UnicodeDecodeError:
@@ -54,15 +54,16 @@ def update_file(file_path):
             port = int(match.group(1))
             if port in PORT_TO_SERVICE:
                 service = PORT_TO_SERVICE[port]
-                replacement = replacement_template.replace('SERVICE', service)
+                replacement = replacement_template.replace("SERVICE", service)
                 content = content.replace(match.group(0), replacement)
 
     if content != original_content:
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
         return True
 
     return False
+
 
 def scan_directory(directory):
     """Recursively scan a directory for files to update."""
@@ -76,7 +77,8 @@ def scan_directory(directory):
 
     return updated_files
 
-def main():
+
+def main() -> None:
     """Main function."""
     updated_files = []
 
@@ -93,6 +95,7 @@ def main():
             print(f"  - {file}")
     else:
         print("No files were updated.")
+
 
 if __name__ == "__main__":
     main()

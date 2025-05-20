@@ -1,3 +1,1 @@
-"""
-Agent integration module for GraphRAG project.
-"""
+"""Agent integration module for GraphRAG project."""

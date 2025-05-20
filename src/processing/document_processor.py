@@ -1,5 +1,4 @@
-"""
-Document processing utilities for GraphRAG project.
+"""Document processing utilities for GraphRAG project.
 
 This module provides optimized document processing functions for:
 1. Smart chunking strategies
@@ -8,13 +7,16 @@ This module provides optimized document processing functions for:
 4. Adaptive chunk sizing
 5. Document hashing for deduplication
 """
+
+import logging
 import re
 import uuid
-import logging
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Default chunking parameters
@@ -22,19 +24,19 @@ DEFAULT_CHUNK_SIZE = 1000
 DEFAULT_OVERLAP = 200
 DEFAULT_BATCH_SIZE = 100
 # Adaptive chunking parameters
-VERY_LARGE_DOC_THRESHOLD = 1000000 # > 1MB
-LARGE_DOC_THRESHOLD = 500000 # > 0.5MB
+VERY_LARGE_DOC_THRESHOLD = 1000000  # > 1MB
+LARGE_DOC_THRESHOLD = 500000  # > 0.5MB
 SMALL_CHUNK_SIZE = 500
 MEDIUM_CHUNK_SIZE = 750
+
 
 def smart_chunk_text(
     text: str,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     overlap: int = DEFAULT_OVERLAP,
-    semantic_boundaries: bool = True
-) -> List[str]:
-    """
-    Split text into overlapping chunks using semantic boundaries.
+    semantic_boundaries: bool = True,
+) -> list[str]:
+    """Split text into overlapping chunks using semantic boundaries.
 
     Args:
         text: Text to chunk
@@ -44,34 +46,37 @@ def smart_chunk_text(
 
     Returns:
         List of text chunks
+
     """
     chunks = []
 
     # Clean text: normalize whitespace while preserving paragraph breaks
     # First, ensure consistent line endings
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     # Replace multiple spaces with a single space, but preserve paragraph breaks
-    text = re.sub(r'([^\n])\s+([^\n])', r'\1 \2', text)
+    text = re.sub(r"([^\n])\s+([^\n])", r"\1 \2", text)
 
     # Normalize paragraph breaks (multiple newlines become exactly two newlines)
-    text = re.sub(r'\n\s*\n\s*', '\n\n', text)
+    text = re.sub(r"\n\s*\n\s*", "\n\n", text)
 
     # Ensure text doesn't start or end with excessive whitespace
     text = text.strip()
 
     if semantic_boundaries:
         # First try to split by paragraphs (double line breaks)
-        paragraphs = re.split(r'\n\s*\n', text)
+        paragraphs = re.split(r"\n\s*\n", text)
 
         # Handle very large paragraphs by splitting them further
         processed_paragraphs = []
         for paragraph in paragraphs:
             # If paragraph is too large, split it into sentences
             if len(paragraph) > chunk_size:
-                logger.info(f"Splitting large paragraph of size {len(paragraph)} into sentences")
+                logger.info(
+                    f"Splitting large paragraph of size {len(paragraph)} into sentences"
+                )
                 # Split by sentence boundaries
-                sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+                sentences = re.split(r"(?<=[.!?])\s+", paragraph)
                 processed_paragraphs.extend(sentences)
             else:
                 processed_paragraphs.append(paragraph)
@@ -90,12 +95,14 @@ def smart_chunk_text(
                     current_paragraphs = []
 
                 # Split the large paragraph by character
-                logger.info(f"Paragraph of size {len(paragraph)} exceeds chunk size {chunk_size}, splitting by character")
+                logger.info(
+                    f"Paragraph of size {len(paragraph)} exceeds chunk size {chunk_size}, splitting by character"
+                )
                 for i in range(0, len(paragraph), chunk_size - overlap):
                     if i + chunk_size >= len(paragraph):
                         chunks.append(paragraph[i:].strip())
                     else:
-                        chunks.append(paragraph[i:i + chunk_size].strip())
+                        chunks.append(paragraph[i : i + chunk_size].strip())
                 continue
 
             # If adding this paragraph would exceed chunk size, save current chunk and start a new one
@@ -137,18 +144,18 @@ def smart_chunk_text(
                     chunks.append(text[i:].strip())
                 break
 
-            chunks.append(text[i:i + chunk_size].strip())
+            chunks.append(text[i : i + chunk_size].strip())
 
     return chunks
 
+
 def batch_process_documents(
-    documents: List[str],
-    metadatas: List[Dict[str, Any]],
-    ids: Optional[List[str]] = None,
-    batch_size: int = DEFAULT_BATCH_SIZE
-) -> List[Tuple[List[str], List[Dict[str, Any]], List[str]]]:
-    """
-    Split documents into batches for efficient processing.
+    documents: list[str],
+    metadatas: list[dict[str, Any]],
+    ids: list[str] | None = None,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+) -> list[tuple[list[str], list[dict[str, Any]], list[str]]]:
+    """Split documents into batches for efficient processing.
 
     Args:
         documents: List of document texts
@@ -158,6 +165,7 @@ def batch_process_documents(
 
     Returns:
         List of batches, each containing (documents, metadatas, ids)
+
     """
     # Generate IDs if not provided
     if ids is None:
@@ -166,23 +174,24 @@ def batch_process_documents(
     # Split into batches
     batches = []
     for i in range(0, len(documents), batch_size):
-        batch_docs = documents[i:i + batch_size]
-        batch_meta = metadatas[i:i + batch_size]
-        batch_ids = ids[i:i + batch_size]
+        batch_docs = documents[i : i + batch_size]
+        batch_meta = metadatas[i : i + batch_size]
+        batch_ids = ids[i : i + batch_size]
 
         batches.append((batch_docs, batch_meta, batch_ids))
 
     return batches
 
-def optimize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Optimize metadata for efficient filtering in vector database.
+
+def optimize_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Optimize metadata for efficient filtering in vector database.
 
     Args:
         metadata: Original metadata
 
     Returns:
         Optimized metadata
+
     """
     optimized = {}
 
@@ -203,11 +212,12 @@ def optimize_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
             optimized[key] = value
 
     # Add searchable lowercase versions of key text fields
-    for key in ['title', 'name', 'category', 'author']:
+    for key in ["title", "name", "category", "author"]:
         if key in optimized and isinstance(optimized[key], str):
             optimized[f"{key}_lower"] = optimized[key].lower()
 
     return optimized
+
 
 def optimize_chunk_size(
     document_text: str,
@@ -215,10 +225,9 @@ def optimize_chunk_size(
     very_large_doc_threshold: int = VERY_LARGE_DOC_THRESHOLD,
     large_doc_threshold: int = LARGE_DOC_THRESHOLD,
     small_chunk_size: int = SMALL_CHUNK_SIZE,
-    medium_chunk_size: int = MEDIUM_CHUNK_SIZE
+    medium_chunk_size: int = MEDIUM_CHUNK_SIZE,
 ) -> int:
-    """
-    Determine optimal chunk size based on document characteristics.
+    """Determine optimal chunk size based on document characteristics.
 
     This function implements adaptive chunk sizing based on:
     1. Document length - longer documents get smaller chunks
@@ -234,6 +243,7 @@ def optimize_chunk_size(
 
     Returns:
         Optimized chunk size in characters
+
     """
     # Get document length
     doc_length = len(document_text)
@@ -248,9 +258,9 @@ def optimize_chunk_size(
 
     # Further adjust based on content complexity
     # Check for complex content indicators
-    has_tables = bool(re.search(r'\|\s*-+\s*\|', document_text))  # Markdown tables
-    has_code_blocks = bool(re.search(r'```[\s\S]*?```', document_text))  # Code blocks
-    has_lists = bool(re.search(r'^\s*[*\-+]\s+', document_text, re.MULTILINE))  # Lists
+    has_tables = bool(re.search(r"\|\s*-+\s*\|", document_text))  # Markdown tables
+    has_code_blocks = bool(re.search(r"```[\s\S]*?```", document_text))  # Code blocks
+    has_lists = bool(re.search(r"^\s*[*\-+]\s+", document_text, re.MULTILINE))  # Lists
 
     # Adjust size based on content complexity
     complexity_factor = 1.0
@@ -271,14 +281,14 @@ def optimize_chunk_size(
 
     return final_size
 
+
 def process_document_with_metadata(
     text: str,
-    metadata: Dict[str, Any],
+    metadata: dict[str, Any],
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    overlap: int = DEFAULT_OVERLAP
-) -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
-    """
-    Process a document with metadata into optimized chunks.
+    overlap: int = DEFAULT_OVERLAP,
+) -> tuple[list[str], list[dict[str, Any]], list[str]]:
+    """Process a document with metadata into optimized chunks.
 
     Args:
         text: Document text
@@ -288,9 +298,10 @@ def process_document_with_metadata(
 
     Returns:
         Tuple of (chunks, chunk_metadatas, chunk_ids)
+
     """
     # Create a unique ID for the document if not provided
-    doc_id = metadata.get('doc_id', f"doc-{uuid.uuid4()}")
+    doc_id = metadata.get("doc_id", f"doc-{uuid.uuid4()}")
 
     # Determine the optimal chunk size based on document text length
     optimized_chunk_size = optimize_chunk_size(text, chunk_size)
@@ -303,7 +314,10 @@ def process_document_with_metadata(
     chunk_ids = []
 
     # Add content hash to metadata if not already present
-    from src.processing.document_hash import generate_document_hash, enrich_metadata_with_hashes
+    from src.processing.document_hash import (
+        enrich_metadata_with_hashes,
+        generate_document_hash,
+    )
 
     # Enrich the document metadata with hashes for deduplication
     enriched_metadata = enrich_metadata_with_hashes(metadata, text)
@@ -314,14 +328,16 @@ def process_document_with_metadata(
 
         # Create metadata for the chunk
         chunk_metadata = enriched_metadata.copy()
-        chunk_metadata.update({
-            'doc_id': doc_id,
-            'chunk_id': chunk_id,
-            'chunk_index': i,
-            'total_chunks': len(chunks),
-            'chunk_size': len(chunk),
-            'chunk_hash': generate_document_hash(chunk)
-        })
+        chunk_metadata.update(
+            {
+                "doc_id": doc_id,
+                "chunk_id": chunk_id,
+                "chunk_index": i,
+                "total_chunks": len(chunks),
+                "chunk_size": len(chunk),
+                "chunk_hash": generate_document_hash(chunk),
+            }
+        )
 
         # Optimize metadata
         optimized_metadata = optimize_metadata(chunk_metadata)

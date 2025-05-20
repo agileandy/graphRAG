@@ -1,36 +1,38 @@
 #!/usr/bin/env python3
-"""
-Script to directly query Neo4j in the GraphRAG system.
-"""
+"""Script to directly query Neo4j in the GraphRAG system."""
 
-import json
 import argparse
-import sys
+import json
 import os
+import sys
+
 from neo4j import GraphDatabase
 
 # Add the project root to the Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from src.config import get_port
 
 # Get Neo4j port from centralized configuration
-neo4j_port = get_port('neo4j_bolt')
-docker_neo4j_port = get_port('docker_neo4j_bolt')
+neo4j_port = get_port("neo4j_bolt")
+docker_neo4j_port = get_port("docker_neo4j_bolt")
 
 # Default Neo4j connection settings
 DEFAULT_URI = f"bolt://localhost:{docker_neo4j_port}"  # Default to Docker port mapping
 DEFAULT_USERNAME = "neo4j"
 DEFAULT_PASSWORD = "graphrag"
 
+
 class Neo4jQuerier:
     """Class to query Neo4j database."""
 
-    def __init__(self, uri, username, password):
+    def __init__(self, uri, username, password) -> None:
         """Initialize the Neo4j connection."""
         self.driver = GraphDatabase.driver(uri, auth=(username, password))
 
-    def close(self):
+    def close(self) -> None:
         """Close the Neo4j connection."""
         self.driver.close()
 
@@ -83,7 +85,7 @@ class Neo4jQuerier:
         with self.driver.session() as session:
             result = session.run(
                 "MATCH (c:Concept) WHERE c.name CONTAINS $name RETURN c.name AS name, c.id AS id",
-                name=name
+                name=name,
             )
             return [{"name": record["name"], "id": record["id"]} for record in result]
 
@@ -96,10 +98,12 @@ class Neo4jQuerier:
                 RETURN c2.name AS name, c2.id AS id, r.weight AS weight
                 ORDER BY r.weight DESC
                 """,
-                concept_id=concept_id
+                concept_id=concept_id,
             )
-            return [{"name": record["name"], "id": record["id"], "weight": record["weight"]}
-                    for record in result]
+            return [
+                {"name": record["name"], "id": record["id"], "weight": record["weight"]}
+                for record in result
+            ]
 
     def get_documents_by_concept(self, concept_id, limit=10):
         """Get documents related to a given concept."""
@@ -110,7 +114,8 @@ class Neo4jQuerier:
                 RETURN d.title AS title, d.id AS id
                 LIMIT $limit
                 """,
-                concept_id=concept_id, limit=limit
+                concept_id=concept_id,
+                limit=limit,
             )
             return [{"title": record["title"], "id": record["id"]} for record in result]
 
@@ -120,17 +125,22 @@ class Neo4jQuerier:
             result = session.run(query)
             return [dict(record) for record in result]
 
-def main():
+
+def main() -> None:
     parser = argparse.ArgumentParser(description="Query Neo4j in the GraphRAG system")
     parser.add_argument("--uri", default=DEFAULT_URI, help="Neo4j URI")
     parser.add_argument("--username", default=DEFAULT_USERNAME, help="Neo4j username")
     parser.add_argument("--password", default=DEFAULT_PASSWORD, help="Neo4j password")
     parser.add_argument("--test", action="store_true", help="Test the Neo4j connection")
-    parser.add_argument("--counts", action="store_true", help="Get counts of nodes and relationships")
+    parser.add_argument(
+        "--counts", action="store_true", help="Get counts of nodes and relationships"
+    )
     parser.add_argument("--concepts", action="store_true", help="Get all concepts")
     parser.add_argument("--concept", help="Get a concept by name")
     parser.add_argument("--related", help="Get concepts related to a given concept ID")
-    parser.add_argument("--documents", help="Get documents related to a given concept ID")
+    parser.add_argument(
+        "--documents", help="Get documents related to a given concept ID"
+    )
     parser.add_argument("--query", help="Run a custom Cypher query")
     args = parser.parse_args()
 
@@ -172,14 +182,20 @@ def main():
         # Get related concepts
         if args.related:
             related_concepts = querier.get_related_concepts(args.related)
-            print(f"Found {len(related_concepts)} concepts related to '{args.related}':")
+            print(
+                f"Found {len(related_concepts)} concepts related to '{args.related}':"
+            )
             for concept in related_concepts:
-                print(f"  - {concept['name']} (ID: {concept['id']}, Weight: {concept['weight']})")
+                print(
+                    f"  - {concept['name']} (ID: {concept['id']}, Weight: {concept['weight']})"
+                )
 
         # Get documents by concept
         if args.documents:
             documents = querier.get_documents_by_concept(args.documents)
-            print(f"Found {len(documents)} documents related to concept '{args.documents}':")
+            print(
+                f"Found {len(documents)} documents related to concept '{args.documents}':"
+            )
             for document in documents:
                 print(f"  - {document['title']} (ID: {document['id']})")
 
@@ -192,6 +208,7 @@ def main():
     finally:
         # Close the Neo4j connection
         querier.close()
+
 
 if __name__ == "__main__":
     main()

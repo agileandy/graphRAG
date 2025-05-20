@@ -1,18 +1,20 @@
-import chromadb
-import json
 import argparse
+import json
 import os
 import sys
 
+import chromadb
+
 # Adjust the path to import from the project root
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 DEFAULT_CONFIG_PATH = "config/database_config.json"
+
 
 def load_config(config_path):
     """Loads database configuration from a JSON file."""
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = json.load(f)
         return config.get("chromadb")
     except FileNotFoundError:
@@ -22,9 +24,9 @@ def load_config(config_path):
         print(f"Error: Could not decode JSON from {config_path}")
         return None
 
-def verify_chromadb(config, collection_name_to_check=None):
-    """
-    Verifies the connection to ChromaDB, lists collections, and optionally
+
+def verify_chromadb(config, collection_name_to_check=None) -> bool:
+    """Verifies the connection to ChromaDB, lists collections, and optionally
     counts items in a specified collection.
     """
     if not config:
@@ -40,7 +42,7 @@ def verify_chromadb(config, collection_name_to_check=None):
     try:
         # client = chromadb.HttpClient(host=host, port=port, path=path) # Path is not a standard HttpClient param
         client = chromadb.HttpClient(host=host, port=port)
-        client.heartbeat() # Check if the server is alive
+        client.heartbeat()  # Check if the server is alive
         print("Connection to ChromaDB successful.")
     except Exception as e:
         print(f"Error: Could not connect to ChromaDB: {e}")
@@ -52,7 +54,9 @@ def verify_chromadb(config, collection_name_to_check=None):
         if collections:
             print("Collections found:")
             for collection in collections:
-                print(f"- {collection.name} (ID: {collection.id}, Metadata: {collection.metadata})")
+                print(
+                    f"- {collection.name} (ID: {collection.id}, Metadata: {collection.metadata})"
+                )
         else:
             print("No collections found.")
 
@@ -67,26 +71,31 @@ def verify_chromadb(config, collection_name_to_check=None):
             count = collection_instance.count()
             print(f"Collection '{collection_name_to_check}' found.")
             print(f"Item count in '{collection_name_to_check}': {count}")
-        except Exception as e: # More specific exceptions could be chromadb.errors.CollectionNotFound
+        except (
+            Exception
+        ) as e:  # More specific exceptions could be chromadb.errors.CollectionNotFound
             print(f"Error accessing collection '{collection_name_to_check}': {e}")
             print(f"Please ensure the collection '{collection_name_to_check}' exists.")
-            return False # Consider if this should be a fatal error for the script's success
+            return False  # Consider if this should be a fatal error for the script's success
 
     print("\nChromaDB verification process completed.")
     return True
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Verify ChromaDB connection and collections.")
+    parser = argparse.ArgumentParser(
+        description="Verify ChromaDB connection and collections."
+    )
     parser.add_argument(
         "--config",
         type=str,
         default=DEFAULT_CONFIG_PATH,
-        help=f"Path to the database configuration JSON file (default: {DEFAULT_CONFIG_PATH})"
+        help=f"Path to the database configuration JSON file (default: {DEFAULT_CONFIG_PATH})",
     )
     parser.add_argument(
         "--collection",
         type=str,
-        help="Name of a specific collection to check and count items."
+        help="Name of a specific collection to check and count items.",
     )
 
     args = parser.parse_args()

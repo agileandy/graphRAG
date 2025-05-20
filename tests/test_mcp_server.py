@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Test script for the GraphRAG MCP server.
+"""Test script for the GraphRAG MCP server.
 
 This script tests the MCP server by:
 1. Checking if the Neo4j driver is installed
@@ -8,22 +7,24 @@ This script tests the MCP server by:
 3. Testing the MCP server protocol
 """
 
+import asyncio
+import importlib.util
+import json
 import os
 import sys
-import json
-import asyncio
+
 import websockets
-import importlib.util
-from typing import Dict, Any, List, Optional
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.config import get_port
+
 
 def check_package_installed(package_name: str) -> bool:
     """Check if a package is installed."""
     return importlib.util.find_spec(package_name) is not None
+
 
 def print_section(title: str) -> None:
     """Print a section title."""
@@ -31,8 +32,10 @@ def print_section(title: str) -> None:
     print(f" {title} ".center(80, "="))
     print("=" * 80)
 
+
 # Get MCP port from centralized configuration
-mcp_port = get_port('mcp')
+mcp_port = get_port("mcp")
+
 
 async def test_mcp_protocol(uri: str = f"ws://localhost:{mcp_port}") -> None:
     """Test the MCP protocol."""
@@ -45,19 +48,20 @@ async def test_mcp_protocol(uri: str = f"ws://localhost:{mcp_port}") -> None:
 
             # Test initialize
             print("\nTesting initialize...")
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {
-                        "name": "test-client",
-                        "version": "0.1.0"
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "test-client", "version": "0.1.0"},
+                        },
+                        "id": 0,
                     }
-                },
-                "id": 0
-            }))
+                )
+            )
 
             response = await websocket.recv()
             response_data = json.loads(response)
@@ -70,35 +74,38 @@ async def test_mcp_protocol(uri: str = f"ws://localhost:{mcp_port}") -> None:
 
             # Test getTools
             print("\nTesting getTools...")
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "getTools",
-                "params": {},
-                "id": 1
-            }))
+            await websocket.send(
+                json.dumps(
+                    {"jsonrpc": "2.0", "method": "getTools", "params": {}, "id": 1}
+                )
+            )
 
             response = await websocket.recv()
             response_data = json.loads(response)
             print(f"Response: {json.dumps(response_data, indent=2)}")
 
             if "result" in response_data and "tools" in response_data["result"]:
-                print(f"✅ GetTools successful, found {len(response_data['result']['tools'])} tools")
+                print(
+                    f"✅ GetTools successful, found {len(response_data['result']['tools'])} tools"
+                )
             else:
                 print("❌ GetTools failed")
 
             # Test invokeTool
             print("\nTesting invokeTool (search)...")
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "invokeTool",
-                "params": {
-                    "name": "search",
-                    "parameters": {
-                        "query": "GraphRAG"
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "invokeTool",
+                        "params": {
+                            "name": "search",
+                            "parameters": {"query": "GraphRAG"},
+                        },
+                        "id": 2,
                     }
-                },
-                "id": 2
-            }))
+                )
+            )
 
             response = await websocket.recv()
             response_data = json.loads(response)
@@ -107,8 +114,12 @@ async def test_mcp_protocol(uri: str = f"ws://localhost:{mcp_port}") -> None:
             if "result" in response_data:
                 print("✅ InvokeTool successful")
                 if "error" in response_data["result"].get("result", {}):
-                    print("⚠️ Tool returned an error (this is expected if database connections are not available)")
-                    print(f"Error message: {response_data['result']['result'].get('message', 'Unknown error')}")
+                    print(
+                        "⚠️ Tool returned an error (this is expected if database connections are not available)"
+                    )
+                    print(
+                        f"Error message: {response_data['result']['result'].get('message', 'Unknown error')}"
+                    )
             else:
                 print("❌ InvokeTool failed")
 
@@ -117,25 +128,29 @@ async def test_mcp_protocol(uri: str = f"ws://localhost:{mcp_port}") -> None:
     except Exception as e:
         print(f"❌ Error testing MCP protocol: {e}")
 
+
 def check_database_connections() -> None:
     """Check database connections."""
     print_section("Checking Database Connections")
 
     # Get Neo4j ports from centralized configuration
-    docker_neo4j_port = get_port('docker_neo4j_bolt')
-    neo4j_port = get_port('neo4j_bolt')
+    docker_neo4j_port = get_port("docker_neo4j_bolt")
+    neo4j_port = get_port("neo4j_bolt")
 
     # Check Neo4j
     print("Checking Neo4j connection...")
     try:
         from src.database.neo4j_db import Neo4jDatabase
+
         # Try with Docker port mapping and explicit credentials
         neo4j_db = Neo4jDatabase(
             uri=f"bolt://localhost:{docker_neo4j_port}",
             username="neo4j",
-            password="graphrag"
+            password="graphrag",
         )
-        print(f"Connecting to Neo4j at {neo4j_db.uri} with username {neo4j_db.username}")
+        print(
+            f"Connecting to Neo4j at {neo4j_db.uri} with username {neo4j_db.username}"
+        )
         if neo4j_db.verify_connection():
             print("✅ Neo4j connection successful")
         else:
@@ -145,7 +160,7 @@ def check_database_connections() -> None:
             neo4j_db = Neo4jDatabase(
                 uri=f"bolt://localhost:{neo4j_port}",
                 username="neo4j",
-                password="graphrag"
+                password="graphrag",
             )
             if neo4j_db.verify_connection():
                 print("✅ Neo4j connection successful with default port")
@@ -160,6 +175,7 @@ def check_database_connections() -> None:
     print("\nChecking Vector DB connection...")
     try:
         from src.database.vector_db import VectorDatabase
+
         vector_db = VectorDatabase()
         if vector_db.verify_connection():
             print("✅ Vector DB connection successful")
@@ -170,6 +186,7 @@ def check_database_connections() -> None:
     except Exception as e:
         print(f"❌ Vector DB connection error: {e}")
 
+
 def check_dependencies() -> None:
     """Check if required dependencies are installed."""
     print_section("Checking Dependencies")
@@ -178,7 +195,7 @@ def check_dependencies() -> None:
         ("neo4j", "Neo4j driver"),
         ("websockets", "WebSockets"),
         ("chromadb", "ChromaDB"),
-        ("dotenv", "Python-dotenv")
+        ("dotenv", "Python-dotenv"),
     ]
 
     for package, description in dependencies:
@@ -186,6 +203,7 @@ def check_dependencies() -> None:
             print(f"✅ {description} is installed")
         else:
             print(f"❌ {description} is NOT installed")
+
 
 def main() -> None:
     """Main function."""
@@ -202,6 +220,7 @@ def main() -> None:
     asyncio.run(test_mcp_protocol())
 
     print_section("Test Complete")
+
 
 if __name__ == "__main__":
     main()

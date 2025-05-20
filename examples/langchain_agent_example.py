@@ -1,15 +1,15 @@
-"""
-Example of using GraphRAG with a LangChain agent.
-"""
+"""Example of using GraphRAG with a LangChain agent."""
+
 import os
 import sys
+
 from dotenv import load_dotenv
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import AgentType, initialize_agent
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import GraphRAG tools
 from src.agents.langchain_tools import get_graphrag_tools
@@ -17,10 +17,9 @@ from src.agents.langchain_tools import get_graphrag_tools
 # Load environment variables
 load_dotenv()
 
-def main():
-    """
-    Main function to demonstrate using GraphRAG with a LangChain agent.
-    """
+
+def main() -> None:
+    """Main function to demonstrate using GraphRAG with a LangChain agent."""
     # Check if OpenAI API key is set
     if not os.getenv("OPENAI_API_KEY"):
         print("❌ OPENAI_API_KEY environment variable is not set.")
@@ -40,7 +39,7 @@ def main():
         llm,
         agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
         verbose=True,
-        memory=memory
+        memory=memory,
     )
 
     # Run interactive chat
@@ -60,6 +59,7 @@ def main():
             print(f"Agent: {response}")
         except Exception as e:
             print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     main()

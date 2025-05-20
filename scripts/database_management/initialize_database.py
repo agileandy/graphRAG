@@ -1,15 +1,15 @@
-"""
-Script to initialize the GraphRAG database.
+"""Script to initialize the GraphRAG database.
 
 This script is used to initialize the Neo4j and Vector databases when the Docker container
 starts for the first time. It creates the necessary constraints and indexes.
 """
-import sys
+
 import os
+import sys
 import time
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
@@ -18,15 +18,16 @@ from src.database.vector_db import VectorDatabase
 os.environ["NEO4J_URI"] = "bolt://0.0.0.0:7687"
 os.environ["GRAPHRAG_API_URL"] = "http://0.0.0.0:5000"
 
+
 def initialize_neo4j(neo4j_db: Neo4jDatabase) -> bool:
-    """
-    Initialize the Neo4j database with constraints and indexes.
+    """Initialize the Neo4j database with constraints and indexes.
 
     Args:
         neo4j_db: Neo4j database instance
 
     Returns:
         True if successful, False otherwise
+
     """
     print("Initializing Neo4j database...")
 
@@ -38,7 +39,7 @@ def initialize_neo4j(neo4j_db: Neo4jDatabase) -> bool:
         if neo4j_db.verify_connection():
             print("✅ Neo4j connection established!")
             break
-        print(f"Waiting for Neo4j to be available... ({i+1}/{max_retries})")
+        print(f"Waiting for Neo4j to be available... ({i + 1}/{max_retries})")
         time.sleep(retry_interval)
     else:
         print("❌ Failed to connect to Neo4j after multiple attempts.")
@@ -129,15 +130,16 @@ def initialize_neo4j(neo4j_db: Neo4jDatabase) -> bool:
         print(f"❌ Error initializing Neo4j database: {e}")
         return False
 
+
 def initialize_vector_db(vector_db: VectorDatabase) -> bool:
-    """
-    Initialize the Vector database.
+    """Initialize the Vector database.
 
     Args:
         vector_db: Vector database instance
 
     Returns:
         True if successful, False otherwise
+
     """
     print("Initializing Vector database...")
 
@@ -158,10 +160,9 @@ def initialize_vector_db(vector_db: VectorDatabase) -> bool:
         print(f"❌ Error initializing Vector database: {e}")
         return False
 
-def main():
-    """
-    Main function to initialize the GraphRAG database.
-    """
+
+def main() -> int:
+    """Main function to initialize the GraphRAG database."""
     print("Starting database initialization...")
 
     # Initialize Neo4j
@@ -186,6 +187,7 @@ def main():
     else:
         print("\n❌ Database initialization failed.")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

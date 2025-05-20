@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to test the GraphRAG system end-to-end.
+"""Script to test the GraphRAG system end-to-end.
 
 This script:
 1. Resets the databases (Neo4j and ChromaDB)
@@ -12,28 +11,31 @@ This script:
 Usage:
     uv run scripts/test_end_to_end.py
 """
-import sys
-import os
+
 import argparse
+import os
 import shutil
-import time
+import sys
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 try:
+    from scripts.document_processing.add_document_core import add_document_to_graphrag
+    from src.database.db_linkage import DatabaseLinkage
     from src.database.neo4j_db import Neo4jDatabase
     from src.database.vector_db import VectorDatabase
-    from src.database.db_linkage import DatabaseLinkage
-    from scripts.document_processing.add_document_core import add_document_to_graphrag
-    from src.processing.duplicate_detector import DuplicateDetector # Import DuplicateDetector
+    from src.processing.duplicate_detector import (
+        DuplicateDetector,
+    )  # Import DuplicateDetector
 except ImportError as e:
     print(f"Error importing required modules: {e}")
     print("Make sure all dependencies are installed:")
     print("  uv pip install neo4j chromadb websockets")
     sys.exit(1)
 
-def reset_chromadb():
+
+def reset_chromadb() -> bool | None:
     """Reset the ChromaDB vector database by deleting and recreating the directory."""
     print("\n=== Resetting ChromaDB ===")
 
@@ -63,7 +65,8 @@ def reset_chromadb():
         print(f"❌ Failed to delete ChromaDB directory: {e}")
         return False
 
-def reset_neo4j():
+
+def reset_neo4j() -> bool:
     """Reset the Neo4j database by deleting all nodes and relationships."""
     print("\n=== Resetting Neo4j ===")
 
@@ -105,7 +108,8 @@ def reset_neo4j():
         neo4j_db.close()
         return False
 
-def verify_connections():
+
+def verify_connections() -> bool:
     """Verify database connections."""
     print("\n=== Verifying Database Connections ===")
 
@@ -134,14 +138,15 @@ def verify_connections():
 
     return True
 
-def add_test_document():
+
+def add_test_document() -> bool | None:
     """Add a test document to the GraphRAG system."""
     print("\n=== Adding Test Document ===")
 
     # Initialize databases
     neo4j_db = Neo4jDatabase()
     vector_db = VectorDatabase()
-    db_linkage = DatabaseLinkage(neo4j_db, vector_db)
+    DatabaseLinkage(neo4j_db, vector_db)
 
     # Verify connections
     if not neo4j_db.verify_connection() or not vector_db.verify_connection():
@@ -180,7 +185,7 @@ def add_test_document():
         "title": "GraphRAG: Enhancing LLMs with Knowledge Graphs",
         "author": "Test Script",
         "category": "AI",
-        "source": "End-to-End Test"
+        "source": "End-to-End Test",
     }
 
     # Add document to GraphRAG system
@@ -194,14 +199,16 @@ def add_test_document():
             metadata=document_metadata,
             neo4j_db=neo4j_db,
             vector_db=vector_db,
-            duplicate_detector=duplicate_detector # Add the duplicate_detector argument
+            duplicate_detector=duplicate_detector,  # Add the duplicate_detector argument
         )
 
         print("\nDocument added successfully!")
         # Check if result is not None before accessing its attributes
         if result:
             print(f"Document ID: {result.get('document_id', 'Unknown')}")
-            print(f"Extracted entities: {', '.join(entity['name'] for entity in result.get('entities', []))}")
+            print(
+                f"Extracted entities: {', '.join(entity['name'] for entity in result.get('entities', []))}"
+            )
             print(f"Created relationships: {len(result.get('relationships', []))}")
 
             return True
@@ -215,7 +222,8 @@ def add_test_document():
         # Close Neo4j connection
         neo4j_db.close()
 
-def perform_search():
+
+def perform_search() -> bool | None:
     """Perform a search query."""
     print("\n=== Performing Search Query ===")
 
@@ -235,20 +243,18 @@ def perform_search():
 
     try:
         search_results = db_linkage.hybrid_search(
-            query_text=search_query,
-            n_vector_results=2,
-            max_graph_hops=2
+            query_text=search_query, n_vector_results=2, max_graph_hops=2
         )
 
         # Display vector results
         print("\nVector results:")
         for i, doc in enumerate(search_results["vector_results"]["documents"]):
-            print(f"  {i+1}. {doc[:100]}...")
+            print(f"  {i + 1}. {doc[:100]}...")
 
         # Display graph results
         print("\nGraph results:")
         for i, (node, score) in enumerate(search_results["graph_results"]):
-            print(f"  {i+1}. {node} (Score: {score})")
+            print(f"  {i + 1}. {node} (Score: {score})")
 
         return True
     except Exception as e:
@@ -258,7 +264,8 @@ def perform_search():
         # Close Neo4j connection
         neo4j_db.close()
 
-def main():
+
+def main() -> int:
     """Main function to test the GraphRAG system end-to-end."""
     parser = argparse.ArgumentParser(description="Test the GraphRAG system end-to-end")
     parser.add_argument("--skip-reset", action="store_true", help="Skip database reset")
@@ -300,7 +307,9 @@ def main():
     if all(steps_success.values()):
         print("\n✅ End-to-end test completed successfully!")
         print("\nNext steps:")
-        print("1. Query the system interactively with 'uv run scripts/query_graphrag.py'")
+        print(
+            "1. Query the system interactively with 'uv run scripts/query_graphrag.py'"
+        )
         print("2. Add your own documents with 'uv run scripts/add_document.py'")
         print("3. Explore the knowledge graph in Neo4j Browser")
         return 0
@@ -308,6 +317,7 @@ def main():
         print("\n❌ End-to-end test failed!")
         print("Please check the error messages above.")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())
