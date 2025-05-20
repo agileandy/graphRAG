@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "graphRAG"
-version = "0.1.0"
+version = "1.2.0"
 description = "A project for graph-based RAG (Retrieval Augmented Generation)."
 authors = [
   { name="Andy Spamer", email="andy.spamer@example.com" }, # Please update with actual email
@@ -65,8 +65,10 @@ addopts = "-ra -vv --cov=src --cov-report=term-missing" # Example options: verbo
 
 [tool.ruff]
 line-length = 88
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "C90", "N", "D", "ANN"] # A good default set of rules
-ignore = ["D100", "D104", "D107", "ANN101", "ANN102"] # Example ignores, adjust as needed
+ignore = ["D100", "D104", "D107"] # Example ignores, adjust as needed
 
 [tool.ruff.format]
 quote-style = "double"

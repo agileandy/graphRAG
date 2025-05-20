@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""
-Simple test script for OpenRouter API.
-"""
-import requests
+"""Simple test script for OpenRouter API."""
+
 import json
-import sys
 import os
+import sys
+
+import requests
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # OpenRouter API key
 API_KEY = "YOUR_OPENROUTER_API_KEY"
@@ -19,30 +19,31 @@ MODEL = "meta-llama/llama-4-maverick:free"
 # Test prompt
 PROMPT = "Explain the concept of Retrieval-Augmented Generation (RAG) in 3-4 sentences."
 
-def test_openrouter_api():
+
+def test_openrouter_api() -> None:
     """Test the OpenRouter API with a simple prompt."""
     print(f"Testing OpenRouter API with model: {MODEL}")
     print(f"Prompt: {PROMPT}")
-    
+
     # Prepare the request payload
     payload = {
         "model": MODEL,
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": PROMPT}
+            {"role": "user", "content": PROMPT},
         ],
         "temperature": 0.1,
         "max_tokens": 1000,  # Using a smaller value for faster response
     }
-    
+
     # Set up headers
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
         "HTTP-Referer": "https://graphrag.local",
-        "X-Title": "GraphRAG"
+        "X-Title": "GraphRAG",
     }
-    
+
     try:
         # Make the API request
         print("Sending request to OpenRouter API...")
@@ -50,17 +51,17 @@ def test_openrouter_api():
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=30  # Using a shorter timeout
+            timeout=30,  # Using a shorter timeout
         )
-        
+
         # Print the response status code
         print(f"Response status code: {response.status_code}")
-        
+
         # Check if the request was successful
         if response.status_code == 200:
             # Parse the response
             result = response.json()
-            
+
             # Extract and print the generated text
             if "choices" in result and len(result["choices"]) > 0:
                 message = result["choices"][0]["message"]
@@ -73,13 +74,14 @@ def test_openrouter_api():
         else:
             print("\nError response:")
             print(response.text)
-    
+
     except requests.exceptions.Timeout:
         print("Request timed out after 30 seconds")
     except requests.exceptions.RequestException as e:
         print(f"Request error: {e}")
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     test_openrouter_api()

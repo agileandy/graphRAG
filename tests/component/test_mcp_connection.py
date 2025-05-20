@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""
-Simple test script to verify connection to the GraphRAG MCP server.
-"""
+"""Simple test script to verify connection to the GraphRAG MCP server."""
 
-import sys
 import json
+import sys
+
 import websockets.sync.client as ws
 
 # Default MCP server URL (matching the Docker port mapping)
 DEFAULT_MCP_URL = "ws://localhost:8767"
 
-def test_connection(url=DEFAULT_MCP_URL):
+
+def test_connection(url=DEFAULT_MCP_URL) -> bool | None:
     """Test connection to the MCP server."""
     print(f"Attempting to connect to MCP server at {url}...")
 
@@ -34,6 +34,7 @@ def test_connection(url=DEFAULT_MCP_URL):
     except Exception as e:
         print(f"❌ Error connecting to MCP server: {e}")
         return False
+
 
 if __name__ == "__main__":
     # Use command-line argument for URL if provided

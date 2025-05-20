@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-GraphRAG Agent Tool: add-folder
+"""GraphRAG Agent Tool: add-folder.
 
 This tool adds a folder of documents to the GraphRAG system.
 
@@ -18,13 +17,16 @@ Arguments:
 Environment Variables:
     MCP_HOST     MCP server host (default: localhost)
     MCP_PORT     MCP server port (default: 8767)
+
 """
 
-import sys
-import os
 import argparse
-from utils import connect_to_mcp, send_request, get_mcp_url, format_json
-from typing import Dict, Any
+import os
+import sys
+from typing import Any
+
+from utils import connect_to_mcp, format_json, get_mcp_url, send_request
+
 
 def parse_metadata(metadata_args):
     """Parse metadata arguments into a dictionary."""
@@ -37,15 +39,19 @@ def parse_metadata(metadata_args):
 
     return metadata
 
+
 def parse_file_types(file_types_arg):
     """Parse file types argument into a list."""
     if not file_types_arg:
         return [".txt", ".json", ".pdf", ".md"]
 
-    return [ext.strip() if ext.strip().startswith(".") else f".{ext.strip()}"
-            for ext in file_types_arg.split(",")]
+    return [
+        ext.strip() if ext.strip().startswith(".") else f".{ext.strip()}"
+        for ext in file_types_arg.split(",")
+    ]
 
-def display_result(result: Dict[str, Any], async_mode: bool) -> None:
+
+def display_result(result: dict[str, Any], async_mode: bool) -> None:
     """Display the result of adding a folder."""
     if "error" in result:
         print(f"❌ Error: {result['error']}")
@@ -87,15 +93,35 @@ def display_result(result: Dict[str, Any], async_mode: bool) -> None:
         else:
             print(f"❌ Error: {result.get('message', 'Unknown error')}")
 
-def main():
+
+def main() -> int | None:
     """Main function."""
-    parser = argparse.ArgumentParser(description="Add a folder of documents to the GraphRAG system")
-    parser.add_argument("--path", required=True, help="Path to the folder containing documents")
-    parser.add_argument("--recursive", action="store_true", help="Process subfolders recursively")
-    parser.add_argument("--file-types", default=None, help="Comma-separated list of file extensions to process")
-    parser.add_argument("--metadata", action="append", default=[], help="Document metadata (KEY=VALUE)")
-    parser.add_argument("--sync", dest="sync_mode", action="store_true", help="Process documents synchronously")
-    parser.add_argument("--url", default=None, help="MCP server URL (overrides environment variables)")
+    parser = argparse.ArgumentParser(
+        description="Add a folder of documents to the GraphRAG system"
+    )
+    parser.add_argument(
+        "--path", required=True, help="Path to the folder containing documents"
+    )
+    parser.add_argument(
+        "--recursive", action="store_true", help="Process subfolders recursively"
+    )
+    parser.add_argument(
+        "--file-types",
+        default=None,
+        help="Comma-separated list of file extensions to process",
+    )
+    parser.add_argument(
+        "--metadata", action="append", default=[], help="Document metadata (KEY=VALUE)"
+    )
+    parser.add_argument(
+        "--sync",
+        dest="sync_mode",
+        action="store_true",
+        help="Process documents synchronously",
+    )
+    parser.add_argument(
+        "--url", default=None, help="MCP server URL (overrides environment variables)"
+    )
     parser.add_argument("--raw", action="store_true", help="Display raw JSON response")
     args = parser.parse_args()
 
@@ -124,12 +150,15 @@ def main():
         print(f"Metadata: {metadata}")
         print(f"Sync mode: {args.sync_mode}")
 
-        response = send_request(conn, "add-folder",
-                               folder_path=os.path.abspath(args.path),
-                               recursive=args.recursive,
-                               file_types=file_types,
-                               metadata=metadata,
-                               async_processing=not args.sync_mode)  # Default is async
+        response = send_request(
+            conn,
+            "add-folder",
+            folder_path=os.path.abspath(args.path),
+            recursive=args.recursive,
+            file_types=file_types,
+            metadata=metadata,
+            async_processing=not args.sync_mode,
+        )  # Default is async
 
         # Display results
         if args.raw:
@@ -142,6 +171,7 @@ def main():
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     sys.exit(main())

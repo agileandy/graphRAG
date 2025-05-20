@@ -94,7 +94,7 @@ node_modules/
 *.sw?
 # Task files
 tasks.json
-tasks/ 
+tasks/
 .aider*
 
 # Credentials and secrets

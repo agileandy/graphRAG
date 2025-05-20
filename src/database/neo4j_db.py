@@ -1,31 +1,36 @@
-"""
-Neo4j database connection and operations for GraphRAG project.
-"""
+"""Neo4j database connection and operations for GraphRAG project."""
+
 import os
-from typing import Dict, List, Optional, Any
+from typing import Any
+
 from dotenv import load_dotenv
-from neo4j import GraphDatabase, Driver
+from neo4j import Driver, GraphDatabase
+
 from src.config import get_port
 
 # Load environment variables
 load_dotenv()
 
+
 class Neo4jDatabase:
-    """
-    Neo4j database connection and operations for GraphRAG project.
-    """
-    def __init__(self, uri: Optional[str] = None, username: Optional[str] = None,
-                 password: Optional[str] = None):
-        """
-        Initialize Neo4j database connection.
+    """Neo4j database connection and operations for GraphRAG project."""
+
+    def __init__(
+        self,
+        uri: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
+        """Initialize Neo4j database connection.
 
         Args:
             uri: Neo4j URI (default: from environment variable)
             username: Neo4j username (default: from environment variable)
             password: Neo4j password (default: from environment variable)
+
         """
         # Get Neo4j port from centralized configuration
-        neo4j_port = get_port('neo4j_bolt')
+        neo4j_port = get_port("neo4j_bolt")
 
         # Try different URIs for Neo4j connection
         default_uri = f"bolt://localhost:{neo4j_port}"
@@ -36,7 +41,7 @@ class Neo4jDatabase:
             env_uri = env_uri.replace("${GRAPHRAG_PORT_NEO4J_BOLT}", str(neo4j_port))
 
         # If no port is specified in the URI, add the port
-        if env_uri.endswith(':'):
+        if env_uri.endswith(":"):
             env_uri = f"{env_uri}{neo4j_port}"
 
         self.uri = uri or env_uri
@@ -48,34 +53,32 @@ class Neo4jDatabase:
         print(f"Neo4j URI: {self.uri} (from env: {env_uri})")
         self.username = username or os.getenv("NEO4J_USERNAME", "neo4j")
         self.password = password or os.getenv("NEO4J_PASSWORD", "graphrag")
-        self.driver: Optional[Driver] = None
+        self.driver: Driver | None = None
 
     def connect(self) -> None:
-        """
-        Connect to Neo4j database.
-        """
+        """Connect to Neo4j database."""
         if self.driver is None:
             self.driver = GraphDatabase.driver(
                 self.uri, auth=(self.username, self.password)
             )
 
     def close(self) -> None:
-        """
-        Close Neo4j database connection.
-        """
+        """Close Neo4j database connection."""
         if self.driver is not None:
             self.driver.close()
             self.driver = None
 
     def verify_connection(self) -> bool:
-        """
-        Verify Neo4j database connection.
+        """Verify Neo4j database connection.
 
         Returns:
             True if connection is successful, False otherwise.
+
         """
         try:
-            print(f"Verifying Neo4j connection to {self.uri} with username {self.username}")
+            print(
+                f"Verifying Neo4j connection to {self.uri} with username {self.username}"
+            )
             self.connect()
             if self.driver is None:
                 print("Driver is None after connect()")
@@ -87,12 +90,14 @@ class Neo4jDatabase:
         except Exception as e:
             print(f"Neo4j connection error: {e}")
             import traceback
+
             traceback.print_exc()
             return False
 
-    def run_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """
-        Run a Cypher query and return all records as a list of dictionaries.
+    def run_query(
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Run a Cypher query and return all records as a list of dictionaries.
 
         Args:
             query: Cypher query
@@ -100,6 +105,7 @@ class Neo4jDatabase:
 
         Returns:
             List of records as dictionaries
+
         """
         self.connect()
         with self.driver.session() as session:
@@ -107,9 +113,10 @@ class Neo4jDatabase:
             # Convert all records to dictionaries
             return [dict(record) for record in result]
 
-    def run_query_and_return_single(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """
-        Run a Cypher query and return a single record.
+    def run_query_and_return_single(
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Run a Cypher query and return a single record.
 
         Args:
             query: Cypher query
@@ -117,6 +124,7 @@ class Neo4jDatabase:
 
         Returns:
             Single record as dictionary
+
         """
         self.connect()
         with self.driver.session() as session:
@@ -127,15 +135,13 @@ class Neo4jDatabase:
             return {}
 
     def create_schema(self) -> None:
-        """
-        Create initial Neo4j schema with constraints and indexes.
-        """
+        """Create initial Neo4j schema with constraints and indexes."""
         # Create constraints for unique identifiers
         constraints = [
             "CREATE CONSTRAINT book_id IF NOT EXISTS FOR (b:Book) REQUIRE b.id IS UNIQUE",
             "CREATE CONSTRAINT chapter_id IF NOT EXISTS FOR (c:Chapter) REQUIRE c.id IS UNIQUE",
             "CREATE CONSTRAINT section_id IF NOT EXISTS FOR (s:Section) REQUIRE s.id IS UNIQUE",
-            "CREATE CONSTRAINT concept_id IF NOT EXISTS FOR (c:Concept) REQUIRE c.id IS UNIQUE"
+            "CREATE CONSTRAINT concept_id IF NOT EXISTS FOR (c:Concept) REQUIRE c.id IS UNIQUE",
         ]
 
         # Create indexes for common properties
@@ -144,18 +150,15 @@ class Neo4jDatabase:
             "CREATE INDEX book_title IF NOT EXISTS FOR (b:Book) ON (b.title)",
             "CREATE INDEX book_category IF NOT EXISTS FOR (b:Book) ON (b.category)",
             "CREATE INDEX book_isbn IF NOT EXISTS FOR (b:Book) ON (b.isbn)",
-
             # Chapter indexes
             "CREATE INDEX chapter_title IF NOT EXISTS FOR (c:Chapter) ON (c.title)",
             "CREATE INDEX chapter_book_id IF NOT EXISTS FOR (c:Chapter) ON (c.book_id)",
-
             # Section indexes
             "CREATE INDEX section_title IF NOT EXISTS FOR (s:Section) ON (s.title)",
             "CREATE INDEX section_chapter_id IF NOT EXISTS FOR (s:Section) ON (s.chapter_id)",
-
             # Concept indexes
             "CREATE INDEX concept_name IF NOT EXISTS FOR (c:Concept) ON (c.name)",
-            "CREATE INDEX concept_category IF NOT EXISTS FOR (c:Concept) ON (c.category)"
+            "CREATE INDEX concept_category IF NOT EXISTS FOR (c:Concept) ON (c.category)",
         ]
 
         self.connect()
@@ -166,8 +169,7 @@ class Neo4jDatabase:
                 session.run(index)
 
     def clear_database(self) -> None:
-        """
-        Clear all data from the database.
+        """Clear all data from the database.
         WARNING: This will delete all nodes and relationships.
         """
         self.connect()
@@ -175,9 +177,7 @@ class Neo4jDatabase:
             session.run("MATCH (n) DETACH DELETE n")
 
     def create_dummy_data(self) -> None:
-        """
-        Create dummy data for testing.
-        """
+        """Create dummy data for testing."""
         # Create some books
         books_query = """
         CREATE (b1:Book {id: 'book-001', title: 'Introduction to Machine Learning',

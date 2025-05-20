@@ -1,9 +1,12 @@
-import pytest
+from tests.regression.test_utils import (
+    check_api_health,
+    start_services,
+    stop_services,
+)
 
-from tests.regression.test_utils import start_services, stop_services, check_api_health, wait_for_api_ready
 
-def test_start_stop_servers():
-    """Verify clean server start/stop"""
+def test_start_stop_servers() -> None:
+    """Verify clean server start/stop."""
     print("\nTesting server start/stop...")
     process = None
     try:
@@ -30,8 +33,8 @@ def test_start_stop_servers():
         print("API is not healthy after stop (correct).")
 
 
-def test_server_restart():
-    """Test server restart with persistence"""
+def test_server_restart() -> None:
+    """Test server restart with persistence."""
     print("\nTesting server restart...")
     process1 = None
     process2 = None
@@ -53,7 +56,9 @@ def test_server_restart():
 
         # Verify services are stopped
         is_healthy_after_stop, health_data_after_stop = check_api_health()
-        assert not is_healthy_after_stop, f"API is still healthy after first stop: {health_data_after_stop}"
+        assert not is_healthy_after_stop, (
+            f"API is still healthy after first stop: {health_data_after_stop}"
+        )
         print("API is not healthy after first stop (correct).")
 
         # Start services again (restart)
@@ -74,10 +79,16 @@ def test_server_restart():
         # Stop services after restart test
         if process2:
             stop_success2 = stop_services(process2)
-            assert stop_success2, "Failed to stop services for restart test (second stop)"
+            assert stop_success2, (
+                "Failed to stop services for restart test (second stop)"
+            )
             print("Services stopped successfully for restart test (second stop).")
 
         # Verify services are stopped
-        is_healthy_after_restart_stop, health_data_after_restart_stop = check_api_health()
-        assert not is_healthy_after_restart_stop, f"API is still healthy after second stop: {health_data_after_restart_stop}"
+        is_healthy_after_restart_stop, health_data_after_restart_stop = (
+            check_api_health()
+        )
+        assert not is_healthy_after_restart_stop, (
+            f"API is still healthy after second stop: {health_data_after_restart_stop}"
+        )
         print("API is not healthy after second stop (correct).")

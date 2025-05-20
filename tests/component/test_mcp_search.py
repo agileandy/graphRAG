@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""
-Test script to perform a search using the GraphRAG MCP server.
-"""
+"""Test script to perform a search using the GraphRAG MCP server."""
 
-import sys
 import json
+import sys
+
 import websockets.sync.client as ws
 
 # Default MCP server URL (matching the Docker port mapping)
 DEFAULT_MCP_URL = "ws://localhost:8767"
 
-def search_graphrag(query, limit=5, url=DEFAULT_MCP_URL):
+
+def search_graphrag(query, limit=5, url=DEFAULT_MCP_URL) -> bool | None:
     """Search the GraphRAG system."""
     print(f"Connecting to MCP server at {url}...")
 
@@ -20,11 +20,7 @@ def search_graphrag(query, limit=5, url=DEFAULT_MCP_URL):
         print("✅ Connected to MCP server")
 
         # Create search message
-        message = {
-            "action": "search",
-            "query": query,
-            "limit": limit
-        }
+        message = {"action": "search", "query": query, "limit": limit}
 
         # Send the message
         print(f"Sending search query: '{query}'")
@@ -45,6 +41,7 @@ def search_graphrag(query, limit=5, url=DEFAULT_MCP_URL):
     except Exception as e:
         print(f"❌ Error: {e}")
         return False
+
 
 if __name__ == "__main__":
     # Get query from command line or use default

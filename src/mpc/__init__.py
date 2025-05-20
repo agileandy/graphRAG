@@ -1,3 +1,1 @@
-"""
-MCP (Model Context Protocol) server integration for GraphRAG project.
-"""
+"""MCP (Model Context Protocol) server integration for GraphRAG project."""

@@ -1,9 +1,12 @@
-import pytest
-import time
-from tests.regression.test_utils import start_services, stop_services, test_mcp_connection
+from tests.regression.test_utils import (
+    start_services,
+    stop_services,
+    test_mcp_connection,
+)
 
-def test_start_stop_servers():
-    """Verify clean server start/stop using MCP"""
+
+def test_start_stop_servers() -> None:
+    """Verify clean server start/stop using MCP."""
     print("\nTesting MCP server start/stop...")
     process = None
     try:
@@ -26,12 +29,14 @@ def test_start_stop_servers():
 
         # Verify MCP connection fails after stopping
         mcp_connected_after_stop = test_mcp_connection()
-        assert not mcp_connected_after_stop, "MCP server is still reachable after stopping services"
+        assert not mcp_connected_after_stop, (
+            "MCP server is still reachable after stopping services"
+        )
         print("MCP server is not reachable after stopping services.")
 
 
-def test_server_restart():
-    """Test server restart with persistence using MCP"""
+def test_server_restart() -> None:
+    """Test server restart with persistence using MCP."""
     print("\nTesting MCP server restart...")
     process = None
     try:
@@ -48,14 +53,18 @@ def test_server_restart():
         # Stop services
         if process:
             stop_success_first = stop_services(process)
-            assert stop_success_first, "Failed to stop services for MCP restart test (first stop)"
+            assert stop_success_first, (
+                "Failed to stop services for MCP restart test (first stop)"
+            )
             print("Services stopped successfully for MCP restart test (first stop).")
 
         # Start services again
         success_restart, process_restart = start_services()
-        assert success_restart, "Failed to start services for MCP restart test (second start)"
+        assert success_restart, (
+            "Failed to start services for MCP restart test (second start)"
+        )
         print("Services started successfully for MCP restart test (second start).")
-        process = process_restart # Update process handle
+        process = process_restart  # Update process handle
 
         # Test MCP connection again
         mcp_connected_second = test_mcp_connection()
@@ -66,10 +75,14 @@ def test_server_restart():
         # Stop services
         if process:
             stop_success_second = stop_services(process)
-            assert stop_success_second, "Failed to stop services after MCP restart test (second stop)"
+            assert stop_success_second, (
+                "Failed to stop services after MCP restart test (second stop)"
+            )
             print("Services stopped successfully after MCP restart test (second stop).")
 
         # Verify MCP connection fails after final stop
         mcp_connected_after_stop = test_mcp_connection()
-        assert not mcp_connected_after_stop, "MCP server is still reachable after final stop"
+        assert not mcp_connected_after_stop, (
+            "MCP server is still reachable after final stop"
+        )
         print("MCP server is not reachable after final stop.")

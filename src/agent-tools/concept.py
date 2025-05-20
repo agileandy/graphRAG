@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-GraphRAG Agent Tool: concept
+"""GraphRAG Agent Tool: concept.
 
 This tool retrieves information about a specific concept in the knowledge graph.
 
@@ -14,14 +13,17 @@ Arguments:
 Environment Variables:
     MCP_HOST     MCP server host (default: localhost)
     MCP_PORT     MCP server port (default: 8767)
+
 """
 
-import sys
 import argparse
-from utils import connect_to_mcp, send_request, get_mcp_url, format_json
-from typing import Dict, Any
+import sys
+from typing import Any
 
-def display_concept_info(result: Dict[str, Any]) -> None:
+from utils import connect_to_mcp, format_json, get_mcp_url, send_request
+
+
+def display_concept_info(result: dict[str, Any]) -> None:
     """Display concept information in a readable format."""
     if "error" in result:
         print(f"❌ Error: {result['error']}")
@@ -51,11 +53,16 @@ def display_concept_info(result: Dict[str, Any]) -> None:
     document_count = result.get("document_count", 0)
     print(f"Referenced in {document_count} documents")
 
-def main():
+
+def main() -> int | None:
     """Main function."""
-    parser = argparse.ArgumentParser(description="Get information about a concept in the GraphRAG system")
+    parser = argparse.ArgumentParser(
+        description="Get information about a concept in the GraphRAG system"
+    )
     parser.add_argument("--name", required=True, help="Name of the concept")
-    parser.add_argument("--url", default=None, help="MCP server URL (overrides environment variables)")
+    parser.add_argument(
+        "--url", default=None, help="MCP server URL (overrides environment variables)"
+    )
     parser.add_argument("--raw", action="store_true", help="Display raw JSON response")
     args = parser.parse_args()
 
@@ -82,6 +89,7 @@ def main():
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     sys.exit(main())

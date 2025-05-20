@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Regression Test 3: Check document addition.
+"""Regression Test 3: Check document addition.
 
 This test:
 1. Starts the services
@@ -12,24 +11,26 @@ This test:
 Usage:
     python -m tests.regression.test_03_add_document
 """
+
+import json
 import os
 import sys
 import time
-import json
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from tests.regression.test_utils import (
+    add_test_document,
+    get_test_document_metadata,
+    get_test_document_text,
+    search_documents,
     start_services,
     stop_services,
-    add_test_document,
-    get_test_document_text,
-    get_test_document_metadata,
-    search_documents
 )
 
-def test_add_document():
+
+def test_add_document() -> None:
     """Test adding a document to the GraphRAG system."""
     print("\n=== Test 3: Add Document ===\n")
 
@@ -49,12 +50,14 @@ def test_add_document():
 
         add_doc_success, response = add_test_document(document_text, document_metadata)
 
-        assert add_doc_success, f"❌ Failed to add document. Server response: {response.get('response')}. Error details: {response.get('error')}"
+        assert add_doc_success, (
+            f"❌ Failed to add document. Server response: {response.get('response')}. Error details: {response.get('error')}"
+        )
         print("✅ Document added successfully")
         print(f"Response: {json.dumps(response, indent=2)}")
 
         # Store document ID for later use
-        document_id = response.get('document_id')
+        document_id = response.get("document_id")
         assert document_id, "❌ Document ID not found in response"
         print(f"Document ID: {document_id}")
 
@@ -72,10 +75,12 @@ def test_add_document():
         print("✅ Search successful")
 
         # Check if we got any vector results
-        vector_results = search_results.get('vector_results', {})
-        vector_docs = vector_results.get('documents', [])
+        vector_results = search_results.get("vector_results", {})
+        vector_docs = vector_results.get("documents", [])
 
-        assert vector_docs, f"❌ No vector results found. Search results: {json.dumps(search_results, indent=2)}"
+        assert vector_docs, (
+            f"❌ No vector results found. Search results: {json.dumps(search_results, indent=2)}"
+        )
         print(f"✅ Found {len(vector_docs)} vector results")
 
         # Check if our document is in the results
@@ -85,16 +90,20 @@ def test_add_document():
                 found = True
                 break
 
-        assert found, f"❌ Added document not found in search results. First result snippet: {vector_docs[0][:100] if vector_docs else 'No results'}"
+        assert found, (
+            f"❌ Added document not found in search results. First result snippet: {vector_docs[0][:100] if vector_docs else 'No results'}"
+        )
         print("✅ Added document found in search results")
 
         # Check if we got any graph results
-        graph_results = search_results.get('graph_results', [])
+        graph_results = search_results.get("graph_results", [])
 
         if graph_results:
             print(f"✅ Found {len(graph_results)} graph results")
         else:
-            print("⚠️ No graph results found - this might be expected for a new document")
+            print(
+                "⚠️ No graph results found - this might be expected for a new document"
+            )
 
         # Step 4: Check indexes exist
         print("\nStep 4: Checking indexes exist...")
@@ -102,7 +111,9 @@ def test_add_document():
         # Perform another search to verify indexes
         index_check_success, index_search_results = search_documents("knowledge graph")
 
-        assert index_check_success, f"❌ Index check failed. Error: {index_search_results.get('error')}"
+        assert index_check_success, (
+            f"❌ Index check failed. Error: {index_search_results.get('error')}"
+        )
         print("✅ Indexes exist and are working")
 
         print("\n=== Test 3 Completed Successfully ===")
@@ -114,7 +125,8 @@ def test_add_document():
         assert stop_success, "❌ Failed to stop services"
         print("✅ Services stopped successfully")
 
-def main():
+
+def main() -> int | None:
     """Main function to run the test."""
     try:
         test_add_document()
@@ -126,8 +138,10 @@ def main():
     except Exception as e:
         print(f"\n❌ Test 3 failed with unexpected error: Add document - {e}")
         import traceback
+
         traceback.print_exc()
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

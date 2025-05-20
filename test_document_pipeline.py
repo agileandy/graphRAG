@@ -1,38 +1,50 @@
 #!/usr/bin/env python3
-"""
-Test script to demonstrate the document pipeline with verbose output.
+"""Test script to demonstrate the document pipeline with verbose output.
 This script will process a PDF file and show the detailed output for:
 - Reading the PDF
 - Converting content (text, tables, images)
 - Chunking the document
-- Embedding the chunks
+- Embedding the chunks.
 """
 
+import argparse
 import os
 import sys
-import argparse
 import time
-from typing import Dict, Any, List, Tuple
-import uuid
-from pathlib import Path
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import required modules
-from src.loaders.pdf_loader import PDFLoader
-from src.processing.document_processor import smart_chunk_text, optimize_chunk_size, DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
 from src.llm.llm_provider import create_llm_provider
+from src.loaders.pdf_loader import PDFLoader
+from src.processing.document_processor import (
+    DEFAULT_CHUNK_SIZE,
+    DEFAULT_OVERLAP,
+    optimize_chunk_size,
+    smart_chunk_text,
+)
 from src.utils.config import load_config
 
-def main():
+
+def main() -> None:
     """Main function to process a PDF file and show verbose output."""
-    parser = argparse.ArgumentParser(description="Test the document pipeline with verbose output")
+    parser = argparse.ArgumentParser(
+        description="Test the document pipeline with verbose output"
+    )
     parser.add_argument("pdf_path", help="Path to the PDF file to process")
-    parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE,
-                        help=f"Maximum chunk size in characters (default: {DEFAULT_CHUNK_SIZE})")
-    parser.add_argument("--overlap", type=int, default=DEFAULT_OVERLAP,
-                        help=f"Overlap between chunks in characters (default: {DEFAULT_OVERLAP})")
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=DEFAULT_CHUNK_SIZE,
+        help=f"Maximum chunk size in characters (default: {DEFAULT_CHUNK_SIZE})",
+    )
+    parser.add_argument(
+        "--overlap",
+        type=int,
+        default=DEFAULT_OVERLAP,
+        help=f"Overlap between chunks in characters (default: {DEFAULT_OVERLAP})",
+    )
 
     args = parser.parse_args()
 
@@ -44,23 +56,24 @@ def main():
     # Process the PDF file
     process_pdf_with_verbose_output(args.pdf_path, args.chunk_size, args.overlap)
 
-def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int):
-    """
-    Process a PDF file with verbose output for each step.
+
+def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int) -> None:
+    """Process a PDF file with verbose output for each step.
 
     Args:
         pdf_path: Path to the PDF file
         chunk_size: Maximum chunk size in characters
         overlap: Overlap between chunks in characters
+
     """
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print(f"PROCESSING PDF: {pdf_path}")
-    print("="*80)
+    print("=" * 80)
 
     # Step 1: Load the PDF file
-    print("\n\n" + "="*40)
+    print("\n\n" + "=" * 40)
     print("STEP 1: LOADING PDF FILE")
-    print("="*40)
+    print("=" * 40)
 
     start_time = time.time()
     print(f"Loading PDF file: {pdf_path}")
@@ -74,9 +87,9 @@ def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int
     print(f"First 500 characters of text:\n{text[:500]}...")
 
     # Step 2: Extract tables and images
-    print("\n\n" + "="*40)
+    print("\n\n" + "=" * 40)
     print("STEP 2: EXTRACTING TABLES AND IMAGES")
-    print("="*40)
+    print("=" * 40)
 
     start_time = time.time()
     print("Extracting tables...")
@@ -98,21 +111,27 @@ def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int
     print(f"Diagrams detected in {diagrams_time:.2f} seconds")
     print(f"Diagrams found: {len(diagrams)}")
     for i, diagram in enumerate(diagrams[:5]):  # Show first 5 diagrams
-        print(f"  Diagram {i+1}: {diagram}")
+        print(f"  Diagram {i + 1}: {diagram}")
 
     # Step 3: Chunk the document
-    print("\n\n" + "="*40)
+    print("\n\n" + "=" * 40)
     print("STEP 3: CHUNKING THE DOCUMENT")
-    print("="*40)
+    print("=" * 40)
 
     start_time = time.time()
-    print(f"Determining optimal chunk size for document of length {len(text)} characters...")
+    print(
+        f"Determining optimal chunk size for document of length {len(text)} characters..."
+    )
 
     optimized_chunk_size = optimize_chunk_size(text, chunk_size)
-    print(f"Optimized chunk size: {optimized_chunk_size} characters (original: {chunk_size})")
+    print(
+        f"Optimized chunk size: {optimized_chunk_size} characters (original: {chunk_size})"
+    )
 
     print(f"Chunking text with chunk_size={optimized_chunk_size}, overlap={overlap}...")
-    chunks = smart_chunk_text(text, optimized_chunk_size, overlap, semantic_boundaries=True)
+    chunks = smart_chunk_text(
+        text, optimized_chunk_size, overlap, semantic_boundaries=True
+    )
 
     chunk_time = time.time() - start_time
     print(f"Text chunked in {chunk_time:.2f} seconds")
@@ -128,16 +147,16 @@ def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int
 
     # Print the first few chunks
     for i, chunk in enumerate(chunks[:3]):  # Show first 3 chunks
-        print(f"\nChunk {i+1} ({len(chunk)} chars):")
+        print(f"\nChunk {i + 1} ({len(chunk)} chars):")
         print(f"{chunk[:200]}...")
 
     # Step 4: Generate embeddings
-    print("\n\n" + "="*40)
+    print("\n\n" + "=" * 40)
     print("STEP 4: GENERATING EMBEDDINGS")
-    print("="*40)
+    print("=" * 40)
 
     # Load configuration
-    config = load_config()
+    load_config()
 
     # Create a specific configuration for Ollama embeddings
     embedding_config = {
@@ -146,7 +165,7 @@ def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int
             "api_base": "http://localhost:11434",
             "model": "snowflake-arctic-embed2:latest",
             "embedding_model": "snowflake-arctic-embed2:latest",
-            "timeout": 60
+            "timeout": 60,
         }
     }
 
@@ -168,16 +187,18 @@ def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int
 
         # Print embedding statistics
         for i, embedding in enumerate(embeddings):
-            print(f"Chunk {i+1} embedding: {len(embedding)} dimensions")
+            print(f"Chunk {i + 1} embedding: {len(embedding)} dimensions")
             print(f"  First 5 values: {embedding[:5]}")
-            print(f"  Min: {min(embedding) if embedding and len(embedding) > 1 else 0.0}, Max: {max(embedding) if embedding and len(embedding) > 1 else 0.0}")
+            print(
+                f"  Min: {min(embedding) if embedding and len(embedding) > 1 else 0.0}, Max: {max(embedding) if embedding and len(embedding) > 1 else 0.0}"
+            )
     except Exception as e:
         print(f"Error generating embeddings: {e}")
 
     # Summary
-    print("\n\n" + "="*40)
+    print("\n\n" + "=" * 40)
     print("DOCUMENT PROCESSING SUMMARY")
-    print("="*40)
+    print("=" * 40)
 
     print(f"PDF file: {pdf_path}")
     print(f"Document length: {len(text)} characters")
@@ -188,6 +209,7 @@ def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int
 
     total_time = load_time + tables_time + diagrams_time + chunk_time
     print(f"Total processing time: {total_time:.2f} seconds (excluding embeddings)")
+
 
 if __name__ == "__main__":
     main()

@@ -1,17 +1,18 @@
-"""
-Test script to add a document using the API.
-"""
-import requests
+"""Test script to add a document using the API."""
+
 import json
-import sys
 import os
+import sys
+
+import requests
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.config import get_port
 
 # Get API port from centralized configuration
-api_port = get_port('api')
+api_port = get_port("api")
+
 
 def test_api_add_document():
     """Test adding a document via the API."""
@@ -40,8 +41,8 @@ def test_api_add_document():
             "title": "GraphRAG and RAG Concepts",
             "source": "Test Document",
             "author": "Test Script",
-            "concepts": "RAG,GraphRAG,Knowledge Graphs,Vector Embeddings,Hybrid Search,Deduplication,LLM"
-        }
+            "concepts": "RAG,GraphRAG,Knowledge Graphs,Vector Embeddings,Hybrid Search,Deduplication,LLM",
+        },
     }
 
     print(f"Sending document to {api_url}...")
@@ -56,13 +57,14 @@ def test_api_add_document():
 
     return response.status_code == 200 or response.status_code == 201
 
+
 def test_api_add_folder():
     """Test adding a folder via the API."""
-    api_url = f"http://localhost:{api_port}/folders" # Assuming /folders endpoint for adding folders
+    api_url = f"http://localhost:{api_port}/folders"  # Assuming /folders endpoint for adding folders
 
     # Prepare data for adding a folder - specify the path to a test folder
     folder_data = {
-        "folder_path": "example_docs/" # Use an existing folder with test documents
+        "folder_path": "example_docs/"  # Use an existing folder with test documents
     }
 
     print(f"Sending folder path to {api_url}...")
@@ -78,9 +80,10 @@ def test_api_add_folder():
     # Expecting a success status code (e.g., 200 or 201)
     return response.status_code == 200 or response.status_code == 201
 
+
 if __name__ == "__main__":
     success_document = test_api_add_document()
-    success_folder = test_api_add_folder() # Add the new test call
+    success_folder = test_api_add_folder()  # Add the new test call
 
     if not success_document or not success_folder:
         sys.exit(1)

@@ -1,28 +1,29 @@
-"""
-Script to clean the GraphRAG database.
+"""Script to clean the GraphRAG database.
 
 This script:
 1. Clears all data from Neo4j (logical deletion)
 2. Physically deletes Neo4j database files (optional)
 3. Resets the ChromaDB vector database
 """
-import sys
+
+import argparse
 import os
 import shutil
-import argparse
 import subprocess
+import sys
 import time
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+from dotenv import load_dotenv
 
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
-from dotenv import load_dotenv
+
 
 def clean_neo4j(neo4j_db: Neo4jDatabase, confirm: bool = False) -> bool:
-    """
-    Clear all data from Neo4j.
+    """Clear all data from Neo4j.
 
     Args:
         neo4j_db: Neo4j database instance
@@ -30,6 +31,7 @@ def clean_neo4j(neo4j_db: Neo4jDatabase, confirm: bool = False) -> bool:
 
     Returns:
         True if successful, False otherwise
+
     """
     print("Preparing to clear all data from Neo4j...")
 
@@ -53,7 +55,7 @@ def clean_neo4j(neo4j_db: Neo4jDatabase, confirm: bool = False) -> bool:
     # Confirm deletion
     if not confirm:
         response = input("Are you sure you want to delete all data from Neo4j? (y/n): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             print("Operation cancelled")
             return False
 
@@ -73,9 +75,9 @@ def clean_neo4j(neo4j_db: Neo4jDatabase, confirm: bool = False) -> bool:
         print(f"❌ Failed to clear all data. {new_count} nodes remain.")
         return False
 
+
 def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool:
-    """
-    Physically delete Neo4j database files.
+    """Physically delete Neo4j database files.
 
     Args:
         confirm: Whether to skip confirmation prompt
@@ -83,6 +85,7 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
 
     Returns:
         True if successful, False otherwise
+
     """
     print("Preparing to physically delete Neo4j database files...")
 
@@ -96,8 +99,8 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
         neo4j_dir = neo4j_home
         # Expand the tilde in the path if it exists
         neo4j_data_dir = os.path.expanduser(neo4j_data_dir)
-        neo4j_databases_dir = os.path.join(neo4j_data_dir, 'databases')
-        neo4j_tx_dir = os.path.join(neo4j_data_dir, 'transactions')
+        neo4j_databases_dir = os.path.join(neo4j_data_dir, "databases")
+        neo4j_tx_dir = os.path.join(neo4j_data_dir, "transactions")
         print("Using Neo4j installation from environment variables:")
         print(f"  NEO4J_HOME: {neo4j_home}")
         print(f"  NEO4J_DATA_DIR: {neo4j_data_dir}")
@@ -105,30 +108,32 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
         print(f"  NEO4J_TRANSACTIONS_DIR: {neo4j_tx_dir}")
     else:
         # Check standard locations
-        home_dir = os.path.expanduser('~')
+        home_dir = os.path.expanduser("~")
 
         # Check Homebrew installation (standard location for binaries)
         homebrew_neo4j_dir = "/opt/homebrew"
 
         # Check ~/.graphrag/neo4j (application data location)
-        graphrag_neo4j_dir = os.path.join(home_dir, '.graphrag', 'neo4j')
+        graphrag_neo4j_dir = os.path.join(home_dir, ".graphrag", "neo4j")
 
         # Check project directory (legacy location)
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        project_neo4j_dir = os.path.join(project_root, 'neo4j')
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        project_neo4j_dir = os.path.join(project_root, "neo4j")
 
         # Determine which Neo4j installation to use
         if os.path.exists(homebrew_neo4j_dir) and os.path.isdir(homebrew_neo4j_dir):
             # Using Homebrew installation with data in .graphrag
             neo4j_dir = homebrew_neo4j_dir
-            neo4j_databases_dir = os.path.join(graphrag_neo4j_dir, 'data', 'databases')
-            neo4j_tx_dir = os.path.join(graphrag_neo4j_dir, 'data', 'transactions')
-            print("Using Neo4j installation from Homebrew at /opt/homebrew with data in ~/.graphrag/neo4j")
+            neo4j_databases_dir = os.path.join(graphrag_neo4j_dir, "data", "databases")
+            neo4j_tx_dir = os.path.join(graphrag_neo4j_dir, "data", "transactions")
+            print(
+                "Using Neo4j installation from Homebrew at /opt/homebrew with data in ~/.graphrag/neo4j"
+            )
         elif os.path.exists(project_neo4j_dir) and os.path.isdir(project_neo4j_dir):
             # Legacy installation in project directory
             neo4j_dir = project_neo4j_dir
-            neo4j_databases_dir = os.path.join(project_neo4j_dir, 'data', 'databases')
-            neo4j_tx_dir = os.path.join(project_neo4j_dir, 'data', 'transactions')
+            neo4j_databases_dir = os.path.join(project_neo4j_dir, "data", "databases")
+            neo4j_tx_dir = os.path.join(project_neo4j_dir, "data", "transactions")
             print(f"Using Neo4j installation in project directory: {neo4j_dir}")
         else:
             print("❌ Neo4j installation not found in standard locations")
@@ -144,16 +149,18 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
         print("⚠️  WARNING: This will physically delete all Neo4j database files!")
         print(f"Neo4j databases directory: {neo4j_databases_dir}")
         print(f"Neo4j transaction directory: {neo4j_tx_dir}")
-        response = input("Are you sure you want to physically delete Neo4j database files? (y/n): ")
-        if response.lower() != 'y':
+        response = input(
+            "Are you sure you want to physically delete Neo4j database files? (y/n): "
+        )
+        if response.lower() != "y":
             print("Operation cancelled")
             return False
 
     # Stop Neo4j server if it's running
     print("Stopping Neo4j server...")
     # Get project root for scripts
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    stop_script = os.path.join(project_root, 'scripts', 'stop_neo4j.sh')
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    stop_script = os.path.join(project_root, "scripts", "stop_neo4j.sh")
 
     if os.path.exists(stop_script):
         try:
@@ -165,7 +172,9 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
             print(f"⚠️  Warning: Failed to stop Neo4j server: {e}")
             print("Continuing with deletion anyway...")
     else:
-        print("⚠️  Warning: Neo4j stop script not found. Continuing with deletion anyway...")
+        print(
+            "⚠️  Warning: Neo4j stop script not found. Continuing with deletion anyway..."
+        )
 
     # Delete Neo4j data directories
     success = True
@@ -206,27 +215,31 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
     if restart and success:
         print("Restarting Neo4j server...")
         # Get project root for scripts (if not already defined)
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        start_script = os.path.join(project_root, 'scripts', 'start_neo4j.sh')
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        start_script = os.path.join(project_root, "scripts", "start_neo4j.sh")
 
         if os.path.exists(start_script):
             try:
                 # Start Neo4j in the background
-                subprocess.Popen([start_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                subprocess.Popen(
+                    [start_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                )
                 print("✅ Neo4j server restarting in the background")
                 print("⚠️  Note: It may take a few moments for Neo4j to fully start")
             except Exception as e:
                 print(f"❌ Failed to restart Neo4j server: {e}")
                 success = False
         else:
-            print("⚠️  Warning: Neo4j start script not found. Neo4j server not restarted.")
+            print(
+                "⚠️  Warning: Neo4j start script not found. Neo4j server not restarted."
+            )
             success = False
 
     return success
 
+
 def clean_chromadb(vector_db: VectorDatabase, confirm: bool = False) -> bool:
-    """
-    Reset the ChromaDB vector database.
+    """Reset the ChromaDB vector database.
 
     Args:
         vector_db: Vector database instance
@@ -234,6 +247,7 @@ def clean_chromadb(vector_db: VectorDatabase, confirm: bool = False) -> bool:
 
     Returns:
         True if successful, False otherwise
+
     """
     print("Preparing to reset ChromaDB...")
 
@@ -247,8 +261,10 @@ def clean_chromadb(vector_db: VectorDatabase, confirm: bool = False) -> bool:
 
     # Confirm deletion
     if not confirm:
-        response = input(f"Are you sure you want to delete ChromaDB directory: {persist_dir}? (y/n): ")
-        if response.lower() != 'y':
+        response = input(
+            f"Are you sure you want to delete ChromaDB directory: {persist_dir}? (y/n): "
+        )
+        if response.lower() != "y":
             print("Operation cancelled")
             return False
 
@@ -267,19 +283,26 @@ def clean_chromadb(vector_db: VectorDatabase, confirm: bool = False) -> bool:
         print(f"❌ Failed to delete ChromaDB directory: {e}")
         return False
 
-def main():
-    """
-    Main function to clean the GraphRAG database.
-    """
+
+def main() -> None:
+    """Main function to clean the GraphRAG database."""
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Clean the GraphRAG database")
     parser.add_argument("--neo4j", action="store_true", help="Clean only Neo4j")
     parser.add_argument("--chromadb", action="store_true", help="Clean only ChromaDB")
-    parser.add_argument("--physical-delete", action="store_true",
-                        help="Physically delete Neo4j database files (destructive operation)")
-    parser.add_argument("--no-restart", action="store_true",
-                        help="Do not restart Neo4j after physical deletion")
-    parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts")
+    parser.add_argument(
+        "--physical-delete",
+        action="store_true",
+        help="Physically delete Neo4j database files (destructive operation)",
+    )
+    parser.add_argument(
+        "--no-restart",
+        action="store_true",
+        help="Do not restart Neo4j after physical deletion",
+    )
+    parser.add_argument(
+        "--yes", "-y", action="store_true", help="Skip confirmation prompts"
+    )
     args = parser.parse_args()
 
     # Load environment variables
@@ -292,7 +315,9 @@ def main():
     # Handle physical deletion of Neo4j if requested
     if args.physical_delete:
         if args.chromadb and not args.neo4j:
-            print("⚠️  Warning: --physical-delete is only applicable to Neo4j, but --chromadb was specified without --neo4j")
+            print(
+                "⚠️  Warning: --physical-delete is only applicable to Neo4j, but --chromadb was specified without --neo4j"
+            )
             print("Ignoring --physical-delete option")
         else:
             # Physical deletion of Neo4j
@@ -316,6 +341,7 @@ def main():
     neo4j_db.close()
 
     print("\n✅ Database cleaning completed")
+
 
 if __name__ == "__main__":
     main()
