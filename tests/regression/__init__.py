@@ -1,3 +1,1 @@
-"""
-GraphRAG regression tests package.
-"""
+"""GraphRAG regression tests package."""

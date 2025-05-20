@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
-"""
-GraphRAG Regression Test Suite
+"""GraphRAG Regression Test Suite.
 
 This script runs all regression tests in sequence.
 
 Usage:
     python -m tests.regression.run_all_tests
 """
+
 import os
 import sys
 import time
-import importlib
-from typing import List, Tuple
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # Import test modules
 from tests.regression import (
@@ -24,12 +22,12 @@ from tests.regression import (
     test_04_nlp_processing,
     test_05_search,
     test_06_deduplication,
-    test_model_context_protocol_server
+    test_model_context_protocol_server,
 )
 
-def run_test(test_module, test_name: str) -> Tuple[bool, str]:
-    """
-    Run a single test.
+
+def run_test(test_module, test_name: str) -> tuple[bool, str]:
+    """Run a single test.
 
     Args:
         test_module: Test module to run
@@ -37,10 +35,11 @@ def run_test(test_module, test_name: str) -> Tuple[bool, str]:
 
     Returns:
         Tuple of (success, message)
+
     """
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Running {test_name}...")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     start_time = time.time()
 
@@ -61,15 +60,18 @@ def run_test(test_module, test_name: str) -> Tuple[bool, str]:
         end_time = time.time()
         duration = end_time - start_time
 
-        message = f"❌ {test_name} failed with exception in {duration:.2f} seconds: {str(e)}"
+        message = (
+            f"❌ {test_name} failed with exception in {duration:.2f} seconds: {str(e)}"
+        )
         return False, message
 
-def run_all_tests() -> List[Tuple[str, bool, str]]:
-    """
-    Run all regression tests in sequence.
+
+def run_all_tests() -> list[tuple[str, bool, str]]:
+    """Run all regression tests in sequence.
 
     Returns:
         List of tuples (test_name, success, message)
+
     """
     tests = [
         (test_01_start_stop, "Test 1: Start and Stop Services"),
@@ -78,7 +80,7 @@ def run_all_tests() -> List[Tuple[str, bool, str]]:
         (test_04_nlp_processing, "Test 4: NLP Processing"),
         (test_05_search, "Test 5: Search Functionality"),
         (test_06_deduplication, "Test 6: Deduplication"),
-        (test_model_context_protocol_server, "Test 7: Model Context Protocol Server")
+        (test_model_context_protocol_server, "Test 7: Model Context Protocol Server"),
     ]
 
     results = []
@@ -94,11 +96,12 @@ def run_all_tests() -> List[Tuple[str, bool, str]]:
 
     return results
 
-def main():
+
+def main() -> int:
     """Main function to run all tests."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("GraphRAG Regression Test Suite")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     start_time = time.time()
 
@@ -108,9 +111,9 @@ def main():
     total_duration = end_time - start_time
 
     # Print summary
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("Test Summary")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     for test_name, success, message in results:
         print(message)
@@ -130,6 +133,7 @@ def main():
     else:
         print("\n❌ Some tests failed!")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

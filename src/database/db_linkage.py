@@ -1,31 +1,31 @@
-"""
-Database linkage module for GraphRAG project.
+"""Database linkage module for GraphRAG project.
 
 This module provides utilities for linking between the Neo4j graph database
 and the vector database (ChromaDB).
 """
-from typing import Dict, List, Any
+
+from typing import Any
+
 from .neo4j_db import Neo4jDatabase
 from .vector_db import VectorDatabase
 
+
 class DatabaseLinkage:
-    """
-    Database linkage for GraphRAG project.
-    """
-    def __init__(self, neo4j_db: Neo4jDatabase, vector_db: VectorDatabase):
-        """
-        Initialize database linkage.
+    """Database linkage for GraphRAG project."""
+
+    def __init__(self, neo4j_db: Neo4jDatabase, vector_db: VectorDatabase) -> None:
+        """Initialize database linkage.
 
         Args:
             neo4j_db: Neo4j database instance
             vector_db: Vector database instance
+
         """
         self.neo4j_db = neo4j_db
         self.vector_db = vector_db
 
-    def get_node_chunks(self, node_id: str, node_type: str) -> Dict[str, Any]:
-        """
-        Get chunks from vector database for a specific Neo4j node.
+    def get_node_chunks(self, node_id: str, node_type: str) -> dict[str, Any]:
+        """Get chunks from vector database for a specific Neo4j node.
 
         Args:
             node_id: Neo4j node ID
@@ -33,31 +33,30 @@ class DatabaseLinkage:
 
         Returns:
             Dictionary containing chunks with their metadata and embeddings
+
         """
         # Convert node type to lowercase for metadata field name
         node_type_lower = node_type.lower()
 
         # Query vector database for chunks related to this node
-        results = self.vector_db.get(
-            where={f"{node_type_lower}_id": node_id}
-        )
+        results = self.vector_db.get(where={f"{node_type_lower}_id": node_id})
 
         return {
             "ids": results.get("ids", []),
             "documents": results.get("documents", []),
             "metadatas": results.get("metadatas", []),
-            "embeddings": results.get("embeddings", [])
+            "embeddings": results.get("embeddings", []),
         }
 
-    def get_related_nodes(self, chunk_id: str) -> List[Dict[str, Any]]:
-        """
-        Get Neo4j nodes related to a specific chunk in the vector database.
+    def get_related_nodes(self, chunk_id: str) -> list[dict[str, Any]]:
+        """Get Neo4j nodes related to a specific chunk in the vector database.
 
         Args:
             chunk_id: Vector database chunk ID
 
         Returns:
             List of related Neo4j nodes
+
         """
         # Get chunk metadata from vector database
         chunk_data = self.vector_db.get(ids=[chunk_id])
@@ -89,22 +88,18 @@ class DatabaseLinkage:
                         # Get name or title
                         name = record.get("name") or record.get("title") or "Unnamed"
 
-                        related_nodes.append({
-                            "id": record["id"],
-                            "type": record["type"],
-                            "name": name
-                        })
+                        related_nodes.append(
+                            {"id": record["id"], "type": record["type"], "name": name}
+                        )
                 except Exception as e:
                     print(f"Error querying Neo4j for node {node_id}: {e}")
 
         return related_nodes
 
-    def hybrid_search(self,
-                     query_text: str,
-                     n_vector_results: int = 5,
-                     max_graph_hops: int = 2) -> Dict[str, Any]:
-        """
-        Perform hybrid search using both vector and graph databases.
+    def hybrid_search(
+        self, query_text: str, n_vector_results: int = 5, max_graph_hops: int = 2
+    ) -> dict[str, Any]:
+        """Perform hybrid search using both vector and graph databases.
 
         Args:
             query_text: Query text
@@ -113,6 +108,7 @@ class DatabaseLinkage:
 
         Returns:
             Combined search results
+
         """
         # 1. First, check if the vector database index is healthy
         is_healthy, health_message = self.vector_db.check_index_health()
@@ -127,16 +123,15 @@ class DatabaseLinkage:
                         "ids": [],
                         "documents": [],
                         "metadatas": [],
-                        "distances": []
+                        "distances": [],
                     },
-                    "graph_results": []
+                    "graph_results": [],
                 }
 
         # 2. Query the vector database
         try:
             vector_results = self.vector_db.query(
-                query_texts=[query_text],
-                n_results=n_vector_results
+                query_texts=[query_text], n_results=n_vector_results
             )
         except Exception as e:
             # Handle vector search errors
@@ -148,7 +143,7 @@ class DatabaseLinkage:
                 "ids": [[]],
                 "documents": [[]],
                 "metadatas": [[]],
-                "distances": [[]]
+                "distances": [[]],
             }
 
         # 3. For each vector result, find related nodes in Neo4j
@@ -156,7 +151,11 @@ class DatabaseLinkage:
         graph_results_dict = {}
 
         # Check if we have any vector results
-        if vector_results.get("ids") and vector_results.get("metadatas") and len(vector_results["ids"][0]) > 0:
+        if (
+            vector_results.get("ids")
+            and vector_results.get("metadatas")
+            and len(vector_results["ids"][0]) > 0
+        ):
             for i, chunk_id in enumerate(vector_results["ids"][0]):
                 # Get metadata for this chunk safely
                 if i < len(vector_results["metadatas"][0]):
@@ -174,18 +173,23 @@ class DatabaseLinkage:
                             ORDER BY relevance_score DESC
                             """
 
-                            records = self.neo4j_db.run_query(query, {"concept_id": concept_id})
+                            records = self.neo4j_db.run_query(
+                                query, {"concept_id": concept_id}
+                            )
 
                             for record in records:
                                 related_id = record["id"]
                                 # Only add if not already in results or if new score is higher
-                                if (related_id not in graph_results_dict or
-                                    record["relevance_score"] > graph_results_dict[related_id]["relevance_score"]):
+                                if (
+                                    related_id not in graph_results_dict
+                                    or record["relevance_score"]
+                                    > graph_results_dict[related_id]["relevance_score"]
+                                ):
                                     graph_results_dict[related_id] = {
                                         "id": related_id,
                                         "name": record["name"],
                                         "relevance_score": record["relevance_score"],
-                                        "source": "graph"
+                                        "source": "graph",
                                     }
                         except Exception as e:
                             print(f"Error querying Neo4j for related concepts: {e}")
@@ -200,9 +204,11 @@ class DatabaseLinkage:
                 "ids": vector_results.get("ids", [[]])[0],
                 "documents": vector_results.get("documents", [[]])[0],
                 "metadatas": vector_results.get("metadatas", [[]])[0],
-                "distances": vector_results.get("distances", [[]])[0] if "distances" in vector_results else [],
+                "distances": vector_results.get("distances", [[]])[0]
+                if "distances" in vector_results
+                else [],
             },
-            "graph_results": graph_results
+            "graph_results": graph_results,
         }
 
         return combined_results

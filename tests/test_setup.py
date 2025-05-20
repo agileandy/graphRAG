@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Test environment setup for GraphRAG.
+"""Test environment setup for GraphRAG.
 
 This script sets up the test environment for GraphRAG by:
 1. Checking port availability
@@ -8,55 +7,60 @@ This script sets up the test environment for GraphRAG by:
 3. Verifying service health
 4. Providing a clean shutdown mechanism
 """
+
+import argparse
+import logging
 import os
+import signal
+import subprocess
 import sys
 import time
-import signal
-import argparse
-import subprocess
-import logging
-from typing import Dict, List, Optional, Tuple
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import port configuration
 try:
     from src.config.ports import (
-        get_port,
-        is_port_in_use,
-        find_available_port,
-        get_service_for_port,
         check_port_conflicts,
-        print_port_configuration
+        find_available_port,
+        get_port,
+        get_service_for_port,
+        is_port_in_use,
+        print_port_configuration,
     )
 except ImportError:
-    print("Error: Could not import port configuration. Make sure src/config/ports.py exists.")
+    print(
+        "Error: Could not import port configuration. Make sure src/config/ports.py exists."
+    )
     sys.exit(1)
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger('test_setup')
+logger = logging.getLogger("test_setup")
 
 # Global variables
 processes = {}
 original_ports = {}
 actual_ports = {}
 
-def signal_handler(sig, frame):
+
+def signal_handler(sig, frame) -> None:
     """Handle signals to ensure clean shutdown."""
     logger.info("Shutting down services...")
     stop_all_services()
     sys.exit(0)
 
-def start_service(service_name: str, command: List[str],
-                 check_ready_func: Optional[callable] = None,
-                 timeout: int = 30) -> Tuple[bool, Optional[subprocess.Popen]]:
-    """
-    Start a service and wait for it to be ready.
+
+def start_service(
+    service_name: str,
+    command: list[str],
+    check_ready_func: callable | None = None,
+    timeout: int = 30,
+) -> tuple[bool, subprocess.Popen | None]:
+    """Start a service and wait for it to be ready.
 
     Args:
         service_name: Name of the service
@@ -66,6 +70,7 @@ def start_service(service_name: str, command: List[str],
 
     Returns:
         Tuple of (success, process)
+
     """
     logger.info(f"Starting {service_name}...")
 
@@ -92,9 +97,9 @@ def start_service(service_name: str, command: List[str],
                     command[i] = str(new_port)
                 elif f"--port={port}" in arg:
                     command[i] = f"--port={new_port}"
-                elif f"--port {port}" in ' '.join(command[i:i+2]):
+                elif f"--port {port}" in " ".join(command[i : i + 2]):
                     if arg == "--port":
-                        command[i+1] = str(new_port)
+                        command[i + 1] = str(new_port)
 
             # Store the actual port used
             actual_ports[service_name] = new_port
@@ -103,10 +108,7 @@ def start_service(service_name: str, command: List[str],
 
         # Start the process
         process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
 
         # Store the process
@@ -134,15 +136,16 @@ def start_service(service_name: str, command: List[str],
         logger.error(f"Error starting {service_name}: {e}")
         return False, None
 
+
 def stop_service(service_name: str) -> bool:
-    """
-    Stop a service.
+    """Stop a service.
 
     Args:
         service_name: Name of the service
 
     Returns:
         True if successful, False otherwise
+
     """
     if service_name not in processes:
         logger.warning(f"{service_name} is not running")
@@ -168,55 +171,66 @@ def stop_service(service_name: str) -> bool:
         logger.error(f"Error stopping {service_name}: {e}")
         return False
 
-def stop_all_services():
+
+def stop_all_services() -> None:
     """Stop all services."""
     for service_name in list(processes.keys()):
         stop_service(service_name)
 
+
 def check_neo4j_ready(port: int) -> bool:
     """Check if Neo4j is ready."""
     import socket
+
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
-        s.connect(('localhost', port))
+        s.connect(("localhost", port))
         s.close()
         return True
     except:
         return False
 
+
 def check_api_ready(port: int) -> bool:
     """Check if the API is ready."""
     import requests
+
     try:
         response = requests.get(f"http://localhost:{port}/health", timeout=1)
         return response.status_code == 200
     except:
         return False
 
+
 def check_mcp_ready(port: int) -> bool:
     """Check if the MCP server is ready."""
-    import websockets
     import asyncio
     import json
+
+    import websockets
 
     async def check_connection():
         try:
             uri = f"ws://localhost:{port}"
             async with websockets.connect(uri, timeout=1) as websocket:
-                await websocket.send(json.dumps({
-                    "jsonrpc": "2.0",
-                    "method": "initialize",
-                    "params": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {},
-                        "clientInfo": {
-                            "name": "test-client",
-                            "version": "0.1.0"
+                await websocket.send(
+                    json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "method": "initialize",
+                            "params": {
+                                "protocolVersion": "2024-11-05",
+                                "capabilities": {},
+                                "clientInfo": {
+                                    "name": "test-client",
+                                    "version": "0.1.0",
+                                },
+                            },
+                            "id": 0,
                         }
-                    },
-                    "id": 0
-                }))
+                    )
+                )
 
                 response = await websocket.recv()
                 return "result" in json.loads(response)
@@ -229,8 +243,7 @@ def check_mcp_ready(port: int) -> bool:
         return False
 
 
-
-def setup_test_environment():
+def setup_test_environment() -> bool:
     """Set up the test environment."""
     # Register signal handlers
     signal.signal(signal.SIGINT, signal_handler)
@@ -247,7 +260,7 @@ def setup_test_environment():
     neo4j_success, _ = start_service(
         "neo4j_bolt",
         ["./scripts/service_management/graphrag-service.sh", "start-neo4j"],
-        check_neo4j_ready
+        check_neo4j_ready,
     )
 
     if not neo4j_success:
@@ -259,7 +272,7 @@ def setup_test_environment():
     api_success, _ = start_service(
         "api",
         ["./scripts/service_management/graphrag-service.sh", "start-api"],
-        check_api_ready
+        check_api_ready,
     )
 
     if not api_success:
@@ -270,14 +283,20 @@ def setup_test_environment():
     # Start MCP server
     mcp_success, _ = start_service(
         "mcp",
-        [".venv-py312/bin/python", "-m", "src.mcp.server", "--host", "0.0.0.0", "--port", str(get_port("mcp"))],
-        check_mcp_ready
+        [
+            ".venv-py312/bin/python",
+            "-m",
+            "src.mcp.server",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            str(get_port("mcp")),
+        ],
+        check_mcp_ready,
     )
 
     if not mcp_success:
         logger.warning("Failed to start MCP server, continuing anyway")
-
-
 
     # Print port configuration
     logger.info("Test environment set up with the following ports:")
@@ -290,12 +309,17 @@ def setup_test_environment():
 
     return True
 
-def main():
+
+def main() -> None:
     """Main function."""
-    parser = argparse.ArgumentParser(description='Test environment setup for GraphRAG')
-    parser.add_argument('--start', action='store_true', help='Start the test environment')
-    parser.add_argument('--stop', action='store_true', help='Stop the test environment')
-    parser.add_argument('--status', action='store_true', help='Show the status of the test environment')
+    parser = argparse.ArgumentParser(description="Test environment setup for GraphRAG")
+    parser.add_argument(
+        "--start", action="store_true", help="Start the test environment"
+    )
+    parser.add_argument("--stop", action="store_true", help="Stop the test environment")
+    parser.add_argument(
+        "--status", action="store_true", help="Show the status of the test environment"
+    )
 
     args = parser.parse_args()
 
@@ -321,6 +345,7 @@ def main():
 
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,1 @@
-"""
-Database module for GraphRAG project.
-"""
+"""Database module for GraphRAG project."""

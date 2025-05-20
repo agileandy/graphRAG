@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-GraphRAG Agent Tool: list-jobs
+"""GraphRAG Agent Tool: list-jobs.
 
 This tool lists jobs in the GraphRAG system.
 
@@ -15,14 +14,17 @@ Arguments:
 Environment Variables:
     MPC_HOST     MPC server host (default: localhost)
     MPC_PORT     MPC server port (default: 8766)
+
 """
 
-import sys
 import argparse
-from utils import connect_to_mpc, send_request, get_mcp_url, format_json
-from typing import Dict, Any
+import sys
+from typing import Any
 
-def display_jobs(result: Dict[str, Any]) -> None:
+from utils import connect_to_mpc, format_json, get_mcp_url, send_request
+
+
+def display_jobs(result: dict[str, Any]) -> None:
     """Display jobs in a readable format."""
     if "error" in result:
         print(f"❌ Error: {result['error']}")
@@ -81,12 +83,20 @@ def display_jobs(result: Dict[str, Any]) -> None:
                 started_at = job.get("started_at", "Unknown")
                 print(f"  Started: {started_at}")
 
-def main():
+
+def main() -> int | None:
     """Main function."""
     parser = argparse.ArgumentParser(description="List jobs in the GraphRAG system")
-    parser.add_argument("--status", help="Filter jobs by status (queued, running, completed, failed, cancelled)")
-    parser.add_argument("--type", dest="job_type", help="Filter jobs by type (add-document, add-folder)")
-    parser.add_argument("--url", default=None, help="MPC server URL (overrides environment variables)")
+    parser.add_argument(
+        "--status",
+        help="Filter jobs by status (queued, running, completed, failed, cancelled)",
+    )
+    parser.add_argument(
+        "--type", dest="job_type", help="Filter jobs by type (add-document, add-folder)"
+    )
+    parser.add_argument(
+        "--url", default=None, help="MPC server URL (overrides environment variables)"
+    )
     parser.add_argument("--raw", action="store_true", help="Display raw JSON response")
     args = parser.parse_args()
 
@@ -124,6 +134,7 @@ def main():
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     sys.exit(main())

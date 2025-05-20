@@ -8,9 +8,12 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 sys.path.insert(0, project_root)
 
 try:
-    from neo4j import GraphDatabase, exceptions as neo4j_exceptions
+    from neo4j import GraphDatabase
+    from neo4j import exceptions as neo4j_exceptions
 except ImportError:
-    print("Error: The 'neo4j' library is not installed. Please install it by running 'pip install neo4j'")
+    print(
+        "Error: The 'neo4j' library is not installed. Please install it by running 'pip install neo4j'"
+    )
     sys.exit(1)
 
 try:
@@ -18,15 +21,18 @@ try:
     from chromadb.config import Settings as ChromaSettings
     # Removed problematic import: from chromadb.exceptions import CollectionNotFoundException
 except ImportError:
-    print("Error: The 'chromadb' library is not installed. Please install it by running 'pip install chromadb'")
+    print(
+        "Error: The 'chromadb' library is not installed. Please install it by running 'pip install chromadb'"
+    )
     sys.exit(1)
 
 CONFIG_FILE_PATH = os.path.join(project_root, "config", "database_config.json")
 
+
 def load_config():
     """Loads database configuration from the JSON file."""
     try:
-        with open(CONFIG_FILE_PATH, 'r') as f:
+        with open(CONFIG_FILE_PATH) as f:
             config = json.load(f)
         return config
     except FileNotFoundError:
@@ -40,14 +46,17 @@ def load_config():
         print(f"An unexpected error occurred while loading config: {e}")
         sys.exit(1)
 
-def clear_neo4j(config):
+
+def clear_neo4j(config) -> bool | None:
     """Clears all nodes and relationships from Neo4j."""
     uri = config.get("uri")
     user = config.get("username")
     password = config.get("password")
 
     if not all([uri, user, password]):
-        print("Error: Neo4j configuration (uri, username, password) is missing or incomplete in config.")
+        print(
+            "Error: Neo4j configuration (uri, username, password) is missing or incomplete in config."
+        )
         return False
 
     driver = None
@@ -61,10 +70,14 @@ def clear_neo4j(config):
             print("Neo4j database cleared successfully.")
         return True
     except neo4j_exceptions.AuthError:
-        print(f"Error: Neo4j authentication failed for user '{user}'. Check credentials in {CONFIG_FILE_PATH}.")
+        print(
+            f"Error: Neo4j authentication failed for user '{user}'. Check credentials in {CONFIG_FILE_PATH}."
+        )
         return False
     except neo4j_exceptions.ServiceUnavailable:
-        print(f"Error: Could not connect to Neo4j at {uri}. Ensure the server is running.")
+        print(
+            f"Error: Could not connect to Neo4j at {uri}. Ensure the server is running."
+        )
         return False
     except Exception as e:
         print(f"An error occurred while clearing Neo4j: {e}")
@@ -73,21 +86,26 @@ def clear_neo4j(config):
         if driver:
             driver.close()
 
-def reset_chromadb(config):
+
+def reset_chromadb(config) -> bool | None:
     """Resets ChromaDB by deleting specified collections."""
     host = config.get("host", "localhost")
     port = config.get("port", 8000)
-    path = config.get("path", "/") # For HttpClient
+    config.get("path", "/")  # For HttpClient
     collections_to_delete = config.get("collections_to_delete", [])
 
     if not collections_to_delete:
-        print("Warning: No ChromaDB collections specified for deletion in config. Nothing to do for ChromaDB.")
-        return True # No action needed, so considered successful
+        print(
+            "Warning: No ChromaDB collections specified for deletion in config. Nothing to do for ChromaDB."
+        )
+        return True  # No action needed, so considered successful
 
     print(f"Attempting to connect to ChromaDB at host='{host}', port={port}...")
     try:
         # Using HttpClient, adjust if using a persistent client with a path
-        client = chromadb.HttpClient(host=host, port=port, settings=ChromaSettings(anonymized_telemetry=False))
+        client = chromadb.HttpClient(
+            host=host, port=port, settings=ChromaSettings(anonymized_telemetry=False)
+        )
         # For a persistent client, you might use:
         # client = chromadb.PersistentClient(path=os.path.join(project_root, "chroma_db_storage"))
 
@@ -111,32 +129,47 @@ def reset_chromadb(config):
                 except Exception as e:
                     print(f"Error deleting collection '{collection_name}': {e}")
             else:
-                print(f"Warning: Collection '{collection_name}' specified in config not found in ChromaDB. Skipping.")
+                print(
+                    f"Warning: Collection '{collection_name}' specified in config not found in ChromaDB. Skipping."
+                )
 
         if deleted_count > 0:
             print(f"Successfully deleted {deleted_count} ChromaDB collection(s).")
         else:
-            print("No ChromaDB collections were deleted (either not found or not specified).")
+            print(
+                "No ChromaDB collections were deleted (either not found or not specified)."
+            )
         return True
 
-    except ConnectionRefusedError: # More specific for network issues
-        print(f"Error: Could not connect to ChromaDB at {host}:{port}. Ensure the server is running.")
+    except ConnectionRefusedError:  # More specific for network issues
+        print(
+            f"Error: Could not connect to ChromaDB at {host}:{port}. Ensure the server is running."
+        )
         return False
     except Exception as e:
         print(f"An error occurred while resetting ChromaDB: {e}")
         return False
 
-def main():
+
+def main() -> None:
     parser = argparse.ArgumentParser(description="Cleans/resets specified databases.")
-    parser.add_argument("--neo4j", action="store_true", help="Clean the Neo4j database.")
+    parser.add_argument(
+        "--neo4j", action="store_true", help="Clean the Neo4j database."
+    )
     parser.add_argument("--chromadb", action="store_true", help="Reset the ChromaDB.")
-    parser.add_argument("--all", action="store_true", help="Clean/reset all databases (Neo4j and ChromaDB).")
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Clean/reset all databases (Neo4j and ChromaDB).",
+    )
 
     args = parser.parse_args()
 
     if not any([args.neo4j, args.chromadb, args.all]):
-        print("No action specified. Use --neo4j, --chromadb, or --all. Defaulting to --all.")
-        args.all = True # Default to all if no flags are provided
+        print(
+            "No action specified. Use --neo4j, --chromadb, or --all. Defaulting to --all."
+        )
+        args.all = True  # Default to all if no flags are provided
 
     config = load_config()
     neo4j_config = config.get("neo4j", {})
@@ -159,6 +192,7 @@ def main():
             print("ChromaDB configuration not found in config file. Skipping ChromaDB.")
 
     print("\nDatabase cleaning/resetting process finished.")
+
 
 if __name__ == "__main__":
     main()

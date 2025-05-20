@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-GraphRAG Agent Tool: books-by-concept
+"""GraphRAG Agent Tool: books-by-concept.
 
 This tool lists books that cover a specific concept.
 
@@ -15,14 +14,17 @@ Arguments:
 Environment Variables:
     MCP_HOST     MCP server host (default: localhost)
     MCP_PORT     MCP server port (default: 8767)
+
 """
 
-import sys
 import argparse
-from utils import connect_to_mcp, send_request, get_mcp_url, format_json
-from typing import Dict, Any
+import sys
+from typing import Any
 
-def display_books(result: Dict[str, Any]) -> None:
+from utils import connect_to_mcp, format_json, get_mcp_url, send_request
+
+
+def display_books(result: dict[str, Any]) -> None:
     """Display books in a readable format."""
     if "error" in result:
         print(f"❌ Error: {result['error']}")
@@ -36,10 +38,12 @@ def display_books(result: Dict[str, Any]) -> None:
     books = result.get("books", [])
     total_count = result.get("total_count", len(books))
 
-    print(f"\n=== Books covering '{concept_name}' ({len(books)} of {total_count} total) ===")
+    print(
+        f"\n=== Books covering '{concept_name}' ({len(books)} of {total_count} total) ==="
+    )
 
     for i, book in enumerate(books):
-        print(f"\n[{i+1}] {book.get('title', 'Untitled')}")
+        print(f"\n[{i + 1}] {book.get('title', 'Untitled')}")
 
         # Display book ID
         book_id = book.get("id", "Unknown")
@@ -60,12 +64,19 @@ def display_books(result: Dict[str, Any]) -> None:
         if "mention_count" in book:
             print(f"  Mentions: {book['mention_count']}")
 
-def main():
+
+def main() -> int | None:
     """Main function."""
-    parser = argparse.ArgumentParser(description="List books covering a specific concept")
+    parser = argparse.ArgumentParser(
+        description="List books covering a specific concept"
+    )
     parser.add_argument("--name", required=True, help="Name of the concept")
-    parser.add_argument("--limit", type=int, default=10, help="Maximum number of books to return")
-    parser.add_argument("--url", default=None, help="MCP server URL (overrides environment variables)")
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of books to return"
+    )
+    parser.add_argument(
+        "--url", default=None, help="MCP server URL (overrides environment variables)"
+    )
     parser.add_argument("--raw", action="store_true", help="Display raw JSON response")
     args = parser.parse_args()
 
@@ -79,9 +90,9 @@ def main():
         # Get books by concept
         print(f"Finding books covering concept: '{args.name}' (limit: {args.limit})...")
 
-        response = send_request(conn, "books-by-concept",
-                               concept_name=args.name,
-                               limit=args.limit)
+        response = send_request(
+            conn, "books-by-concept", concept_name=args.name, limit=args.limit
+        )
 
         # Display results
         if args.raw:
@@ -94,6 +105,7 @@ def main():
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-GraphRAG Agent Tool: related-concepts
+"""GraphRAG Agent Tool: related-concepts.
 
 This tool lists concepts related to a given concept.
 
@@ -15,14 +14,17 @@ Arguments:
 Environment Variables:
     MCP_HOST     MCP server host (default: localhost)
     MCP_PORT     MCP server port (default: 8767)
+
 """
 
-import sys
 import argparse
-from utils import connect_to_mcp, send_request, get_mcp_url, format_json
-from typing import Dict, Any
+import sys
+from typing import Any
 
-def display_related_concepts(result: Dict[str, Any]) -> None:
+from utils import connect_to_mcp, format_json, get_mcp_url, send_request
+
+
+def display_related_concepts(result: dict[str, Any]) -> None:
     """Display related concepts in a readable format."""
     if "error" in result:
         print(f"❌ Error: {result['error']}")
@@ -36,10 +38,12 @@ def display_related_concepts(result: Dict[str, Any]) -> None:
     related_concepts = result.get("related_concepts", [])
     total_count = result.get("total_count", len(related_concepts))
 
-    print(f"\n=== Concepts related to '{concept_name}' ({len(related_concepts)} of {total_count} total) ===")
+    print(
+        f"\n=== Concepts related to '{concept_name}' ({len(related_concepts)} of {total_count} total) ==="
+    )
 
     for i, concept in enumerate(related_concepts):
-        print(f"\n[{i+1}] {concept.get('name', 'Unnamed')}")
+        print(f"\n[{i + 1}] {concept.get('name', 'Unnamed')}")
 
         # Display concept ID
         concept_id = concept.get("id", "Unknown")
@@ -64,12 +68,22 @@ def display_related_concepts(result: Dict[str, Any]) -> None:
                 if key != "name":  # Skip name as it's already displayed
                     print(f"    {key}: {value}")
 
-def main():
+
+def main() -> int | None:
     """Main function."""
-    parser = argparse.ArgumentParser(description="List concepts related to a given concept")
+    parser = argparse.ArgumentParser(
+        description="List concepts related to a given concept"
+    )
     parser.add_argument("--name", required=True, help="Name of the concept")
-    parser.add_argument("--limit", type=int, default=10, help="Maximum number of related concepts to return")
-    parser.add_argument("--url", default=None, help="MCP server URL (overrides environment variables)")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Maximum number of related concepts to return",
+    )
+    parser.add_argument(
+        "--url", default=None, help="MCP server URL (overrides environment variables)"
+    )
     parser.add_argument("--raw", action="store_true", help="Display raw JSON response")
     args = parser.parse_args()
 
@@ -83,9 +97,9 @@ def main():
         # Get related concepts
         print(f"Finding concepts related to: '{args.name}' (limit: {args.limit})...")
 
-        response = send_request(conn, "related-concepts",
-                               concept_name=args.name,
-                               limit=args.limit)
+        response = send_request(
+            conn, "related-concepts", concept_name=args.name, limit=args.limit
+        )
 
         # Display results
         if args.raw:
@@ -98,6 +112,7 @@ def main():
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     sys.exit(main())

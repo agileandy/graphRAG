@@ -1,5 +1,4 @@
-"""
-Document loaders for GraphRAG project.
+"""Document loaders for GraphRAG project.
 
 This module provides document loaders for various file types.
 """

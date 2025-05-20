@@ -1,25 +1,27 @@
-"""
-Example of using GraphRAG with OpenAI function calling.
-"""
+"""Example of using GraphRAG with OpenAI function calling."""
+
+import json
 import os
 import sys
-import json
+
 import openai
 from dotenv import load_dotenv
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import GraphRAG functions
-from src.agents.openai_functions import get_graphrag_functions, get_graphrag_function_map
+from src.agents.openai_functions import (
+    get_graphrag_function_map,
+    get_graphrag_functions,
+)
 
 # Load environment variables
 load_dotenv()
 
-def main():
-    """
-    Main function to demonstrate using GraphRAG with OpenAI function calling.
-    """
+
+def main() -> None:
+    """Main function to demonstrate using GraphRAG with OpenAI function calling."""
     # Check if OpenAI API key is set
     if not os.getenv("OPENAI_API_KEY"):
         print("❌ OPENAI_API_KEY environment variable is not set.")
@@ -35,7 +37,10 @@ def main():
 
     # Initialize conversation
     messages = [
-        {"role": "system", "content": "You are a helpful assistant that can search and explore the GraphRAG knowledge base. Use the available functions to help the user find information."}
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that can search and explore the GraphRAG knowledge base. Use the available functions to help the user find information.",
+        }
     ]
 
     # Run interactive chat
@@ -59,7 +64,7 @@ def main():
                 model="gpt-4-turbo",  # or another model that supports function calling
                 messages=messages,
                 functions=functions,
-                function_call="auto"
+                function_call="auto",
             )
 
             # Get assistant message
@@ -79,16 +84,18 @@ def main():
                     function_response = function_map[function_name](**function_args)
 
                     # Add function response to conversation
-                    messages.append({
-                        "role": "function",
-                        "name": function_name,
-                        "content": json.dumps(function_response)
-                    })
+                    messages.append(
+                        {
+                            "role": "function",
+                            "name": function_name,
+                            "content": json.dumps(function_response),
+                        }
+                    )
 
                     # Get final response
                     final_response = openai.chat.completions.create(
                         model="gpt-4-turbo",  # or another model that supports function calling
-                        messages=messages
+                        messages=messages,
                     )
 
                     # Add final response to conversation
@@ -104,6 +111,7 @@ def main():
                 print(f"Assistant: {assistant_message.content}")
         except Exception as e:
             print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     main()

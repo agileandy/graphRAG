@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Regression Test 4: Check NLP processing.
+"""Regression Test 4: Check NLP processing.
 
 This test:
 1. Starts the services
@@ -12,23 +11,25 @@ This test:
 Usage:
     python -m tests.regression.test_04_nlp_processing
 """
+
+import json
 import os
 import sys
 import time
-import json
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from tests.regression.test_utils import (
+    add_test_document,
+    get_all_concepts,
+    get_concept,
     start_services,
     stop_services,
-    add_test_document,
-    get_concept,
-    get_all_concepts
 )
 
-def test_nlp_processing():
+
+def test_nlp_processing() -> bool | None:
     """Test NLP processing in the GraphRAG system."""
     print("\n=== Test 4: NLP Processing ===\n")
 
@@ -72,7 +73,7 @@ def test_nlp_processing():
             "author": "Regression Test",
             "category": "AI",
             "source": "Regression Test",
-            "concepts": "NLP,Natural Language Processing,Tokenization,Named Entity Recognition,Sentiment Analysis,Relationship Extraction,Knowledge Graphs"
+            "concepts": "NLP,Natural Language Processing,Tokenization,Named Entity Recognition,Sentiment Analysis,Relationship Extraction,Knowledge Graphs",
         }
 
         success, response = add_test_document(document_text, document_metadata)
@@ -96,23 +97,29 @@ def test_nlp_processing():
         success, concepts_response = get_all_concepts()
 
         if success:
-            concepts = concepts_response.get('concepts', [])
+            concepts = concepts_response.get("concepts", [])
             print(f"✅ Found {len(concepts)} concepts in the database")
 
             # Check for expected concepts
             expected_concepts = [
-                "NLP", "Natural Language Processing", "Tokenization",
-                "Named Entity Recognition", "Sentiment Analysis",
-                "Relationship Extraction", "Knowledge Graphs"
+                "NLP",
+                "Natural Language Processing",
+                "Tokenization",
+                "Named Entity Recognition",
+                "Sentiment Analysis",
+                "Relationship Extraction",
+                "Knowledge Graphs",
             ]
 
-            found_concepts = [concept['name'] for concept in concepts]
+            found_concepts = [concept["name"] for concept in concepts]
             print(f"Found concepts: {', '.join(found_concepts)}")
 
             # Check if at least some of the expected concepts are found
-            found_count = sum(1 for concept in expected_concepts if any(
-                concept.lower() in found.lower() for found in found_concepts
-            ))
+            found_count = sum(
+                1
+                for concept in expected_concepts
+                if any(concept.lower() in found.lower() for found in found_concepts)
+            )
 
             if found_count >= 3:  # At least 3 of the expected concepts should be found
                 print(f"✅ Found {found_count} of the expected concepts")
@@ -132,8 +139,8 @@ def test_nlp_processing():
         success, concept_response = get_concept(concept_to_check)
 
         if success:
-            concept = concept_response.get('concept', {})
-            related_concepts = concept_response.get('related_concepts', [])
+            concept = concept_response.get("concept", {})
+            related_concepts = concept_response.get("related_concepts", [])
 
             print(f"✅ Found concept: {concept.get('name')}")
             print(f"✅ Found {len(related_concepts)} related concepts")
@@ -141,19 +148,23 @@ def test_nlp_processing():
             if related_concepts:
                 print("Related concepts:")
                 for related in related_concepts:
-                    print(f"  - {related.get('name')} (strength: {related.get('strength')})")
+                    print(
+                        f"  - {related.get('name')} (strength: {related.get('strength')})"
+                    )
 
                 print("✅ Relationships exist in the database")
             else:
-                print("⚠️ No relationships found for this concept - this might be expected for a new document")
+                print(
+                    "⚠️ No relationships found for this concept - this might be expected for a new document"
+                )
         else:
             # Try another concept if the first one fails
             concept_to_check = "Natural Language Processing"
             success, concept_response = get_concept(concept_to_check)
 
             if success:
-                concept = concept_response.get('concept', {})
-                related_concepts = concept_response.get('related_concepts', [])
+                concept = concept_response.get("concept", {})
+                related_concepts = concept_response.get("related_concepts", [])
 
                 print(f"✅ Found concept: {concept.get('name')}")
                 print(f"✅ Found {len(related_concepts)} related concepts")
@@ -161,7 +172,9 @@ def test_nlp_processing():
                 if related_concepts:
                     print("✅ Relationships exist in the database")
                 else:
-                    print("⚠️ No relationships found for this concept - this might be expected for a new document")
+                    print(
+                        "⚠️ No relationships found for this concept - this might be expected for a new document"
+                    )
             else:
                 print(f"❌ Failed to get concept: {concept_to_check}")
                 print(f"Error: {concept_response.get('error')}")
@@ -180,7 +193,8 @@ def test_nlp_processing():
         else:
             print("❌ Failed to stop services")
 
-def main():
+
+def main() -> int:
     """Main function to run the test."""
     success = test_nlp_processing()
 
@@ -190,6 +204,7 @@ def main():
     else:
         print("\n❌ Test 4 failed: NLP processing")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

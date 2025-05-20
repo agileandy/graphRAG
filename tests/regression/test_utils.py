@@ -1,15 +1,15 @@
-"""
-Utility functions for GraphRAG regression tests.
-"""
+"""Utility functions for GraphRAG regression tests."""
+
+import asyncio
+import json
 import os
+import subprocess
 import sys
 import time
-import json
+from typing import Any
+
 import requests
-import subprocess
-import asyncio
 import websockets
-from typing import Dict, Any, Tuple, List, Optional
 
 # Terminal colors
 RESET = "\033[0m"
@@ -19,11 +19,13 @@ GREEN = "\033[32m"
 YELLOW = "\033[33m"
 BLUE = "\033[34m"
 
+
 def print_section(title: str) -> None:
     """Print a section header."""
     print("\n" + "-" * 80)
     print(f"{BOLD}{title}{RESET}")
     print("-" * 80)
+
 
 def print_header(title: str) -> None:
     """Print a main header."""
@@ -31,14 +33,15 @@ def print_header(title: str) -> None:
     print(f"{BOLD}{title.center(80)}{RESET}")
     print("=" * 80)
 
+
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.config import get_port
 
 # Get ports from centralized configuration
-api_port = get_port('api')
-mcp_port = get_port('mcp')
+api_port = get_port("api")
+mcp_port = get_port("mcp")
 
 # API endpoints
 API_BASE_URL = f"http://localhost:{api_port}"
@@ -49,9 +52,9 @@ CONCEPTS_ENDPOINT = f"{API_BASE_URL}/concepts"
 BOOKS_ENDPOINT = f"{API_BASE_URL}/books"
 JOBS_ENDPOINT = f"{API_BASE_URL}/jobs"
 
+
 def wait_for_api_ready(max_retries: int = 30, retry_interval: int = 2) -> bool:
-    """
-    Wait for the API to be ready by checking the health endpoint.
+    """Wait for the API to be ready by checking the health endpoint.
 
     Args:
         max_retries: Maximum number of retries
@@ -59,6 +62,7 @@ def wait_for_api_ready(max_retries: int = 30, retry_interval: int = 2) -> bool:
 
     Returns:
         True if the API is ready, False otherwise
+
     """
     print(f"Waiting for API to be ready at {HEALTH_ENDPOINT}...")
 
@@ -67,38 +71,43 @@ def wait_for_api_ready(max_retries: int = 30, retry_interval: int = 2) -> bool:
             response = requests.get(HEALTH_ENDPOINT, timeout=5)
             if response.status_code == 200:
                 health_data = response.json()
-                if health_data.get('status') in ['ok', 'degraded']:
+                if health_data.get("status") in ["ok", "degraded"]:
                     print(f"API is ready! Status: {health_data.get('status')}")
                     return True
         except requests.RequestException:
             pass
 
-        print(f"API not ready yet. Retrying in {retry_interval} seconds... ({i+1}/{max_retries})")
+        print(
+            f"API not ready yet. Retrying in {retry_interval} seconds... ({i + 1}/{max_retries})"
+        )
         time.sleep(retry_interval)
 
     print("Failed to connect to API after maximum retries.")
     return False
 
-def check_api_health() -> Tuple[bool, Dict[str, Any]]:
-    """
-    Check the health of the API.
+
+def check_api_health() -> tuple[bool, dict[str, Any]]:
+    """Check the health of the API.
 
     Returns:
         Tuple of (success, health_data)
+
     """
     try:
         response = requests.get(HEALTH_ENDPOINT, timeout=5)
         if response.status_code == 200:
             health_data = response.json()
-            is_healthy = health_data.get('status') == 'ok'
+            is_healthy = health_data.get("status") == "ok"
             return is_healthy, health_data
         return False, {"error": f"Unexpected status code: {response.status_code}"}
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def add_test_document(document_text: str, metadata: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Add a test document to the GraphRAG system via the API.
+
+def add_test_document(
+    document_text: str, metadata: dict[str, Any]
+) -> tuple[bool, dict[str, Any]]:
+    """Add a test document to the GraphRAG system via the API.
 
     Args:
         document_text: Document text
@@ -106,23 +115,26 @@ def add_test_document(document_text: str, metadata: Dict[str, Any]) -> Tuple[boo
 
     Returns:
         Tuple of (success, response_data)
+
     """
-    document = {
-        "text": document_text,
-        "metadata": metadata
-    }
+    document = {"text": document_text, "metadata": metadata}
 
     try:
         response = requests.post(DOCUMENTS_ENDPOINT, json=document, timeout=30)
         if response.status_code in [200, 201]:
             return True, response.json()
-        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+        return False, {
+            "error": f"Unexpected status code: {response.status_code}",
+            "response": response.text,
+        }
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def search_documents(query: str, n_results: int = 5, max_hops: int = 2, repair_index: bool = True) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Search for documents using the GraphRAG API.
+
+def search_documents(
+    query: str, n_results: int = 5, max_hops: int = 2, repair_index: bool = True
+) -> tuple[bool, dict[str, Any]]:
+    """Search for documents using the GraphRAG API.
 
     Args:
         query: Search query
@@ -132,12 +144,13 @@ def search_documents(query: str, n_results: int = 5, max_hops: int = 2, repair_i
 
     Returns:
         Tuple of (success, response_data)
+
     """
     search_data = {
         "query": query,
         "n_results": n_results,
         "max_hops": max_hops,
-        "repair_index": repair_index
+        "repair_index": repair_index,
     }
 
     try:
@@ -147,11 +160,17 @@ def search_documents(query: str, n_results: int = 5, max_hops: int = 2, repair_i
             result = response.json()
 
             # Check if we got empty vector results
-            vector_results = result.get('vector_results', {})
-            documents = vector_results.get('documents', [])
+            vector_results = result.get("vector_results", {})
+            documents = vector_results.get("documents", [])
 
-            if not documents or (isinstance(documents, list) and len(documents) > 0 and len(documents[0]) == 0):
-                print("First search attempt returned empty results. Waiting and trying again...")
+            if not documents or (
+                isinstance(documents, list)
+                and len(documents) > 0
+                and len(documents[0]) == 0
+            ):
+                print(
+                    "First search attempt returned empty results. Waiting and trying again..."
+                )
                 # Wait a moment and try again - sometimes the index needs time to update
                 time.sleep(5)
 
@@ -162,67 +181,83 @@ def search_documents(query: str, n_results: int = 5, max_hops: int = 2, repair_i
 
             return True, result
 
-        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+        return False, {
+            "error": f"Unexpected status code: {response.status_code}",
+            "response": response.text,
+        }
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def get_concept(concept_name: str) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Get information about a specific concept.
+
+def get_concept(concept_name: str) -> tuple[bool, dict[str, Any]]:
+    """Get information about a specific concept.
 
     Args:
         concept_name: Name of the concept
 
     Returns:
         Tuple of (success, response_data)
+
     """
     try:
         response = requests.get(f"{CONCEPTS_ENDPOINT}/{concept_name}", timeout=10)
         if response.status_code == 200:
             return True, response.json()
-        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+        return False, {
+            "error": f"Unexpected status code: {response.status_code}",
+            "response": response.text,
+        }
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def get_all_concepts() -> Tuple[bool, Dict[str, Any]]:
-    """
-    Get all concepts in the system.
+
+def get_all_concepts() -> tuple[bool, dict[str, Any]]:
+    """Get all concepts in the system.
 
     Returns:
         Tuple of (success, response_data)
+
     """
     try:
         response = requests.get(CONCEPTS_ENDPOINT, timeout=10)
         if response.status_code == 200:
             return True, response.json()
-        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+        return False, {
+            "error": f"Unexpected status code: {response.status_code}",
+            "response": response.text,
+        }
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def get_documents_for_concept(concept_name: str) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Get documents related to a specific concept.
+
+def get_documents_for_concept(concept_name: str) -> tuple[bool, dict[str, Any]]:
+    """Get documents related to a specific concept.
 
     Args:
         concept_name: Name of the concept
 
     Returns:
         Tuple of (success, response_data)
+
     """
     try:
         response = requests.get(f"{DOCUMENTS_ENDPOINT}/{concept_name}", timeout=10)
         if response.status_code == 200:
             return True, response.json()
-        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+        return False, {
+            "error": f"Unexpected status code: {response.status_code}",
+            "response": response.text,
+        }
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def start_services() -> Tuple[bool, Optional[subprocess.Popen]]:
-    """
-    Start the GraphRAG services.
+
+def start_services() -> tuple[bool, subprocess.Popen | None]:
+    """Start the GraphRAG services.
 
     Returns:
         Tuple of (success, process)
+
     """
     try:
         # Use the start script to start the services
@@ -231,7 +266,7 @@ def start_services() -> Tuple[bool, Optional[subprocess.Popen]]:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            shell=True
+            shell=True,
         )
 
         # Wait for the API to be ready
@@ -245,15 +280,16 @@ def start_services() -> Tuple[bool, Optional[subprocess.Popen]]:
         print(f"Error starting services: {e}")
         return False, None
 
-def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
-    """
-    Stop the GraphRAG services.
+
+def stop_services(process: subprocess.Popen | None = None) -> bool:
+    """Stop the GraphRAG services.
 
     Args:
         process: Process object returned by start_services
 
     Returns:
         True if successful, False otherwise
+
     """
     try:
         if process:
@@ -269,7 +305,7 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
         result = subprocess.run(
             ["./scripts/service_management/graphrag-service.sh", "stop"],
             capture_output=True,
-            text=True
+            text=True,
         )
         print(f"Stop script output: {result.stdout}")
 
@@ -279,15 +315,13 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
         subprocess.run(["pkill", "-f", "python.*server.py"], check=False)
 
         # Check if any GraphRAG processes are still running
-        ps_result = subprocess.run(
-            ["ps", "aux"],
-            capture_output=True,
-            text=True
-        )
+        ps_result = subprocess.run(["ps", "aux"], capture_output=True, text=True)
 
         # Look for any remaining GraphRAG processes
         if "gunicorn" in ps_result.stdout or "src.mcp.server" in ps_result.stdout:
-            print("Warning: Some GraphRAG processes are still running. Attempting to force kill...")
+            print(
+                "Warning: Some GraphRAG processes are still running. Attempting to force kill..."
+            )
             subprocess.run(["pkill", "-9", "-f", "gunicorn"], check=False)
             subprocess.run(["pkill", "-9", "-f", "src.mcp.server"], check=False)
 
@@ -311,12 +345,13 @@ def stop_services(process: Optional[subprocess.Popen] = None) -> bool:
         print(f"Error stopping services: {e}")
         return False
 
+
 def get_test_document_text() -> str:
-    """
-    Get the text for a test document.
+    """Get the text for a test document.
 
     Returns:
         Document text
+
     """
     return """
     GraphRAG: Enhancing Large Language Models with Knowledge Graphs
@@ -344,28 +379,25 @@ def get_test_document_text() -> str:
     between concepts.
     """
 
-def get_test_document_metadata() -> Dict[str, Any]:
-    """
-    Get the metadata for a test document.
+
+def get_test_document_metadata() -> dict[str, Any]:
+    """Get the metadata for a test document.
 
     Returns:
         Document metadata
+
     """
     return {
         "title": "GraphRAG: Enhancing LLMs with Knowledge Graphs",
         "author": "Regression Test",
         "category": "AI",
-        "source": "Regression Test"
+        "source": "Regression Test",
     }
 
 
-
-
-
 # Model Context Protocol (MCP) server functions
-def test_mcp_connection(host="localhost", port=None, timeout=5) -> Tuple[bool, str]:
-    """
-    Test connection to the Model Context Protocol server.
+def test_mcp_connection(host="localhost", port=None, timeout=5) -> tuple[bool, str]:
+    """Test connection to the Model Context Protocol server.
 
     Args:
         host: Model Context Protocol server host
@@ -374,46 +406,66 @@ def test_mcp_connection(host="localhost", port=None, timeout=5) -> Tuple[bool, s
 
     Returns:
         Tuple of (success, message)
+
     """
     # Use centralized port configuration if port is not specified
     if port is None:
         port = mcp_port
     try:
+
         async def test_connection():
             uri = f"ws://{host}:{port}"
             try:
                 # Create a connection with a timeout
                 try:
-                    websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
-                except asyncio.TimeoutError:
-                    return False, f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"
+                    websocket = await asyncio.wait_for(
+                        websockets.connect(uri), timeout=timeout
+                    )
+                except TimeoutError:
+                    return (
+                        False,
+                        f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds",
+                    )
 
                 async with websocket:
                     # Send initialize request
-                    await websocket.send(json.dumps({
-                        "jsonrpc": "2.0",
-                        "method": "initialize",
-                        "params": {
-                            "protocolVersion": "2024-11-05",
-                            "capabilities": {},
-                            "clientInfo": {
-                                "name": "test-client",
-                                "version": "0.1.0"
+                    await websocket.send(
+                        json.dumps(
+                            {
+                                "jsonrpc": "2.0",
+                                "method": "initialize",
+                                "params": {
+                                    "protocolVersion": "2024-11-05",
+                                    "capabilities": {},
+                                    "clientInfo": {
+                                        "name": "test-client",
+                                        "version": "0.1.0",
+                                    },
+                                },
+                                "id": 0,
                             }
-                        },
-                        "id": 0
-                    }))
+                        )
+                    )
 
                     # Receive response
                     response = await websocket.recv()
                     response_data = json.loads(response)
 
                     if "result" in response_data:
-                        return True, f"Connected to Model Context Protocol server at {uri}. Server info: {response_data['result'].get('serverInfo', {})}"
+                        return (
+                            True,
+                            f"Connected to Model Context Protocol server at {uri}. Server info: {response_data['result'].get('serverInfo', {})}",
+                        )
                     else:
-                        return False, f"Failed to initialize Model Context Protocol server at {uri}: {response_data.get('error', {})}"
+                        return (
+                            False,
+                            f"Failed to initialize Model Context Protocol server at {uri}: {response_data.get('error', {})}",
+                        )
             except Exception as e:
-                return False, f"Failed to connect to Model Context Protocol server at {uri}: {e}"
+                return (
+                    False,
+                    f"Failed to connect to Model Context Protocol server at {uri}: {e}",
+                )
 
         return asyncio.run(test_connection())
     except ImportError as e:
@@ -421,9 +473,16 @@ def test_mcp_connection(host="localhost", port=None, timeout=5) -> Tuple[bool, s
     except Exception as e:
         return False, f"Unexpected error testing Model Context Protocol connection: {e}"
 
-async def mcp_search(host="localhost", port=None, query="What is RAG?", n_results=3, max_hops=2, timeout=5) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Perform a search using the Model Context Protocol server.
+
+async def mcp_search(
+    host="localhost",
+    port=None,
+    query="What is RAG?",
+    n_results=3,
+    max_hops=2,
+    timeout=5,
+) -> tuple[bool, dict[str, Any]]:
+    """Perform a search using the Model Context Protocol server.
 
     Args:
         host: Model Context Protocol server host
@@ -435,6 +494,7 @@ async def mcp_search(host="localhost", port=None, query="What is RAG?", n_result
 
     Returns:
         Tuple of (success, response)
+
     """
     # Use centralized port configuration if port is not specified
     if port is None:
@@ -444,24 +504,27 @@ async def mcp_search(host="localhost", port=None, query="What is RAG?", n_result
         # Create a connection with a timeout
         try:
             websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
-        except asyncio.TimeoutError:
-            return False, {"error": f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"}
+        except TimeoutError:
+            return False, {
+                "error": f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"
+            }
 
         async with websocket:
             # Initialize the connection
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {
-                        "name": "test-client",
-                        "version": "0.1.0"
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "test-client", "version": "0.1.0"},
+                        },
+                        "id": 0,
                     }
-                },
-                "id": 0
-            }))
+                )
+            )
 
             # Receive initialization response
             init_response = await websocket.recv()
@@ -479,10 +542,10 @@ async def mcp_search(host="localhost", port=None, query="What is RAG?", n_result
                     "parameters": {
                         "query": query,
                         "n_results": n_results,
-                        "max_hops": max_hops
-                    }
+                        "max_hops": max_hops,
+                    },
                 },
-                "id": 1
+                "id": 1,
             }
 
             # Send search query
@@ -496,9 +559,11 @@ async def mcp_search(host="localhost", port=None, query="What is RAG?", n_result
     except Exception as e:
         return False, {"error": str(e)}
 
-async def mcp_get_tools(host="localhost", port=None, timeout=5) -> Tuple[bool, List[Dict[str, Any]]]:
-    """
-    Get available tools from the Model Context Protocol server.
+
+async def mcp_get_tools(
+    host="localhost", port=None, timeout=5
+) -> tuple[bool, list[dict[str, Any]]]:
+    """Get available tools from the Model Context Protocol server.
 
     Args:
         host: Model Context Protocol server host
@@ -507,6 +572,7 @@ async def mcp_get_tools(host="localhost", port=None, timeout=5) -> Tuple[bool, L
 
     Returns:
         Tuple of (success, tools)
+
     """
     # Use centralized port configuration if port is not specified
     if port is None:
@@ -516,35 +582,35 @@ async def mcp_get_tools(host="localhost", port=None, timeout=5) -> Tuple[bool, L
         # Create a connection with a timeout
         try:
             websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False, []
 
         async with websocket:
             # Initialize connection
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {
-                        "name": "test-client",
-                        "version": "0.1.0"
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "test-client", "version": "0.1.0"},
+                        },
+                        "id": 0,
                     }
-                },
-                "id": 0
-            }))
+                )
+            )
 
             # Receive initialize response
             await websocket.recv()
 
             # Get tools
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "getTools",
-                "params": {},
-                "id": 1
-            }))
+            await websocket.send(
+                json.dumps(
+                    {"jsonrpc": "2.0", "method": "getTools", "params": {}, "id": 1}
+                )
+            )
 
             # Receive getTools response
             response = await websocket.recv()
@@ -554,12 +620,14 @@ async def mcp_get_tools(host="localhost", port=None, timeout=5) -> Tuple[bool, L
                 return True, response_data["result"]["tools"]
             else:
                 return False, []
-    except Exception as e:
+    except Exception:
         return False, []
 
-async def mcp_invoke_tool(host="localhost", port=None, tool_name="search", parameters=None, timeout=5) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Invoke a tool on the Model Context Protocol server.
+
+async def mcp_invoke_tool(
+    host="localhost", port=None, tool_name="search", parameters=None, timeout=5
+) -> tuple[bool, dict[str, Any]]:
+    """Invoke a tool on the Model Context Protocol server.
 
     Args:
         host: Model Context Protocol server host
@@ -570,6 +638,7 @@ async def mcp_invoke_tool(host="localhost", port=None, tool_name="search", param
 
     Returns:
         Tuple of (success, response)
+
     """
     # Use centralized port configuration if port is not specified
     if port is None:
@@ -582,38 +651,42 @@ async def mcp_invoke_tool(host="localhost", port=None, tool_name="search", param
         # Create a connection with a timeout
         try:
             websocket = await asyncio.wait_for(websockets.connect(uri), timeout=timeout)
-        except asyncio.TimeoutError:
-            return False, {"error": f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"}
+        except TimeoutError:
+            return False, {
+                "error": f"Connection to Model Context Protocol server at {uri} timed out after {timeout} seconds"
+            }
 
         async with websocket:
             # Initialize connection
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {
-                        "name": "test-client",
-                        "version": "0.1.0"
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "initialize",
+                        "params": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {},
+                            "clientInfo": {"name": "test-client", "version": "0.1.0"},
+                        },
+                        "id": 0,
                     }
-                },
-                "id": 0
-            }))
+                )
+            )
 
             # Receive initialize response
             await websocket.recv()
 
             # Invoke tool
-            await websocket.send(json.dumps({
-                "jsonrpc": "2.0",
-                "method": "invokeTool",
-                "params": {
-                    "name": tool_name,
-                    "parameters": parameters
-                },
-                "id": 1
-            }))
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "invokeTool",
+                        "params": {"name": tool_name, "parameters": parameters},
+                        "id": 1,
+                    }
+                )
+            )
 
             # Receive invokeTool response
             response = await websocket.recv()
@@ -626,9 +699,11 @@ async def mcp_invoke_tool(host="localhost", port=None, tool_name="search", param
     except Exception as e:
         return False, {"error": str(e)}
 
-async def check_document_exists(source: str, host="localhost", port=None, timeout=5) -> bool:
-    """
-    Check if a document with the given source exists via the MCP server.
+
+async def check_document_exists(
+    source: str, host="localhost", port=None, timeout=5
+) -> bool:
+    """Check if a document with the given source exists via the MCP server.
 
     Args:
         source: The source identifier of the document.
@@ -638,6 +713,7 @@ async def check_document_exists(source: str, host="localhost", port=None, timeou
 
     Returns:
         True if the document exists, False otherwise.
+
     """
     # Use centralized port configuration if port is not specified
     if port is None:
@@ -649,15 +725,17 @@ async def check_document_exists(source: str, host="localhost", port=None, timeou
         port=port,
         tool_name="get_document_by_source",
         parameters={"source": source},
-        timeout=timeout
+        timeout=timeout,
     )
 
     # Assuming the tool returns a result if the document is found, and an error or empty result otherwise
     return success and response is not None and response.get("document") is not None
 
-async def get_document_count(host="localhost", port=None, timeout=5) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Get the total number of documents via the MCP server.
+
+async def get_document_count(
+    host="localhost", port=None, timeout=5
+) -> tuple[bool, dict[str, Any]]:
+    """Get the total number of documents via the MCP server.
 
     Args:
         host: Model Context Protocol server host
@@ -666,6 +744,7 @@ async def get_document_count(host="localhost", port=None, timeout=5) -> Tuple[bo
 
     Returns:
         Tuple of (success, response_data)
+
     """
     # Use centralized port configuration if port is not specified
     if port is None:
@@ -677,52 +756,62 @@ async def get_document_count(host="localhost", port=None, timeout=5) -> Tuple[bo
         port=port,
         tool_name="get_document_count",
         parameters={},
-        timeout=timeout
+        timeout=timeout,
     )
 
     # Assuming the tool returns a dictionary with a 'count' key on success
     if success and response is not None and "count" in response:
         return True, {"count": response["count"]}
     else:
-        return False, {"error": response.get("error", "Failed to get document count via MCP")}
+        return False, {
+            "error": response.get("error", "Failed to get document count via MCP")
+        }
 
 
-def get_job_status(job_id: str) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Get the status of a specific job via the API.
+def get_job_status(job_id: str) -> tuple[bool, dict[str, Any]]:
+    """Get the status of a specific job via the API.
 
     Args:
         job_id: The ID of the job
 
     Returns:
         Tuple of (success, response_data)
+
     """
     try:
         response = requests.get(f"{JOBS_ENDPOINT}/{job_id}", timeout=10)
         if response.status_code == 200:
             return True, response.json()
-        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+        return False, {
+            "error": f"Unexpected status code: {response.status_code}",
+            "response": response.text,
+        }
     except requests.RequestException as e:
         return False, {"error": str(e)}
 
-def cancel_job(job_id: str) -> Tuple[bool, Dict[str, Any]]:
-    """
-    Cancel a specific job via the API.
+
+def cancel_job(job_id: str) -> tuple[bool, dict[str, Any]]:
+    """Cancel a specific job via the API.
 
     Args:
         job_id: The ID of the job
 
     Returns:
         Tuple of (success, response_data)
+
     """
     try:
         # Assuming the API uses a POST request to a /cancel endpoint for cancellation
         response = requests.post(f"{JOBS_ENDPOINT}/{job_id}/cancel", timeout=10)
         if response.status_code == 200:
             return True, response.json()
-        return False, {"error": f"Unexpected status code: {response.status_code}", "response": response.text}
+        return False, {
+            "error": f"Unexpected status code: {response.status_code}",
+            "response": response.text,
+        }
     except requests.RequestException as e:
         return False, {"error": str(e)}
+
 
 def print_test_result(test_name: str, success: bool, message: str = None) -> None:
     """Print a test result."""

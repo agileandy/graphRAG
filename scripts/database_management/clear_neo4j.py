@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
-"""
-Script to clear the Neo4j database.
-"""
+"""Script to clear the Neo4j database."""
 
-import sys
-import os
 import logging
+import os
+import sys
 
 # Add the project root to the Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from neo4j import GraphDatabase
+
 from src.config import get_port
 
-def clear_neo4j():
+
+def clear_neo4j() -> int:
     """Clear the Neo4j database."""
     logging.basicConfig(level=logging.INFO)
 
     try:
         # Get Neo4j port from centralized configuration
-        neo4j_port = get_port('neo4j_bolt')
+        neo4j_port = get_port("neo4j_bolt")
 
         # Connect to Neo4j
         uri = f"bolt://localhost:{neo4j_port}"
@@ -62,6 +64,7 @@ def clear_neo4j():
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(clear_neo4j())

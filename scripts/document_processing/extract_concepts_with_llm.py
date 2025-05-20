@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Script to extract concepts from documents using LLM.
+"""Script to extract concepts from documents using LLM.
 
 This script:
 1. Retrieves documents from the vector database
@@ -8,47 +7,53 @@ This script:
 3. Analyzes relationships between concepts
 4. Adds concepts and relationships to the graph database
 """
-import sys
-import os
+
+import argparse
 import json
 import logging
-import argparse
-from typing import Dict, Any
+import os
+import sys
+from typing import Any
+
 from tqdm import tqdm
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.database.vector_db import VectorDatabase
 from src.database.graph_db import GraphDatabase
-from src.llm.llm_provider import LLMManager, create_llm_provider
+from src.database.vector_db import VectorDatabase
 from src.llm.concept_extraction import (
-    extract_concepts_with_llm,
     analyze_concept_relationships,
     extract_concepts_two_pass,
-    summarize_text_with_llm
+    summarize_text_with_llm,
 )
+from src.llm.llm_provider import LLMManager, create_llm_provider
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-def load_llm_config(config_path: str = None) -> Dict[str, Any]:
-    """
-    Load LLM configuration from file.
+
+def load_llm_config(config_path: str = None) -> dict[str, Any]:
+    """Load LLM configuration from file.
 
     Args:
         config_path: Path to configuration file
 
     Returns:
         Configuration dictionary
+
     """
     # Default config path
     if config_path is None:
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "llm_config.json")
+        config_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "config", "llm_config.json"
+        )
 
     try:
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             config = json.load(f)
         return config
     except Exception as e:
@@ -62,25 +67,28 @@ def load_llm_config(config_path: str = None) -> Dict[str, Any]:
                 "model": "lmstudio-community/Phi-4-mini-reasoning-MLX-4bit",
                 "temperature": 0.1,
                 "max_tokens": 1000,
-                "timeout": 60
+                "timeout": 60,
             }
         }
 
-def setup_llm_manager(config: Dict[str, Any]) -> LLMManager:
-    """
-    Set up LLM manager from configuration.
+
+def setup_llm_manager(config: dict[str, Any]) -> LLMManager:
+    """Set up LLM manager from configuration.
 
     Args:
         config: Configuration dictionary
 
     Returns:
         LLM manager instance
+
     """
     # Create primary provider
     primary_config = config.get("primary_provider", {})
     try:
         primary_provider = create_llm_provider(primary_config)
-        logger.info(f"Created primary provider: {primary_config.get('type')} with model {primary_config.get('model')}")
+        logger.info(
+            f"Created primary provider: {primary_config.get('type')} with model {primary_config.get('model')}"
+        )
     except Exception as e:
         logger.error(f"Error creating primary provider: {e}")
         primary_provider = None
@@ -91,12 +99,15 @@ def setup_llm_manager(config: Dict[str, Any]) -> LLMManager:
         fallback_config = config.get("fallback_provider", {})
         try:
             fallback_provider = create_llm_provider(fallback_config)
-            logger.info(f"Created fallback provider: {fallback_config.get('type')} with model {fallback_config.get('model')}")
+            logger.info(
+                f"Created fallback provider: {fallback_config.get('type')} with model {fallback_config.get('model')}"
+            )
         except Exception as e:
             logger.error(f"Error creating fallback provider: {e}")
 
     # Create LLM manager
     return LLMManager(primary_provider, fallback_provider)
+
 
 def process_documents_with_llm(
     collection_name: str,
@@ -105,10 +116,9 @@ def process_documents_with_llm(
     batch_size: int = 10,
     min_text_length: int = 100,
     chunk_size: int = 3000,
-    chunk_overlap: int = 500
-) -> Dict[str, Any]:
-    """
-    Process documents with LLM for concept extraction.
+    chunk_overlap: int = 500,
+) -> dict[str, Any]:
+    """Process documents with LLM for concept extraction.
 
     Args:
         collection_name: Name of the collection to process
@@ -119,6 +129,7 @@ def process_documents_with_llm(
 
     Returns:
         Dictionary with statistics
+
     """
     # Initialize databases
     vector_db = VectorDatabase()
@@ -142,7 +153,7 @@ def process_documents_with_llm(
         # Use a dummy query to get documents
         documents = vector_db.query(
             query_texts=[""],  # Empty query to get random documents
-            n_results=limit
+            n_results=limit,
         )
     except Exception as e:
         logger.error(f"Error querying documents: {e}")
@@ -150,7 +161,11 @@ def process_documents_with_llm(
 
     if not documents:
         logger.warning(f"No documents found in collection '{collection_name}'")
-        return {"documents_processed": 0, "concepts_extracted": 0, "relationships_added": 0}
+        return {
+            "documents_processed": 0,
+            "concepts_extracted": 0,
+            "relationships_added": 0,
+        }
 
     logger.info(f"Retrieved {len(documents)} documents")
 
@@ -160,21 +175,25 @@ def process_documents_with_llm(
         "concepts_extracted": 0,
         "relationships_added": 0,
         "concepts_per_document": {},
-        "concept_frequencies": {}
+        "concept_frequencies": {},
     }
 
     # Process documents in batches
     for i in range(0, len(documents), batch_size):
-        batch = documents[i:i+batch_size]
-        logger.info(f"Processing batch {i//batch_size + 1}/{(len(documents) + batch_size - 1)//batch_size}")
+        batch = documents[i : i + batch_size]
+        logger.info(
+            f"Processing batch {i // batch_size + 1}/{(len(documents) + batch_size - 1) // batch_size}"
+        )
 
-        for doc in tqdm(batch, desc=f"Batch {i//batch_size + 1}"):
+        for doc in tqdm(batch, desc=f"Batch {i // batch_size + 1}"):
             doc_id = doc.get("id")
             doc.get("metadata", {}).get("title", "Unknown")
             doc_text = doc.get("text", "")
 
             if not doc_text or len(doc_text) < min_text_length:
-                logger.warning(f"Document {doc_id} has insufficient text ({len(doc_text)} chars), skipping")
+                logger.warning(
+                    f"Document {doc_id} has insufficient text ({len(doc_text)} chars), skipping"
+                )
                 continue
 
             # Extract concepts from document using two-pass approach
@@ -193,7 +212,9 @@ def process_documents_with_llm(
                         LIMIT 20
                         """
                         existing_concepts = graph_db.neo4j_db.run_query(query)
-                        logger.info(f"Retrieved {len(existing_concepts)} existing concepts for context")
+                        logger.info(
+                            f"Retrieved {len(existing_concepts)} existing concepts for context"
+                        )
                 except Exception as e:
                     logger.warning(f"Error retrieving existing concepts: {e}")
 
@@ -202,14 +223,16 @@ def process_documents_with_llm(
                     document_text=doc_text,
                     llm_manager=llm_manager,
                     chunk_size=chunk_size,
-                    overlap=chunk_overlap
+                    overlap=chunk_overlap,
                 )
 
                 if not concepts:
                     logger.warning(f"No concepts extracted from document {doc_id}")
                     continue
 
-                logger.info(f"Extracted {len(concepts)} concepts from document {doc_id}")
+                logger.info(
+                    f"Extracted {len(concepts)} concepts from document {doc_id}"
+                )
 
                 # Add concepts to graph database
                 for concept in concepts:
@@ -222,40 +245,50 @@ def process_documents_with_llm(
 
                     # Update statistics
                     stats["concepts_extracted"] += 1
-                    stats["concept_frequencies"][concept_name] = stats["concept_frequencies"].get(concept_name, 0) + 1
+                    stats["concept_frequencies"][concept_name] = (
+                        stats["concept_frequencies"].get(concept_name, 0) + 1
+                    )
 
                     # Add concept to graph database
                     concept_node = graph_db.add_concept(
                         concept_name,
                         properties={
                             "type": concept_type,
-                            "description": concept_description
-                        }
+                            "description": concept_description,
+                        },
                     )
 
                     if concept_node:
                         # Add relationship between concept and document
-                        graph_db.add_document_concept_relationship(doc_id, concept_node["id"])
+                        graph_db.add_document_concept_relationship(
+                            doc_id, concept_node["id"]
+                        )
 
                 # Process relationships from the two-pass extraction
                 relationships = []
                 for concept in concepts:
                     if "relationships" in concept:
                         for rel in concept.get("relationships", []):
-                            relationships.append({
-                                "source": concept["name"],
-                                "target": rel["target"],
-                                "type": rel["type"],
-                                "strength": rel["strength"],
-                                "description": rel["description"]
-                            })
+                            relationships.append(
+                                {
+                                    "source": concept["name"],
+                                    "target": rel["target"],
+                                    "type": rel["type"],
+                                    "strength": rel["strength"],
+                                    "description": rel["description"],
+                                }
+                            )
 
                 # If no relationships were found in the concepts, analyze them separately
                 if not relationships:
-                    relationships = analyze_concept_relationships(concepts, llm_manager, existing_concepts)
+                    relationships = analyze_concept_relationships(
+                        concepts, llm_manager, existing_concepts
+                    )
 
                 if relationships:
-                    logger.info(f"Adding {len(relationships)} relationships for document {doc_id}")
+                    logger.info(
+                        f"Adding {len(relationships)} relationships for document {doc_id}"
+                    )
 
                     # Add relationships to graph database
                     for rel in relationships:
@@ -275,8 +308,8 @@ def process_documents_with_llm(
                             rel_type,
                             properties={
                                 "strength": strength,
-                                "description": description
-                            }
+                                "description": description,
+                            },
                         )
 
                         stats["relationships_added"] += 1
@@ -289,7 +322,9 @@ def process_documents_with_llm(
                         if summary:
                             # Log the summary but don't try to update the document
                             # This avoids compatibility issues with different vector database implementations
-                            logger.info(f"Generated summary for document {doc_id}: {summary[:100]}...")
+                            logger.info(
+                                f"Generated summary for document {doc_id}: {summary[:100]}..."
+                            )
 
                             # Store the summary in the graph database instead
                             # This is more reliable than trying to update the vector database
@@ -300,15 +335,20 @@ def process_documents_with_llm(
                                 SET d.summary = $summary
                                 RETURN d.id
                                 """
-                                graph_db.neo4j_db.run_query(query, {
-                                    "doc_id": doc_id,
-                                    "summary": summary
-                                })
-                                logger.info(f"Stored summary in graph database for document {doc_id}")
+                                graph_db.neo4j_db.run_query(
+                                    query, {"doc_id": doc_id, "summary": summary}
+                                )
+                                logger.info(
+                                    f"Stored summary in graph database for document {doc_id}"
+                                )
                             except Exception as e:
-                                logger.warning(f"Could not store summary in graph database: {e}")
+                                logger.warning(
+                                    f"Could not store summary in graph database: {e}"
+                                )
                     except Exception as e:
-                        logger.warning(f"Error generating summary for document {doc_id}: {e}")
+                        logger.warning(
+                            f"Error generating summary for document {doc_id}: {e}"
+                        )
 
                 # Update statistics
                 stats["documents_processed"] += 1
@@ -319,35 +359,66 @@ def process_documents_with_llm(
 
     # Calculate average concepts per document
     if stats["documents_processed"] > 0:
-        stats["avg_concepts_per_document"] = sum(stats["concepts_per_document"].values()) / stats["documents_processed"]
+        stats["avg_concepts_per_document"] = (
+            sum(stats["concepts_per_document"].values()) / stats["documents_processed"]
+        )
     else:
         stats["avg_concepts_per_document"] = 0
 
     # Get top concepts
     stats["top_concepts"] = sorted(
-        stats["concept_frequencies"].items(),
-        key=lambda x: x[1],
-        reverse=True
+        stats["concept_frequencies"].items(), key=lambda x: x[1], reverse=True
     )[:20]
 
     return stats
 
-def main():
+
+def main() -> None:
     """Main function."""
-    parser = argparse.ArgumentParser(description="Extract concepts from documents using LLM with enhanced relationship identification")
-    parser.add_argument("--collection", type=str, default="documents", help="Collection name")
-    parser.add_argument("--limit", type=int, default=10, help="Maximum number of documents to process")
-    parser.add_argument("--batch-size", type=int, default=5, help="Number of documents to process in each batch")
+    parser = argparse.ArgumentParser(
+        description="Extract concepts from documents using LLM with enhanced relationship identification"
+    )
+    parser.add_argument(
+        "--collection", type=str, default="documents", help="Collection name"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of documents to process"
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=5,
+        help="Number of documents to process in each batch",
+    )
     parser.add_argument("--config", type=str, help="Path to LLM configuration file")
-    parser.add_argument("--min-text-length", type=int, default=100, help="Minimum text length to process")
-    parser.add_argument("--chunk-size", type=int, default=3000, help="Size of each chunk in characters for two-pass extraction")
-    parser.add_argument("--chunk-overlap", type=int, default=500, help="Overlap between chunks in characters for two-pass extraction")
+    parser.add_argument(
+        "--min-text-length",
+        type=int,
+        default=100,
+        help="Minimum text length to process",
+    )
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=3000,
+        help="Size of each chunk in characters for two-pass extraction",
+    )
+    parser.add_argument(
+        "--chunk-overlap",
+        type=int,
+        default=500,
+        help="Overlap between chunks in characters for two-pass extraction",
+    )
 
     args = parser.parse_args()
 
-    print(f"Extracting concepts with enhanced semantic relationships from documents in collection '{args.collection}'...")
+    print(
+        f"Extracting concepts with enhanced semantic relationships from documents in collection '{args.collection}'..."
+    )
     print(f"Processing up to {args.limit} documents in batches of {args.batch_size}")
-    print(f"Using two-pass approach with chunk size {args.chunk_size} and overlap {args.chunk_overlap}")
+    print(
+        f"Using two-pass approach with chunk size {args.chunk_size} and overlap {args.chunk_overlap}"
+    )
 
     # Load configuration
     config = load_llm_config(args.config)
@@ -363,7 +434,7 @@ def main():
         batch_size=args.batch_size,
         min_text_length=args.min_text_length,
         chunk_size=args.chunk_size,
-        chunk_overlap=args.chunk_overlap
+        chunk_overlap=args.chunk_overlap,
     )
 
     # Print statistics
@@ -371,11 +442,14 @@ def main():
     print(f"Documents processed: {stats['documents_processed']}")
     print(f"Concepts extracted: {stats['concepts_extracted']}")
     print(f"Relationships added: {stats['relationships_added']}")
-    print(f"Average concepts per document: {stats.get('avg_concepts_per_document', 0):.2f}")
+    print(
+        f"Average concepts per document: {stats.get('avg_concepts_per_document', 0):.2f}"
+    )
 
     print("\nTop 20 Concepts:")
     for concept, frequency in stats.get("top_concepts", []):
         print(f"  - {concept}: {frequency}")
+
 
 if __name__ == "__main__":
     main()

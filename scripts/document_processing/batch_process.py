@@ -1,30 +1,37 @@
-"""
-Script to batch process multiple documents into the GraphRAG system.
+"""Script to batch process multiple documents into the GraphRAG system.
 
 This script demonstrates how to:
 1. Process multiple documents from a directory
 2. Extract entities and relationships
 3. Add them to the GraphRAG system
 """
-import sys
-import os
-import json
+
 import argparse
-from typing import List, Dict, Any
 import glob
+import json
+import os
+import sys
+from typing import Any
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) # Adjusted path to go up two levels to project root
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+)  # Adjusted path to go up two levels to project root
 
+from scripts.document_processing.add_document_core import add_document_to_graphrag
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.processing.duplicate_detector import DuplicateDetector
-from src.processing.file_handler import FileHandler # Added import
-from scripts.document_processing.add_document_core import add_document_to_graphrag
+from src.processing.file_handler import FileHandler  # Added import
 
-def process_directory(directory_path: str, neo4j_db: Neo4jDatabase, vector_db: VectorDatabase, duplicate_detector: DuplicateDetector) -> List[Dict[str, Any]]:
-    """
-    Process all supported files in a directory recursively.
+
+def process_directory(
+    directory_path: str,
+    neo4j_db: Neo4jDatabase,
+    vector_db: VectorDatabase,
+    duplicate_detector: DuplicateDetector,
+) -> list[dict[str, Any]]:
+    """Process all supported files in a directory recursively.
 
     Args:
         directory_path: Path to directory containing documents
@@ -34,6 +41,7 @@ def process_directory(directory_path: str, neo4j_db: Neo4jDatabase, vector_db: V
 
     Returns:
         List of processing results
+
     """
     supported_extensions = FileHandler.get_supported_extensions()
     all_files = []
@@ -45,15 +53,20 @@ def process_directory(directory_path: str, neo4j_db: Neo4jDatabase, vector_db: V
     # Add .txt and .json files for backward compatibility if not already covered by FileHandler
     # and to ensure the example files are processed if they are .txt or .json
     if ".txt" not in supported_extensions:
-        all_files.extend(glob.glob(os.path.join(directory_path, "**", "*.txt"), recursive=True))
+        all_files.extend(
+            glob.glob(os.path.join(directory_path, "**", "*.txt"), recursive=True)
+        )
     if ".json" not in supported_extensions:
-         all_files.extend(glob.glob(os.path.join(directory_path, "**", "*.json"), recursive=True))
+        all_files.extend(
+            glob.glob(os.path.join(directory_path, "**", "*.json"), recursive=True)
+        )
 
     # Remove duplicates that might arise if an extension is in both lists
     all_files = sorted(list(set(all_files)))
 
-
-    print(f"Found {len(all_files)} processable files in {directory_path} and its subdirectories.")
+    print(
+        f"Found {len(all_files)} processable files in {directory_path} and its subdirectories."
+    )
 
     results = []
 
@@ -68,30 +81,46 @@ def process_directory(directory_path: str, neo4j_db: Neo4jDatabase, vector_db: V
                 # Ensure file_path is in metadata, FileHandler might not add it
                 if "file_path" not in metadata:
                     metadata["file_path"] = file_path
-                if "source" not in metadata: # Add a default source if not provided by loader
+                if (
+                    "source" not in metadata
+                ):  # Add a default source if not provided by loader
                     metadata["source"] = f"File ({ext})"
-            elif ext == ".txt": # Manual handling for .txt
-                with open(file_path, "r", encoding="utf-8") as f:
+            elif ext == ".txt":  # Manual handling for .txt
+                with open(file_path, encoding="utf-8") as f:
                     text = f.read()
                 metadata = {
                     "title": os.path.splitext(file_name)[0],
                     "source": "Text File",
-                    "file_path": file_path
+                    "file_path": file_path,
                 }
-            elif ext == ".json": # Manual handling for .json
-                with open(file_path, "r", encoding="utf-8") as f:
+            elif ext == ".json":  # Manual handling for .json
+                with open(file_path, encoding="utf-8") as f:
                     data = json.load(f)
                 text = data.pop("text", "")
                 if not text:
                     print(f"Skipping {file_name}: No 'text' field found in JSON")
-                    results.append({"file_path": file_path, "status": "skipped", "reason": "No text field in JSON"})
+                    results.append(
+                        {
+                            "file_path": file_path,
+                            "status": "skipped",
+                            "reason": "No text field in JSON",
+                        }
+                    )
                     continue
                 metadata = data
                 metadata["source"] = "JSON File"
                 metadata["file_path"] = file_path
             else:
-                print(f"Skipping {file_name}: Unsupported file type by explicit check {ext}")
-                results.append({"file_path": file_path, "status": "skipped", "reason": f"Unsupported file type {ext}"})
+                print(
+                    f"Skipping {file_name}: Unsupported file type by explicit check {ext}"
+                )
+                results.append(
+                    {
+                        "file_path": file_path,
+                        "status": "skipped",
+                        "reason": f"Unsupported file type {ext}",
+                    }
+                )
                 continue
 
             # Add document to GraphRAG system
@@ -100,22 +129,25 @@ def process_directory(directory_path: str, neo4j_db: Neo4jDatabase, vector_db: V
                 metadata=metadata,
                 neo4j_db=neo4j_db,
                 vector_db=vector_db,
-                duplicate_detector=duplicate_detector
+                duplicate_detector=duplicate_detector,
             )
             results.append(result)
 
         except Exception as e:
             print(f"❌ Error processing file {file_name}: {e}")
-            results.append({"file_path": file_path, "status": "error", "reason": str(e)})
+            results.append(
+                {"file_path": file_path, "status": "error", "reason": str(e)}
+            )
 
     return results
 
+
 def create_example_files(output_dir: str) -> None:
-    """
-    Create example files for testing.
+    """Create example files for testing.
 
     Args:
         output_dir: Directory to create example files in
+
     """
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
@@ -144,7 +176,7 @@ def create_example_files(output_dir: str) -> None:
             natural structure present within a set of data points. Reinforcement learning is a type of
             machine learning where an agent learns to behave in an environment by performing actions and
             seeing the results.
-            """
+            """,
         },
         {
             "filename": "computer_vision.txt",
@@ -169,7 +201,7 @@ def create_example_files(output_dir: str) -> None:
 
             Applications of computer vision are vast and growing, including facial recognition, autonomous
             vehicles, medical image analysis, surveillance, augmented reality, and quality control in manufacturing.
-            """
+            """,
         },
         {
             "filename": "natural_language_processing.txt",
@@ -197,8 +229,8 @@ def create_example_files(output_dir: str) -> None:
 
             Applications of NLP include sentiment analysis, chatbots, language translation, speech recognition,
             text summarization, and information extraction.
-            """
-        }
+            """,
+        },
     ]
 
     # Example JSON files
@@ -231,8 +263,8 @@ def create_example_files(output_dir: str) -> None:
                 are used to approximate the value function, policy, or model of the environment. This approach has
                 led to significant achievements, such as defeating world champions in the game of Go and mastering
                 complex video games.
-                """
-            }
+                """,
+            },
         },
         {
             "filename": "generative_ai.json",
@@ -266,9 +298,9 @@ def create_example_files(output_dir: str) -> None:
                 augmentation for training other AI systems, and simulation for testing and development. However,
                 it also raises ethical concerns related to misinformation, copyright, and the potential misuse of
                 the technology.
-                """
-            }
-        }
+                """,
+            },
+        },
     ]
 
     # Write example text files
@@ -285,15 +317,29 @@ def create_example_files(output_dir: str) -> None:
             json.dump(example["content"], f, indent=2)
         print(f"Created example JSON file: {file_path}")
 
-def main():
-    """
-    Main function to demonstrate batch processing of documents.
-    """
+
+def main() -> None:
+    """Main function to demonstrate batch processing of documents."""
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Batch process documents into the GraphRAG system")
-    parser.add_argument("--dir", "-d", type=str, help="Directory containing documents to process")
-    parser.add_argument("--create-examples", "-c", action="store_true", help="Create example files for testing")
-    parser.add_argument("--example-dir", "-e", type=str, default="./example_docs", help="Directory for example files")
+    parser = argparse.ArgumentParser(
+        description="Batch process documents into the GraphRAG system"
+    )
+    parser.add_argument(
+        "--dir", "-d", type=str, help="Directory containing documents to process"
+    )
+    parser.add_argument(
+        "--create-examples",
+        "-c",
+        action="store_true",
+        help="Create example files for testing",
+    )
+    parser.add_argument(
+        "--example-dir",
+        "-e",
+        type=str,
+        default="./example_docs",
+        help="Directory for example files",
+    )
     args = parser.parse_args()
 
     # Create example files if requested
@@ -318,7 +364,7 @@ def main():
     # Initialize databases
     neo4j_db = Neo4jDatabase()
     vector_db = VectorDatabase()
-    duplicate_detector = DuplicateDetector(vector_db) # Initialize DuplicateDetector
+    duplicate_detector = DuplicateDetector(vector_db)  # Initialize DuplicateDetector
 
     # Verify connections
     if not neo4j_db.verify_connection():
@@ -335,15 +381,22 @@ def main():
     results = process_directory(args.dir, neo4j_db, vector_db, duplicate_detector)
 
     # Print summary
-    valid_results = [r for r in results if r and 'entities' in r and 'relationships' in r]
+    valid_results = [
+        r for r in results if r and "entities" in r and "relationships" in r
+    ]
     print(f"\nProcessed {len(results)} documents attempts")
     print(f"Successfully processed {len(valid_results)} documents")
     if valid_results:
-        print(f"Added {sum(len(r['entities']) for r in valid_results)} entities to Neo4j")
-        print(f"Added {sum(len(r['relationships']) for r in valid_results)} relationships to Neo4j")
+        print(
+            f"Added {sum(len(r['entities']) for r in valid_results)} entities to Neo4j"
+        )
+        print(
+            f"Added {sum(len(r['relationships']) for r in valid_results)} relationships to Neo4j"
+        )
 
     # Close Neo4j connection
     neo4j_db.close()
+
 
 if __name__ == "__main__":
     main()
