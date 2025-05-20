@@ -240,21 +240,30 @@ def add_document():
     metadata = data.get('metadata', {})
 
     try:
+        logger.debug("Step 1: Importing necessary modules for add_document.")
         # Import here to avoid circular imports
         from scripts.document_processing.add_document_core import add_document_to_graphrag
         from src.processing.duplicate_detector import DuplicateDetector
+        logger.debug("Step 1a: Modules imported.")
 
+        logger.debug(f"Step 2: Initializing DuplicateDetector with vector_db: {type(vector_db)}")
         # Initialize duplicate detector
         duplicate_detector = DuplicateDetector(vector_db)
+        logger.debug("Step 2a: DuplicateDetector initialized.")
 
+        logger.debug("Step 3: Generating document hash.")
         # Calculate document hash for duplicate checking
         doc_hash = duplicate_detector.generate_document_hash(text)
         metadata_with_hash = metadata.copy()
         metadata_with_hash["hash"] = doc_hash
+        logger.debug(f"Step 3a: Document hash generated: {doc_hash}")
 
+        logger.debug("Step 4: Checking for duplicates via is_duplicate.")
         # Check for duplicates before adding
         is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(text, metadata_with_hash)
+        logger.debug(f"Step 4a: is_duplicate check complete. is_dup: {is_dup}, existing_doc_id: {existing_doc_id}, method: {method}")
 
+        logger.debug("Step 5: Calling add_document_to_graphrag.")
         result = add_document_to_graphrag(
             text=text,
             metadata=metadata,
@@ -263,29 +272,44 @@ def add_document():
             duplicate_detector=duplicate_detector
         )
 
-        if result:
+        if result is None:
+            # Document was a duplicate
+            logger.info(f"Document '{metadata.get('title', 'Unknown Title')}' is a duplicate (ID: {existing_doc_id}, Method: {method}). Not adding.")
+            return jsonify({
+                'status': 'duplicate',
+                'message': 'Document is a duplicate and was not added.',
+                'document_id': existing_doc_id,
+                'duplicate_detection_method': method
+            }), 200 # OK, but not created
+        elif isinstance(result, dict) and result.get('status') == 'failure':
+            # An error occurred in add_document_to_graphrag
+            error_message = result.get('error', 'An unknown error occurred during document processing.')
+            logger.error(f"Failed to add document '{metadata.get('title', 'Unknown Title')}': {error_message}")
+            return jsonify({
+                'status': 'failure',
+                'error': error_message
+            }), 500 # Internal Server Error
+        elif isinstance(result, dict) and 'document_id' in result:
             # Document was added successfully
+            logger.info(f"Successfully added document '{metadata.get('title', 'Unknown Title')}' with ID: {result.get('document_id')}")
             return jsonify({
                 'status': 'success',
-                'message': 'Document added successfully',
+                'message': 'Document added successfully.',
                 'document_id': result.get('document_id'),
                 'entities': result.get('entities', []),
                 'relationships': result.get('relationships', [])
-            })
+            }), 201 # Created
         else:
-            # Document was a duplicate
+            # Unexpected result from add_document_to_graphrag
+            logger.error(f"Unexpected result from add_document_to_graphrag for document '{metadata.get('title', 'Unknown Title')}': {result}")
             return jsonify({
-                'status': 'duplicate',
-                'message': 'Document is a duplicate and was not added',
-                'document_id': existing_doc_id,
-                'duplicate_detection_method': method,
-                'entities': [],
-                'relationships': []
-            })
+                'status': 'failure',
+                'error': 'An unexpected error occurred during document processing.'
+            }), 500
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        tb_str = traceback.format_exc()
+        logger.error(f"Unhandled exception in add_document endpoint: {str(e)}\nTraceback:\n{tb_str}")
+        return jsonify({'error': f"Unhandled exception: {str(e)}", 'traceback': tb_str}), 500
 
 @app.route('/folders', methods=['POST'])
 def add_folder():

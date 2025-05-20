@@ -1,0 +1,4 @@
+when delegating subtasks always include a definition of done (DoD).   If the returned subtask doesn't meet the DoD, then return to the sub role to carry on.
+remind the sub role to read any memories related to the task or the enviromnment.
+remind the sub role that if it doesn't understand the task then it must return it with a question - NEVER asusme knowledge.
+"When a task generates a list of items (e.g., files, entities, requirements) that will be used in a subsequent, related task, an artifact (e.g., a temporary text file, an entry in a shared knowledge base if available, or a clear reference in the task completion summary) containing this list should be created and explicitly mentioned. This ensures data persistence and easy retrieval for follow-up actions, preventing the need to re-derive or request the information again."

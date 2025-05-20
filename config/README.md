@@ -132,3 +132,45 @@ cp config/env.docker .env.docker.custom
 nano .env.docker.custom
 docker-compose --env-file .env.docker.custom up
 ```
+
+## Security and Sensitive Information
+
+### Managing Configuration Files
+
+All configuration files in this directory that may contain sensitive information (API keys, credentials, etc.) are provided as templates with the `.sample` extension. To use them:
+
+1. Copy the sample file without the `.sample` extension:
+
+   ```bash
+   cp config/openrouter_config.json.sample config/openrouter_config.json
+   ```
+
+2. Edit the new file with your actual credentials
+3. The original file will be ignored by git (configured in .gitignore)
+4. Never commit files containing real credentials to the repository
+
+### Managing API Keys and Secrets
+
+- Store all API keys and secrets in your local `.env` file
+- Never commit the `.env` file to the repository
+- Use `env.sample` as a template for required environment variables
+- Consider using a secrets management service for production deployments
+
+### Managing Database Credentials
+
+- Default Neo4j credentials in sample files are for development only
+- Always change credentials in production
+- Use environment variables for database credentials
+- Consider using connection strings with placeholders:
+
+  ```env
+  NEO4J_URI=bolt://localhost:${GRAPHRAG_PORT_NEO4J_BOLT}
+  ```
+
+### Security Best Practices
+
+1. Rotate API keys and credentials regularly
+2. Use different credentials for development and production
+3. Limit API key permissions to only what's needed
+4. Monitor for exposed secrets using git hooks or security scanning tools
+5. Use environment variables instead of hardcoding secrets in files
