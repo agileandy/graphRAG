@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ],
+      "alwaysAllow": [
+        "get-library-docs"
+      ]
+    },
+    "Memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@jlia0/servers",
+        "--key",
+        "9f9a045d-e2df-4742-93cd-2ab109ac99d6",
+        "--profile",
+        "daily-armadillo-DBqHAD"
+      ],
+      "alwaysAllow": [
+        "add_observations",
+        "create_entities",
+        "create_relations",
+        "delete_entities",
+        "delete_observations",
+        "read_graph",
+        "search_nodes",
+        "delete_relations",
+        "open_nodes"
+      ],
+      "disabled": false
+    }
+  }
+}

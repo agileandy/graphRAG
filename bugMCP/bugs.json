@@ -302,5 +302,5 @@
       "resolution": "Fixed in commit 41596262a93afb61af3aad203a834f235b988203 by adding explicit tenant parameter handling in VectorDatabase class."
     }
   ],
-  "next_id": 45
+  "next_id": 47
 }

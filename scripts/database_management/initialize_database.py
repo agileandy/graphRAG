@@ -9,7 +9,7 @@ import os
 import time
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase

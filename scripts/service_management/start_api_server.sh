@@ -6,7 +6,7 @@
 cd "$(dirname "$0")/.."
 
 # Activate the virtual environment
-source /Users/andyspamer/Dev-Space/PythonProjects/graphRAG/.venv-py312/bin/activate
+source .venv-py312/bin/activate
 
 # Install the project in editable mode
 uv pip install -e .

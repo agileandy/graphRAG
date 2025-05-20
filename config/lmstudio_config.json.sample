@@ -1,0 +1,32 @@
+{
+  "nlp": {
+    "lang": "en",
+    "pipeline": [
+      "llm"
+    ]
+  },
+  "components": {
+    "llm": {
+      "factory": "llm",
+      "model": {
+        "@llm_models": "spacy.GPT-3-5.v1",
+        "config": {
+          "temperature": 0.0,
+          "api_key": "dummy-key",
+          "api_base": "http://192.168.1.21:1234/v1"
+        }
+      },
+      "task": {
+        "@llm_tasks": "spacy.NER.v3",
+        "labels": [
+          "PERSON",
+          "ORGANIZATION",
+          "LOCATION",
+          "DATE",
+          "PRODUCT"
+        ],
+        "description": "Entities are the names of people, organizations, locations, dates, and products."
+      }
+    }
+  }
+}
