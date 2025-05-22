@@ -71,7 +71,7 @@ class MarkdownLoader:
                     metadata = yaml.safe_load(frontmatter)
 
                     # Remove the frontmatter from the content
-                    md_content = md_content[end_idx + 3:].strip()
+                    md_content = md_content[end_idx + 3 :].strip()
             except Exception as e:
                 print(f"Error parsing frontmatter: {e}")
 

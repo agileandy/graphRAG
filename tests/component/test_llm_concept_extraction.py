@@ -159,7 +159,9 @@ def setup_llm_manager(config: dict[str, Any]) -> LLMManager:
     return LLMManager(primary_provider, fallback_provider)
 
 
-def test_concept_extraction(llm_manager: LLMManager, text_key: str = "graphrag") -> None:
+def test_concept_extraction(
+    llm_manager: LLMManager, text_key: str = "graphrag"
+) -> None:
     """Test concept extraction with LLM.
 
     Args:

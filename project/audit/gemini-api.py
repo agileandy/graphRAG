@@ -171,7 +171,9 @@ def make_gemini_request(prompt_text, model_name_to_check, script_rpm_limit):
         }
 
 
-def worker_thread_function(model_to_check, prompt, script_rpm_limit, results_queue) -> None:
+def worker_thread_function(
+    model_to_check, prompt, script_rpm_limit, results_queue
+) -> None:
     """Worker function executed by each thread to make an API request.
     Puts the result dictionary into the results_queue.
     """

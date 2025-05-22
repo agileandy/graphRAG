@@ -6,6 +6,7 @@ import pytest
 import time
 from typing import List
 
+
 class TestBugTrackingPerformance:
     """Performance test suite for bug tracking."""
 

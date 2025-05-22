@@ -1,6 +1,10 @@
 import uuid
 
-from scripts.database_management.clean_database import clean_database, clean_neo4j, clean_chromadb
+from scripts.database_management.clean_database import (
+    clean_database,
+    clean_neo4j,
+    clean_chromadb,
+)
 from tests.regression.test_utils import (
     add_test_document,
     get_document_count,

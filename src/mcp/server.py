@@ -1041,7 +1041,7 @@ async def start_server(host: str = "localhost", port: int = 8767) -> None:
         host,
         port,
         ping_interval=20,  # Send a ping every 20 seconds
-        ping_timeout=20    # Wait 20 seconds for a pong response
+        ping_timeout=20,  # Wait 20 seconds for a pong response
     )
     # Assuming logger is defined similarly to mpc_server.py or use print
     # For now, stick to print as logger definition is not confirmed for this file.
@@ -1051,7 +1051,9 @@ async def start_server(host: str = "localhost", port: int = 8767) -> None:
     # For now, retain the original line if it exists, or comment out if it causes issues
     # due to ACTION_HANDLERS not being MCP-specific.
     # print(f"Available actions: {', '.join(ACTION_HANDLERS.keys())}") # Keeping original for now
-    print(f"Available actions: {', '.join(ACTION_HANDLERS.keys())}") # Retaining original line
+    print(
+        f"Available actions: {', '.join(ACTION_HANDLERS.keys())}"
+    )  # Retaining original line
 
     # Keep the server running
     await server.wait_closed()

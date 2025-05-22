@@ -7,7 +7,9 @@ from unittest.mock import patch
 try:
     from src.config.ports import get_port
 except ImportError:
-    pytest.fail("Could not import get_port from src.config.ports. Make sure the file and function exist.")
+    pytest.fail(
+        "Could not import get_port from src.config.ports. Make sure the file and function exist."
+    )
 
 
 @pytest.fixture(autouse=True)

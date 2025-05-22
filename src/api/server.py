@@ -349,7 +349,11 @@ def add_document():
             f"Unhandled exception in add_document endpoint: {str(e)}\nTraceback:\n{tb_str}"
         )
         return jsonify(
-            {"error": f"Unhandled exception: {str(e)}", "traceback": tb_str, "document_id": None}
+            {
+                "error": f"Unhandled exception: {str(e)}",
+                "traceback": tb_str,
+                "document_id": None,
+            }
         ), 500
 
 

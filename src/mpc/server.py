@@ -678,21 +678,31 @@ def _process_add_folder_job(job) -> dict[str, Any]:
             if result and result.get("status") == "success":
                 processed_files += 1
                 doc_id = result.get("document_id", "unknown")
-                print(f"Document added successfully with ID: {doc_id} from file: {file_path}")
+                print(
+                    f"Document added successfully with ID: {doc_id} from file: {file_path}"
+                )
                 all_entities.extend(result.get("entities", []))
                 all_relationships.extend(result.get("relationships", []))
             elif result and result.get("status") == "failure":
-                error_message = result.get("error", "Unknown error from add_document_to_graphrag")
+                error_message = result.get(
+                    "error", "Unknown error from add_document_to_graphrag"
+                )
                 print(f"Failed to process document {file_path}: {error_message}")
                 # Consider if this should be a new counter e.g., failed_files_in_core_processing
                 skipped_files += 1
-            elif result is None: # This means add_document_to_graphrag identified it as a duplicate
-                print(f"Document {file_path} was identified as a duplicate by add_document_to_graphrag.")
+            elif (
+                result is None
+            ):  # This means add_document_to_graphrag identified it as a duplicate
+                print(
+                    f"Document {file_path} was identified as a duplicate by add_document_to_graphrag."
+                )
                 # This path should ideally be less common if the pre-check at line 658 is effective
                 # and uses the same duplicate_detector instance.
                 duplicate_files += 1
-            else: # Unexpected result structure
-                print(f"Unexpected or empty result from add_document_to_graphrag for {file_path}: {result}")
+            else:  # Unexpected result structure
+                print(
+                    f"Unexpected or empty result from add_document_to_graphrag for {file_path}: {result}"
+                )
                 skipped_files += 1
 
         except Exception as e:
@@ -1060,7 +1070,7 @@ def main() -> None:
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-            stream=sys.stdout, # Ensure logs go to stdout
+            stream=sys.stdout,  # Ensure logs go to stdout
         )
 
     # Parse command-line arguments
@@ -1068,10 +1078,16 @@ def main() -> None:
     default_host = os.getenv("MPC_HOST", "0.0.0.0")
     default_port = int(os.getenv("MPC_PORT", "8765"))
     parser.add_argument(
-        "--host", type=str, default=default_host, help=f"Server host (default: {default_host})"
+        "--host",
+        type=str,
+        default=default_host,
+        help=f"Server host (default: {default_host})",
     )
     parser.add_argument(
-        "--port", type=int, default=default_port, help=f"Server port (default: {default_port})"
+        "--port",
+        type=int,
+        default=default_port,
+        help=f"Server port (default: {default_port})",
     )
     args = parser.parse_args()
 
@@ -1086,7 +1102,9 @@ def main() -> None:
             logger.error(
                 "Please check if another instance of the MPC server or another application is using this port."
             )
-            logger.error("You can specify a different port using --port <number> or by setting the MPC_PORT environment variable.")
+            logger.error(
+                "You can specify a different port using --port <number> or by setting the MPC_PORT environment variable."
+            )
         else:
             logger.error(f"An OS error occurred: {e}")
             logger.error(traceback.format_exc())
