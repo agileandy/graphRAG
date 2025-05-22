@@ -57,7 +57,9 @@ def main() -> None:
     process_pdf_with_verbose_output(args.pdf_path, args.chunk_size, args.overlap)
 
 
-def process_pdf_with_verbose_output(pdf_path: str, chunk_size: int, overlap: int) -> None:
+def process_pdf_with_verbose_output(
+    pdf_path: str, chunk_size: int, overlap: int
+) -> None:
     """Process a PDF file with verbose output for each step.
 
     Args:

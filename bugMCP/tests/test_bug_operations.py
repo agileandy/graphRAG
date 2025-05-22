@@ -4,11 +4,16 @@ import pytest
 import json
 from typing import Any
 
-from mcp.client.session import ClientSession # Assuming ClientSession is used via a fixture
-from mcp.types import TextContent # Import TextContent
+from mcp.client.session import (
+    ClientSession,
+)  # Assuming ClientSession is used via a fixture
+from mcp.types import TextContent  # Import TextContent
+
 
 @pytest.mark.asyncio
-async def test_add_bug_operation(mcp_session: ClientSession, test_bug_data: dict[str, Any]):
+async def test_add_bug_operation(
+    mcp_session: ClientSession, test_bug_data: dict[str, Any]
+):
     """Test adding a new bug via MCP."""
     result = await mcp_session.call_tool("add_bug", test_bug_data)
     assert result.content and len(result.content) > 0
@@ -18,10 +23,13 @@ async def test_add_bug_operation(mcp_session: ClientSession, test_bug_data: dict
     data = json.loads(content_item.text)
     assert data.get("status") == "success"
     assert "bug_id" in data
-    return data["bug_id"] # Return bug_id for subsequent tests
+    return data["bug_id"]  # Return bug_id for subsequent tests
+
 
 @pytest.mark.asyncio
-async def test_get_bug_operation(mcp_session: ClientSession, test_bug_data: dict[str, Any]):
+async def test_get_bug_operation(
+    mcp_session: ClientSession, test_bug_data: dict[str, Any]
+):
     """Test retrieving a bug by ID via MCP."""
     # First, add a bug to retrieve
     add_result = await mcp_session.call_tool("add_bug", test_bug_data)
@@ -45,8 +53,11 @@ async def test_get_bug_operation(mcp_session: ClientSession, test_bug_data: dict
     # MCP server might set default status to 'open'
     # assert retrieved_bug["status"] == test_bug_data["status"]
 
+
 @pytest.mark.asyncio
-async def test_update_bug_operation(mcp_session: ClientSession, test_bug_data: dict[str, Any]):
+async def test_update_bug_operation(
+    mcp_session: ClientSession, test_bug_data: dict[str, Any]
+):
     """Test updating an existing bug via MCP."""
     # Add a bug first
     add_result = await mcp_session.call_tool("add_bug", test_bug_data)
@@ -60,7 +71,7 @@ async def test_update_bug_operation(mcp_session: ClientSession, test_bug_data: d
     update_payload = {
         "id": bug_id,
         "status": "fixed",
-        "resolution": "Resolved by test case"
+        "resolution": "Resolved by test case",
     }
     update_result = await mcp_session.call_tool("update_bug", update_payload)
     assert update_result.content and len(update_result.content) > 0
@@ -81,8 +92,11 @@ async def test_update_bug_operation(mcp_session: ClientSession, test_bug_data: d
     assert updated_bug["status"] == "fixed"
     assert updated_bug["resolution"] == "Resolved by test case"
 
+
 @pytest.mark.asyncio
-async def test_delete_bug_operation(mcp_session: ClientSession, test_bug_data: dict[str, Any]):
+async def test_delete_bug_operation(
+    mcp_session: ClientSession, test_bug_data: dict[str, Any]
+):
     """Test deleting a bug via MCP."""
     # Add a bug
     add_result = await mcp_session.call_tool("add_bug", test_bug_data)
@@ -108,11 +122,16 @@ async def test_delete_bug_operation(mcp_session: ClientSession, test_bug_data: d
     assert isinstance(get_content_item, TextContent)
 
     get_data = json.loads(get_content_item.text)
-    assert get_data.get("status") == "error" # Expecting an error as bug should not be found
+    assert (
+        get_data.get("status") == "error"
+    )  # Expecting an error as bug should not be found
     assert "not found" in get_data.get("message", "").lower()
 
+
 @pytest.mark.asyncio
-async def test_list_bugs_operation(mcp_session: ClientSession, test_bug_data: dict[str, Any]):
+async def test_list_bugs_operation(
+    mcp_session: ClientSession, test_bug_data: dict[str, Any]
+):
     """Test listing bugs via MCP."""
     # Ensure no bugs initially (or handle existing ones if tests run in shared env)
     # The cleanup_bugs fixture in conftest.py should handle this.

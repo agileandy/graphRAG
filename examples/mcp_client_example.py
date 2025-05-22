@@ -148,7 +148,8 @@ async def interactive_client(uri: str = f"ws://localhost:{mcp_port}") -> None:
                     tool_index = int(choice) - 1
                     if tool_index < 0 or tool_index >= len(tools):
                         print(
-                            f"Invalid tool number. Please enter a number between 1 and {len(tools)}."
+                            f"Invalid tool number. Please enter a number between 1 and "
+                            f"{len(tools)}."
                         )
                         continue
 

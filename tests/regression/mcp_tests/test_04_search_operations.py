@@ -1,4 +1,8 @@
-from scripts.database_management.clean_database import clean_database, clean_neo4j, clean_chromadb
+from scripts.database_management.clean_database import (
+    clean_database,
+    clean_neo4j,
+    clean_chromadb,
+)
 from tests.regression.test_utils import (
     add_test_document,
     search_documents,
@@ -51,9 +55,7 @@ async def test_mcp_chroma_search() -> None:
 
         # Perform Chroma search
         search_query = "artificial intelligence"
-        search_success, search_response = search_documents(
-            search_query
-        )
+        search_success, search_response = search_documents(search_query)
         assert search_success, (
             f"Chroma search via MCP failed: {search_response.get('error', 'Unknown error')}"
         )
@@ -102,9 +104,7 @@ async def test_mcp_hybrid_search() -> None:
 
         # Perform Hybrid search
         search_query = "AI and graph databases"
-        search_success, search_response = search_documents(
-            search_query
-        )
+        search_success, search_response = search_documents(search_query)
         assert search_success, (
             f"Hybrid search via MCP failed: {search_response.get('error', 'Unknown error')}"
         )
@@ -153,9 +153,7 @@ async def test_mcp_concept_relationships() -> None:
 
         # Search by concept relationships
         concept_query = "artificial intelligence"  # Assuming searching for documents related to this concept
-        search_success, search_response = search_documents(
-            concept_query
-        )
+        search_success, search_response = search_documents(concept_query)
         assert search_success, (
             f"Concept relationships search via MCP failed: {search_response.get('error', 'Unknown error')}"
         )

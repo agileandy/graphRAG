@@ -2,7 +2,7 @@
 """GraphRAG MPC Client Tool.
 
 This script provides a command-line interface to interact with the GraphRAG MPC server.
-It can be used to add documents, search for documents, and get information about concepts.
+It can be used to add documents, search for documents, and get info about concepts.
 """
 
 import argparse

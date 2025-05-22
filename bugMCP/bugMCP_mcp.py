@@ -61,9 +61,7 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool(
-    description="Add a new bug to the system"
-)
+@mcp.tool(description="Add a new bug to the system")
 def add_bug(description: str, cause: str) -> dict[str, Any]:
     """Add a new bug to the system.
 
@@ -96,9 +94,7 @@ def add_bug(description: str, cause: str) -> dict[str, Any]:
     }
 
 
-@mcp.tool(
-    description="Update an existing bug"
-)
+@mcp.tool(description="Update an existing bug")
 def update_bug(
     id: int, status: str | None = None, resolution: str | None = None
 ) -> dict[str, Any]:
@@ -143,9 +139,7 @@ def update_bug(
         return {"status": "success", "message": "No changes made"}
 
 
-@mcp.tool(
-    description="Delete a bug from the system"
-)
+@mcp.tool(description="Delete a bug from the system")
 def delete_bug(id: int) -> dict[str, Any]:
     """Delete a bug from the system.
 
@@ -167,9 +161,7 @@ def delete_bug(id: int) -> dict[str, Any]:
         return {"status": "error", "message": f"No bug found with ID: {id}"}
 
 
-@mcp.tool(
-    description="Get a specific bug by ID"
-)
+@mcp.tool(description="Get a specific bug by ID")
 def get_bug(id: int) -> dict[str, Any]:
     """Get a specific bug by ID.
 
@@ -188,9 +180,7 @@ def get_bug(id: int) -> dict[str, Any]:
         return {"status": "error", "message": f"Bug not found with ID: {id}"}
 
 
-@mcp.tool(
-    description="List all bugs in the system"
-)
+@mcp.tool(description="List all bugs in the system")
 def list_bugs() -> dict[str, Any]:
     """List all bugs in the system.
 

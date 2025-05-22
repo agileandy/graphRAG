@@ -252,8 +252,10 @@ class OpenRouterProvider(LLMProvider):
         # Try to get API key from environment if not provided
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
         if not self.api_key:
-            logger.warning("No OpenRouter API key provided and OPENROUTER_API_KEY environment variable not set")
-        
+            logger.warning(
+                "No OpenRouter API key provided and OPENROUTER_API_KEY environment variable not set"
+            )
+
         self.model = model
         self.embedding_model = (
             embedding_model or "openai/text-embedding-ada-002"
@@ -861,7 +863,9 @@ def create_llm_provider(config: dict[str, Any]) -> LLMProvider:
             api_base=str(api_base_val) if api_base_val is not None else None,
             api_key=config.get("api_key", "dummy-key"),
             model=str(model_val) if model_val is not None else None,
-            embedding_model=str(embedding_model_val) if embedding_model_val is not None else None,
+            embedding_model=str(embedding_model_val)
+            if embedding_model_val is not None
+            else None,
             temperature=config.get("temperature", 0.0),
             max_tokens=config.get("max_tokens", 1000),
             timeout=config.get("timeout", 60),
@@ -873,18 +877,24 @@ def create_llm_provider(config: dict[str, Any]) -> LLMProvider:
         return OllamaProvider(
             api_base=str(api_base_val),
             model=str(model_val),
-            embedding_model=str(embedding_model_val) if embedding_model_val is not None else None,
+            embedding_model=str(embedding_model_val)
+            if embedding_model_val is not None
+            else None,
             temperature=config.get("temperature", 0.0),
             max_tokens=config.get("max_tokens", 1000),
             timeout=config.get("timeout", 60),
         )
     elif provider_type == "openrouter":
         model_val = config.get("model", "google/gemini-2.0-flash-exp:free")
-        embedding_model_val = config.get("embedding_model", "openai/text-embedding-ada-002")
+        embedding_model_val = config.get(
+            "embedding_model", "openai/text-embedding-ada-002"
+        )
         return OpenRouterProvider(
             api_key=config.get("api_key", ""),
             model=str(model_val),
-            embedding_model=str(embedding_model_val) if embedding_model_val is not None else None,
+            embedding_model=str(embedding_model_val)
+            if embedding_model_val is not None
+            else None,
             temperature=config.get("temperature", 0.0),
             max_tokens=config.get("max_tokens", 1000),
             timeout=config.get("timeout", 60),

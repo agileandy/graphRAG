@@ -7,7 +7,9 @@ import sys
 import websockets
 
 
-async def test_search(uri, query="What is RAG?", n_results=3, max_hops=2) -> bool | None:
+async def test_search(
+    uri, query="What is RAG?", n_results=3, max_hops=2
+) -> bool | None:
     """Test search functionality."""
     try:
         print(f"Connecting to {uri}...")

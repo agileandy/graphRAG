@@ -239,7 +239,8 @@ def main() -> None:
     parser.add_argument(
         "--action",
         type=str,
-        help="Action to perform (search, concept, documents, books-by-concept, related-concepts, passages-about-concept, add-document, add-folder)",
+        help="Action to perform (search, concept, documents, books-by-concept, "
+        "related-concepts, passages-about-concept, add-document, add-folder)",
     )
 
     # Search arguments

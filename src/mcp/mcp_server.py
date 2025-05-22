@@ -24,7 +24,11 @@ from src.database.db_linkage import DatabaseLinkage
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.processing.duplicate_detector import DuplicateDetector
-from src.processing.job_manager import JobManager, Job, JobStatus # Import Job and JobStatus
+from src.processing.job_manager import (
+    JobManager,
+    Job,
+    JobStatus,
+)  # Import Job and JobStatus
 
 # Configure logging
 logging.basicConfig(
@@ -398,7 +402,12 @@ async def handle_documents(parameters: dict[str, Any]) -> dict[str, Any]:
 
         return {
             "documents": [
-                {"title": doc["title"], "id": doc["id"], "author": doc.get("author"), "year": doc.get("year")}
+                {
+                    "title": doc["title"],
+                    "id": doc["id"],
+                    "author": doc.get("author"),
+                    "year": doc.get("year"),
+                }
                 for doc in documents
             ]
         }
@@ -433,11 +442,18 @@ async def handle_books_by_concept(parameters: dict[str, Any]) -> dict[str, Any]:
         LIMIT $limit
         """
 
-        books = neo4j_db.run_query(query, {"concept_name": concept_name, "limit": limit})
+        books = neo4j_db.run_query(
+            query, {"concept_name": concept_name, "limit": limit}
+        )
 
         return {
             "books": [
-                {"title": book["title"], "id": book["id"], "author": book.get("author"), "year": book.get("year")}
+                {
+                    "title": book["title"],
+                    "id": book["id"],
+                    "author": book.get("author"),
+                    "year": book.get("year"),
+                }
                 for book in books
             ]
         }
@@ -472,7 +488,9 @@ async def handle_related_concepts(parameters: dict[str, Any]) -> dict[str, Any]:
         LIMIT $limit
         """
 
-        related = neo4j_db.run_query(query, {"concept_name": concept_name, "limit": limit})
+        related = neo4j_db.run_query(
+            query, {"concept_name": concept_name, "limit": limit}
+        )
 
         return {"related_concepts": related}
     except Exception as e:
@@ -505,7 +523,9 @@ async def handle_passages_about_concept(parameters: dict[str, Any]) -> dict[str,
         LIMIT $limit
         """
 
-        passages = neo4j_db.run_query(query, {"concept_name": concept_name, "limit": limit})
+        passages = neo4j_db.run_query(
+            query, {"concept_name": concept_name, "limit": limit}
+        )
 
         return {"passages": passages}
     except Exception as e:
@@ -518,14 +538,20 @@ def _run_add_document_task(job: Job) -> dict[str, Any] | None:
     from scripts.document_processing.add_document_core import (
         add_document_to_graphrag,
     )
+
     job_params = job.params
     # For add_bug, we expect 'description' and 'cause'
     description = job_params.get("description")
     cause = job_params.get("cause")
 
     if description is None or cause is None:
-        logger.error(f"Job {job.job_id} for add_bug is missing 'description' or 'cause' parameter.")
-        return {"status": "failure", "error": "Missing 'description' or 'cause' parameter for add_bug job."}
+        logger.error(
+            f"Job {job.job_id} for add_bug is missing 'description' or 'cause' parameter."
+        )
+        return {
+            "status": "failure",
+            "error": "Missing 'description' or 'cause' parameter for add_bug job.",
+        }
 
     text_param = f"Description: {description}\nCause: {cause}"
 
@@ -536,6 +562,7 @@ def _run_add_document_task(job: Job) -> dict[str, Any] | None:
         vector_db=vector_db,
         duplicate_detector=duplicate_detector,
     )
+
 
 # TODO: Implement a similar wrapper for add_folder if async folder processing is needed
 # def _run_add_folder_task(job: Job) -> dict[str, Any] | None:
@@ -601,11 +628,17 @@ async def handle_add_bug(parameters: dict[str, Any]) -> dict[str, Any]:
                 },
             )
             job_manager.run_job_async(job, _run_add_document_task)
-            return {"status": "accepted", "message": "Bug processing started", "job_id": job.job_id, "bug_id": None}
+            return {
+                "status": "accepted",
+                "message": "Bug processing started",
+                "job_id": job.job_id,
+                "bug_id": None,
+            }
         else:
             from scripts.document_processing.add_document_core import (
                 add_document_to_graphrag,
             )
+
             result = add_document_to_graphrag(
                 text=text_for_processing,
                 metadata=metadata,
@@ -613,36 +646,58 @@ async def handle_add_bug(parameters: dict[str, Any]) -> dict[str, Any]:
                 vector_db=vector_db,
                 duplicate_detector=duplicate_detector,
             )
-            if result is None: # This implies a duplicate was found by add_document_to_graphrag
-                 # Re-check with duplicate_detector to get the ID of the duplicate
-                 logger.info("Synchronous add_document_to_graphrag returned None, re-checking for duplicate ID.")
-                 is_dup_again, existing_doc_id_again, method_again = duplicate_detector.is_duplicate(
-                     text_for_processing, metadata_with_hash
-                 )
-                 if is_dup_again:
-                     logger.info(f"Confirmed duplicate on re-check. Existing ID: {existing_doc_id_again}, Method: {method_again}")
-                     return {
+            if (
+                result is None
+            ):  # This implies a duplicate was found by add_document_to_graphrag
+                # Re-check with duplicate_detector to get the ID of the duplicate
+                logger.info(
+                    "Synchronous add_document_to_graphrag returned None, re-checking for duplicate ID."
+                )
+                is_dup_again, existing_doc_id_again, method_again = (
+                    duplicate_detector.is_duplicate(
+                        text_for_processing, metadata_with_hash
+                    )
+                )
+                if is_dup_again:
+                    logger.info(
+                        f"Confirmed duplicate on re-check. Existing ID: {existing_doc_id_again}, Method: {method_again}"
+                    )
+                    return {
                         "status": "duplicate",
                         "message": "Bug is a duplicate (detected during final processing) and was not added.",
                         "bug_id": existing_doc_id_again,
                         "duplicate_detection_method": method_again,
                     }
-                 else:
-                     # This case implies add_document_to_graphrag returned None for a reason other than a detectable duplicate,
-                     # or the duplicate status somehow changed. This is less expected.
-                     logger.warning("add_document_to_graphrag returned None, but no duplicate found on re-check.")
-                     return {
+                else:
+                    # This case implies add_document_to_graphrag returned None for a reason other than a detectable duplicate,
+                    # or the duplicate status somehow changed. This is less expected.
+                    logger.warning(
+                        "add_document_to_graphrag returned None, but no duplicate found on re-check."
+                    )
+                    return {
                         "status": "failure",
                         "message": "Bug processing failed after initial duplicate check, and no duplicate found on re-check.",
                         "bug_id": None,
-                        "error": "Inconsistent duplicate detection or other processing error."
-                     }
+                        "error": "Inconsistent duplicate detection or other processing error.",
+                    }
             elif isinstance(result, dict) and result.get("status") == "failure":
-                return {"status": "failure", "error": result.get("error"), "bug_id": None}
+                return {
+                    "status": "failure",
+                    "error": result.get("error"),
+                    "bug_id": None,
+                }
             elif isinstance(result, dict) and "document_id" in result:
-                return {"status": "success", "message": "Bug added successfully.", "bug_id": result.get("document_id")}
+                return {
+                    "status": "success",
+                    "message": "Bug added successfully.",
+                    "bug_id": result.get("document_id"),
+                }
             else:
-                 return {"status": "failure", "error": "An unexpected error occurred during synchronous bug processing.", "bug_id": None}
+                return {
+                    "status": "failure",
+                    "error": "An unexpected error occurred during synchronous bug processing.",
+                    "bug_id": None,
+                }
 
     except Exception as e:
         logger.exception(f"Error adding bug: {e}")
@@ -679,7 +734,10 @@ async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
                 files_to_process.append(os.path.join(root, file))
 
     if not files_to_process:
-        return {"status": "completed", "message": f"No supported files found in folder: {folder_path}"}
+        return {
+            "status": "completed",
+            "message": f"No supported files found in folder: {folder_path}",
+        }
 
     if process_async:
         job = job_manager.create_job(
@@ -692,8 +750,14 @@ async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
         )
         # TODO: Implement actual asynchronous folder processing task and pass it here
         # job_manager.run_job_async(job, _run_add_folder_task)
-        logger.warning("Async folder processing is not fully implemented, job created but not run.")
-        return {"status": "accepted", "message": f"Folder processing job created for {len(files_to_process)} files", "job_id": job.job_id}
+        logger.warning(
+            "Async folder processing is not fully implemented, job created but not run."
+        )
+        return {
+            "status": "accepted",
+            "message": f"Folder processing job created for {len(files_to_process)} files",
+            "job_id": job.job_id,
+        }
     else:
         results = []
         for file_path in files_to_process:
@@ -705,8 +769,15 @@ async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
                     file_metadata["title"] = os.path.basename(file_path)
 
                 if text is None:
-                     results.append({"status": "failure", "error": f"Could not read text from file: {os.path.basename(file_path)}", "document_id": None, "file": os.path.basename(file_path)})
-                     continue
+                    results.append(
+                        {
+                            "status": "failure",
+                            "error": f"Could not read text from file: {os.path.basename(file_path)}",
+                            "document_id": None,
+                            "file": os.path.basename(file_path),
+                        }
+                    )
+                    continue
 
                 doc_hash = duplicate_detector.generate_document_hash(text)
                 file_metadata_with_hash = file_metadata.copy()
@@ -720,12 +791,14 @@ async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
                     logger.info(
                         f"Document '{file_metadata.get('title', 'Unknown Title')}' is a duplicate (ID: {existing_doc_id}, Method: {method}). Not adding."
                     )
-                    results.append({
-                        "status": "duplicate",
-                        "message": f"Document '{os.path.basename(file_path)}' is a duplicate.",
-                        "document_id": existing_doc_id,
-                        "duplicate_detection_method": method,
-                    })
+                    results.append(
+                        {
+                            "status": "duplicate",
+                            "message": f"Document '{os.path.basename(file_path)}' is a duplicate.",
+                            "document_id": existing_doc_id,
+                            "duplicate_detection_method": method,
+                        }
+                    )
                     continue
 
                 from scripts.document_processing.add_document_core import (
@@ -740,22 +813,51 @@ async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
                     duplicate_detector=duplicate_detector,
                 )
                 if result is None:
-                     results.append({
-                        "status": "duplicate",
-                        "message": f"Document '{os.path.basename(file_path)}' is a duplicate.",
-                        "document_id": None,
-                        "duplicate_detection_method": "unknown",
-                    })
+                    results.append(
+                        {
+                            "status": "duplicate",
+                            "message": f"Document '{os.path.basename(file_path)}' is a duplicate.",
+                            "document_id": None,
+                            "duplicate_detection_method": "unknown",
+                        }
+                    )
                 elif isinstance(result, dict) and result.get("status") == "failure":
-                    results.append({"status": "failure", "error": result.get("error"), "document_id": None, "file": os.path.basename(file_path)})
+                    results.append(
+                        {
+                            "status": "failure",
+                            "error": result.get("error"),
+                            "document_id": None,
+                            "file": os.path.basename(file_path),
+                        }
+                    )
                 elif isinstance(result, dict) and "document_id" in result:
-                    results.append({"status": "success", "document_id": result.get("document_id"), "file": os.path.basename(file_path)})
+                    results.append(
+                        {
+                            "status": "success",
+                            "document_id": result.get("document_id"),
+                            "file": os.path.basename(file_path),
+                        }
+                    )
                 else:
-                     results.append({"status": "failure", "error": "An unexpected error occurred during synchronous document processing.", "document_id": None, "file": os.path.basename(file_path)})
+                    results.append(
+                        {
+                            "status": "failure",
+                            "error": "An unexpected error occurred during synchronous document processing.",
+                            "document_id": None,
+                            "file": os.path.basename(file_path),
+                        }
+                    )
 
             except Exception as e:
                 logger.exception(f"Error processing file {file_path}: {e}")
-                results.append({"status": "failure", "error": str(e), "document_id": None, "file": os.path.basename(file_path)})
+                results.append(
+                    {
+                        "status": "failure",
+                        "error": str(e),
+                        "document_id": None,
+                        "file": os.path.basename(file_path),
+                    }
+                )
 
         return {"status": "completed", "results": results}
 
@@ -780,7 +882,11 @@ async def handle_job_status(parameters: dict[str, Any]) -> dict[str, Any]:
     if not job:
         return {"error": f"Job not found: {job_id}"}
 
-    job_message = job.error if job.status == JobStatus.FAILED else (job.result if job.status == JobStatus.COMPLETED else None)
+    job_message = (
+        job.error
+        if job.status == JobStatus.FAILED
+        else (job.result if job.status == JobStatus.COMPLETED else None)
+    )
 
     return {
         "job_id": job.job_id,
@@ -812,16 +918,19 @@ async def handle_list_jobs(parameters: dict[str, Any]) -> dict[str, Any]:
 
     jobs_to_return = all_jobs[:limit]
 
-
     return {
         "jobs": [
             {
                 "job_id": job.job_id,
                 "status": job.status.value,
                 "progress": job.progress,
-                "message": job.error if job.status == JobStatus.FAILED else (job.result if job.status == JobStatus.COMPLETED else None),
+                "message": job.error
+                if job.status == JobStatus.FAILED
+                else (job.result if job.status == JobStatus.COMPLETED else None),
                 "created_at": job.created_at.isoformat(),
-                "updated_at": job.completed_at.isoformat() if job.completed_at else None,
+                "updated_at": job.completed_at.isoformat()
+                if job.completed_at
+                else None,
             }
             for job in jobs_to_return
         ]
@@ -848,7 +957,10 @@ async def handle_cancel_job(parameters: dict[str, Any]) -> dict[str, Any]:
     if success:
         return {"status": "success", "message": f"Job {job_id} cancelled"}
     else:
-        return {"status": "error", "message": f"Job {job_id} not found or cannot be cancelled"}
+        return {
+            "status": "error",
+            "message": f"Job {job_id} not found or cannot be cancelled",
+        }
 
 
 async def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
@@ -864,7 +976,9 @@ async def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
     client_info = params.get("clientInfo", {})
     protocol_version = params.get("protocolVersion")
 
-    logger.info(f"Client connected: {client_info.get('name')} {client_info.get('version')}")
+    logger.info(
+        f"Client connected: {client_info.get('name')} {client_info.get('version')}"
+    )
     logger.info(f"Client protocol version: {protocol_version}")
 
     # TODO: Implement capability negotiation
@@ -920,7 +1034,7 @@ async def handle_invoke_tool(params: dict[str, Any]) -> dict[str, Any]:
         InvokeTool response with tool result, conforming to CallToolResult schema.
     """
     tool_name = params.get("name")
-    tool_arguments = params.get("arguments", {}) # Corrected key to "arguments"
+    tool_arguments = params.get("arguments", {})  # Corrected key to "arguments"
 
     if tool_name is None or tool_name not in TOOL_HANDLERS:
         error_response = {
@@ -932,27 +1046,27 @@ async def handle_invoke_tool(params: dict[str, Any]) -> dict[str, Any]:
         }
         return {
             "content": [{"type": "text", "text": json.dumps(error_response)}],
-            "isError": True
+            "isError": True,
         }
 
     try:
         handler = TOOL_HANDLERS[tool_name]
-        tool_result_data = await handler(tool_arguments) # Pass tool_arguments
+        tool_result_data = await handler(tool_arguments)  # Pass tool_arguments
 
         if isinstance(tool_result_data, dict) and "error" in tool_result_data:
-             return {
+            return {
                 "content": [{"type": "text", "text": json.dumps(tool_result_data)}],
-                "isError": True
+                "isError": True,
             }
         return {
             "content": [{"type": "text", "text": json.dumps(tool_result_data)}],
-            "isError": False
+            "isError": False,
         }
     except Exception as e:
         logger.exception(f"Error invoking tool {tool_name}")
         error_payload = {"error": f"Error invoking tool: {str(e)}"}
         return {
-            "content": [{"type": "text", "text": json.dumps(error_payload)}] ,
+            "content": [{"type": "text", "text": json.dumps(error_payload)}],
             "isError": True,
         }
 
@@ -1029,7 +1143,10 @@ async def handle_connection(websocket) -> None:
                     result_payload = await handle_invoke_tool(params)
                 else:
                     logger.warning(f"Unknown method '{method}' from client {client_id}")
-                    error_payload = {"code": -32601, "message": f"Method not found: {method}"}
+                    error_payload = {
+                        "code": -32601,
+                        "message": f"Method not found: {method}",
+                    }
 
                 # Prepare response
                 response = {"jsonrpc": "2.0", "id": request_id}

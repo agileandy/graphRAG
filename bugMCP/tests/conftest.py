@@ -16,6 +16,7 @@ from mcp.client.websocket import websocket_client
 from mcp.types import TextContent
 from src.config import get_port
 
+
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an event loop for the test session."""
@@ -23,9 +24,10 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     yield loop
     loop.close()
 
+
 @pytest.fixture(scope="session")
 async def mcp_server(
-    event_loop: asyncio.AbstractEventLoop
+    event_loop: asyncio.AbstractEventLoop,
 ) -> AsyncGenerator[subprocess.Popen, None]:
     """Start the MCP server as a fixture."""
     port = get_port("bug_mcp")
@@ -77,18 +79,21 @@ async def mcp_server(
         server_process.kill()
         server_process.wait()
 
+
 @pytest.fixture
 async def mcp_session(
-    mcp_server: subprocess.Popen
+    mcp_server: subprocess.Popen,
 ) -> AsyncGenerator[ClientSession, None]:
     """Create a connected MCP client session."""
     port = get_port("bug_mcp")
-    async with websocket_client(
-        f"ws://localhost:{port}"
-    ) as (read_stream, write_stream):
+    async with websocket_client(f"ws://localhost:{port}") as (
+        read_stream,
+        write_stream,
+    ):
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
             yield session
+
 
 @pytest.fixture
 def test_bug_data() -> dict[str, Any]:
@@ -101,10 +106,9 @@ def test_bug_data() -> dict[str, Any]:
         "tags": ["test", "automated"],
     }
 
+
 @pytest.fixture(autouse=True)
-async def cleanup_bugs(
-    mcp_session: ClientSession
-) -> AsyncGenerator[None, None]:
+async def cleanup_bugs(mcp_session: ClientSession) -> AsyncGenerator[None, None]:
     """Clean up any bugs created during tests."""
     yield
     # After each test, list all bugs and delete them

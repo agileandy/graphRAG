@@ -78,9 +78,7 @@ class OpenRouterSignup:
     async def bypass_protection(self) -> None:
         """Bypasses initial protection and fetches cookies."""
         self.session.get("https://openrouter.ai/")
-        self.session.get(
-            f"{self.BASE_URL}?_clerk_js_version={self.CLERK_VERSION}"
-        )
+        self.session.get(f"{self.BASE_URL}?_clerk_js_version={self.CLERK_VERSION}")
         self.cookies = [
             {"name": name, "value": value}
             for name, value in self.session.cookies.items()
@@ -120,10 +118,7 @@ class OpenRouterSignup:
         }
 
         response = self.session.post(
-            (
-                f"{self.BASE_URL}/sign_ups/{self.signup_id}"
-                "/prepare_verification"
-            ),
+            (f"{self.BASE_URL}/sign_ups/{self.signup_id}/prepare_verification"),
             params={"_clerk_js_version": self.CLERK_VERSION},
             data=data,
         )
@@ -151,11 +146,9 @@ class OpenRouterSignup:
                         r"https://[^\s]+", email_content.html_body
                     )
                     if url_match_search:
-                        url_match = (
-                            url_match_search.group().replace("amp;", "")[:-1]
-                        )
+                        url_match = url_match_search.group().replace("amp;", "")[:-1]
                     else:
-                        url_match = None # Or handle error appropriately
+                        url_match = None  # Or handle error appropriately
                     if url_match:
                         print(f"{Fore.GREEN}(!) Got verification link: {url_match}")
                         return url_match
@@ -188,11 +181,8 @@ class OpenRouterSignup:
 
         if isinstance(self.cookies, dict):
             cookies_list = [
-                {
-                    "name": name,
-                    "value": value,
-                    "domain": ".openrouter.ai"
-                } for name, value in self.cookies.items()
+                {"name": name, "value": value, "domain": ".openrouter.ai"}
+                for name, value in self.cookies.items()
             ]
         else:
             cookies_list = self.cookies
@@ -206,7 +196,9 @@ class OpenRouterSignup:
 
             clean_cookie = {
                 k: v
-                for k, v in cookie.items() if k in [
+                for k, v in cookie.items()
+                if k
+                in [
                     "name",
                     "value",
                     "domain",
@@ -230,7 +222,7 @@ class OpenRouterSignup:
 
     async def get_jwt(self) -> str | None:
         """Retrieves the JWT token."""
-        data_payload = { # Renamed to avoid conflict with response data
+        data_payload = {  # Renamed to avoid conflict with response data
             "identifier": self.email_address,
         }
 
@@ -239,9 +231,9 @@ class OpenRouterSignup:
                 "https://clerk.openrouter.ai/v1/client/sign_ins"
                 f"?_clerk_js_version={self.CLERK_VERSION}"
             ),
-            data=data_payload, # Use renamed variable
+            data=data_payload,  # Use renamed variable
         )
-        response_data = response.json() # Renamed to avoid conflict
+        response_data = response.json()  # Renamed to avoid conflict
 
         if response_data["response"]["status"] == "needs_first_factor":
             response = self.session.post(
@@ -252,15 +244,15 @@ class OpenRouterSignup:
                 params={"_clerk_js_version": self.CLERK_VERSION},
                 data={"strategy": "password", "password": self.password},
             )
-            response_data_factor = response.json() # Use a new variable
+            response_data_factor = response.json()  # Use a new variable
 
-            jwt_token = response_data_factor["client"]["sessions"][0]["last_active_token"]["jwt"]
+            jwt_token = response_data_factor["client"]["sessions"][0][
+                "last_active_token"
+            ]["jwt"]
             self.jwt = jwt_token
-            print(
-                f"{Fore.GREEN}(!) JWT retrieved successfully JWT: {jwt_token}"
-            )
+            print(f"{Fore.GREEN}(!) JWT retrieved successfully JWT: {jwt_token}")
             return jwt_token
-        return None # Ensure all paths return
+        return None  # Ensure all paths return
 
     async def generate_api_key(self) -> str:
         """Generates an API key."""
@@ -279,9 +271,7 @@ class OpenRouterSignup:
             cookies=cookies,
             data=data,
             headers={
-                "next-action": (
-                    "e20f1f45c9c350f4bc59c480970318141293b673"
-                ),
+                "next-action": ("e20f1f45c9c350f4bc59c480970318141293b673"),
             },
         )
         # why the fuck does self.session.post raise an error?
@@ -291,9 +281,7 @@ class OpenRouterSignup:
             raise ValueError("Could not find API key in response.")
         api_key: str = match.group(1)
 
-        print(
-            f"{Fore.GREEN}(!) API key generated! API key: {api_key}"
-        )
+        print(f"{Fore.GREEN}(!) API key generated! API key: {api_key}")
         return api_key
 
 
@@ -347,8 +335,8 @@ async def main() -> None:
     """Main function to create accounts in a loop."""
     proxy_url: str | None = (
         None  # Replace with your proxy URL if you have one.
-              # Else, use a VPN. Do not use your IPs, or you will get
-              # banned by OpenRouter.
+        # Else, use a VPN. Do not use your IPs, or you will get
+        # banned by OpenRouter.
     )
     while True:
         account_data = await create_account(proxy_url=proxy_url)

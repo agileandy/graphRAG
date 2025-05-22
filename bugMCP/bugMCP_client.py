@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Client script for the Bug Tracking MCP server.
 
-This script provides a command-line interface to interact with the Bug Tracking MCP server.
+This script provides a command-line interface to interact with the Bug Tracking MCP
+server.
 """
 
 import argparse
@@ -11,7 +12,9 @@ import os
 import sys
 
 # Add src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+)
 
 from mcp import ClientSession  # noqa: E402
 from mcp.client.streamable_http import streamablehttp_client  # noqa: E402
@@ -115,7 +118,8 @@ async def interactive_mode(host: str, port: int) -> None:
                 if result.get("total_records", 0) > 0:
                     for bug in result.get("bugs", []):
                         print(
-                            f"ID: {bug['id']}, Status: {bug['status']}, Description: {bug['description']}"
+                            f"ID: {bug['id']}, Status: {bug['status']}, "
+                            f"Description: {bug['description']}"
                         )
                 else:
                     print("No bugs found.")
@@ -232,13 +236,9 @@ async def command_mode(host: str, port: int, args) -> None:
 
 def main() -> None:
     """Main function."""
-    parser = argparse.ArgumentParser(
-        description="Bug Tracking MCP Client"
-    )
-    parser.add_argument("--host", type=str, default="localhost",
-                       help="MCP server host")
-    parser.add_argument("--port", type=int, default=5005,
-                       help="MCP server port")
+    parser = argparse.ArgumentParser(description="Bug Tracking MCP Client")
+    parser.add_argument("--host", type=str, default="localhost", help="MCP server host")
+    parser.add_argument("--port", type=int, default=5005, help="MCP server port")
 
     subparsers = parser.add_subparsers(dest="action", help="Action to perform")
 
