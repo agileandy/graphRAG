@@ -2,10 +2,16 @@
 
 import asyncio
 import json
+import os
 import sys
 
 import websockets
 
+# Add the project root directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# Import port configuration
+from src.config.ports import get_port
 
 async def test_search(uri, query="GraphRAG", n_results=3, max_hops=2) -> bool | None:
     """Test search functionality for GraphRAG content."""
@@ -39,7 +45,9 @@ async def test_search(uri, query="GraphRAG", n_results=3, max_hops=2) -> bool | 
 
 
 async def main() -> None:
-    uri = "ws://localhost:8766"
+    mpc_port = get_port("mpc")
+    host = os.getenv("MPC_HOST", "localhost") # Use MPC_HOST or default to localhost for client connection
+    uri = f"ws://{host}:{mpc_port}"
 
     # Search for GraphRAG content
     query = "GraphRAG hybrid approach"

@@ -123,6 +123,46 @@ Wait for the services to initialize. You can check their status with:
 ```
 The `tests/regression/test_utils.py` script also contains a `wait_for_api_ready()` function that tests use internally.
 *   Database Initialization: After services are up and databases are clean, run `uv run --python .venv-py312/bin/python scripts/database_management/initialize_database.py` to ensure schemas, indexes, and constraints are correctly set up.
+*
+### 3.1. Unit Testing
+Unit tests are written using pytest to verify individual components.
+They are located in the `tests/unit` directory.
+
+### 3.2. Recently Added Unit Test Coverage (Post Bug Audit)
+
+Based on the recent Bug Audit Report, the following unit tests have been added to `tests/unit/` to verify fixes and ensure robustness of key components:
+
+*   **`/Users/andyspamer/Dev-Space/pythonProjects/graphRAG/tests/unit/test_ports.py`**:
+    *   **Purpose**: Verifies the centralized port configuration system (`src/config/ports.py`).
+    *   **Coverage**:
+        *   Retrieval of default port values for services like API, MPC, and MCP.
+        *   Correct overriding of port values using environment variables (e.g., `GRAPHRAG_PORT_API`).
+        *   Handling of requests for unknown services or invalid port values in environment variables.
+    *   **Related Bugs**: Addresses issues stemming from port mismatches and hardcoded ports (e.g., Bugs #2, #10, #11, #12, #13, #14-19, #20-25, #31, #32).
+
+*   **`/Users/andyspamer/Dev-Space/pythonProjects/graphRAG/tests/unit/test_database_config.py`**:
+    *   **Purpose**: Tests the configuration loading and initialization logic for database connections.
+    *   **Coverage**:
+        *   **Neo4j**: Verifies `Neo4jDatabase` URI parsing, ensuring the default port (7687) is correctly appended if missing (related to Bug #30). Tests behavior with and without explicit ports in `NEO4J_URI`.
+        *   **VectorDatabase (ChromaDB)**: Tests `VectorDatabase` initialization, focusing on:
+            *   Correct loading of directory paths from environment variables (`CHROMA_DB_DIRECTORY`).
+            *   Conversion of relative paths to absolute paths (related to Bugs #4, #9).
+            *   Proper handling and passing of the `CHROMA_TENANT` parameter, including defaulting to "default_tenant" (related to Bug #44).
+            *   Error handling for missing essential environment variables.
+
+*   **`/Users/andyspamer/Dev-Space/pythonProjects/graphRAG/tests/unit/test_processing_logic.py`**:
+    *   **Purpose**: Validates core data processing functions and LLM interaction logic, particularly within `src/processing/concept_extractor.py` and `src/llm/llm_provider.py`.
+    *   **Coverage**:
+        *   **Document Chunking**: Tests `smart_chunk_text` (as used by `ConceptExtractor._chunk_text`) for correct behavior with basic text, paragraph preservation, and handling of large paragraphs by splitting sentences (related to Bug #34).
+        *   **Concept Validation**: Verifies `_is_valid_concept` correctly filters out concepts containing stopwords (e.g., "part"), improving the quality of rule-based extracted concepts (related to Bug #37).
+        *   **LLM Configuration**:
+            *   Tests `load_llm_config` (from `concept_extractor.py`) for OpenRouter API key handling: prioritizing `OPENROUTER_API_KEY` environment variable and managing placeholder values (related to Bug #35).
+            *   Verifies `create_llm_provider` (from `llm_provider.py`) correctly casts configuration values (e.g., `api_base`, `model`) to strings to prevent type errors (related to Bug #36, part 1).
+        *   **Ollama Provider**: Ensures the `OllamaProvider` uses the correct `/api/embeddings` endpoint for generating embeddings (related to Bug #40).
+        *   **Chunking Robustness**: Tests the `_chunk_text` method in `ConceptExtractor` to ensure it robustly returns a `list[str]`, even if its internal call to `smart_chunk_text` returns unexpected types or raises errors (related to Bug #36, part 2).
+
+These unit tests aim to prevent regressions related to the fixed bugs and improve the overall stability of the configuration and processing components.
+
 
 **4. Run Tests:**
 

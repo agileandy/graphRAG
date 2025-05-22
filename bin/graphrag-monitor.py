@@ -10,12 +10,11 @@ import os
 import subprocess
 import sys
 import time
-
 import psutil
+from src.config import get_port
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.config import get_port
 
 # Configuration
 LOG_FILE = os.path.expanduser("~/.graphrag/logs/monitor.log")
@@ -97,7 +96,7 @@ def check_service(service) -> bool | None:
     try:
         with open(pid_file) as f:
             pid = int(f.read().strip())
-    except (OSError, ValueError) as e:
+    except Exception as e:
         logging.error(f"Error reading PID file for {name}: {e}")
         return False
 
@@ -124,7 +123,8 @@ def check_service(service) -> bool | None:
                     )
                     if result.stdout.strip() != "200":
                         logging.warning(
-                            f"{name} service is not responding properly (HTTP {result.stdout.strip()})"
+                            f"{name} service is not responding properly "
+                            f"(HTTP {result.stdout.strip()})"
                         )
                         return False
                 except subprocess.SubprocessError as e:
@@ -134,7 +134,9 @@ def check_service(service) -> bool | None:
             # Service is running
             return True
         else:
-            logging.warning(f"{name} service is not running (PID {pid} not found)")
+            logging.warning(
+                f"{name} service is not running (PID {pid} not found)"
+            )
             return False
     except psutil.NoSuchProcess:
         logging.warning(f"{name} service is not running (PID {pid} not found)")
@@ -183,7 +185,8 @@ def collect_resource_usage() -> None:
     disk = psutil.disk_usage("/")
 
     logging.info(
-        f"Resource Usage - CPU: {cpu_percent}%, Memory: {memory.percent}%, Disk: {disk.percent}%"
+        f"Resource Usage - CPU: {cpu_percent}%, "
+        f"Memory: {memory.percent}%, Disk: {disk.percent}%"
     )
 
 

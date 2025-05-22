@@ -1,6 +1,6 @@
 import uuid
 
-from scripts.database_management.clean_database import clean_database
+from scripts.database_management.clean_database import clean_database, clean_neo4j, clean_chromadb
 from tests.regression.test_utils import (
     add_test_document,
     get_document_count,
@@ -22,7 +22,7 @@ def generate_unique_document(index):
     }
 
 
-def test_mcp_single_document() -> None:
+async def test_mcp_single_document() -> None:
     """Add doc via MCP."""
     print("\nTesting MCP single document addition...")
     process = None
@@ -42,8 +42,8 @@ def test_mcp_single_document() -> None:
         # Add a single document
         doc_data = generate_unique_document(1)
         add_success, add_response = add_test_document(
-            doc_data["text"], doc_data["metadata"], use_mcp=True
-        )  # Assuming use_mcp flag or similar
+            doc_data["text"], doc_data["metadata"]
+        )
         assert add_success, (
             f"Failed to add single document via MCP: {add_response.get('error', 'Unknown error')}"
         )
@@ -54,9 +54,7 @@ def test_mcp_single_document() -> None:
         # print("Added document verified in database.")
 
         # Basic verification using document count
-        count_success, count_response = get_document_count(
-            use_mcp=True
-        )  # Assuming get_document_count supports MCP
+        count_success, count_response = await get_document_count()
         assert count_success, (
             f"Failed to get document count via MCP: {count_response.get('error', 'Unknown error')}"
         )
@@ -75,7 +73,7 @@ def test_mcp_single_document() -> None:
             print("Services stopped successfully after MCP single document test.")
 
 
-def test_mcp_bulk_documents() -> None:
+async def test_mcp_bulk_documents() -> None:
     """Add 50 docs via MCP."""
     print("\nTesting MCP bulk document addition...")
     process = None
@@ -98,8 +96,8 @@ def test_mcp_bulk_documents() -> None:
         for i in range(num_documents):
             doc_data = generate_unique_document(i)
             add_success, add_response = add_test_document(
-                doc_data["text"], doc_data["metadata"], use_mcp=True
-            )  # Assuming use_mcp flag or similar
+                doc_data["text"], doc_data["metadata"]
+            )
             assert add_success, (
                 f"Failed to add document {i + 1} via MCP: {add_response.get('error', 'Unknown error')}"
             )
@@ -110,9 +108,7 @@ def test_mcp_bulk_documents() -> None:
         # print(f"Document count verified: {get_documents_count()}")
 
         # Basic verification using document count
-        count_success, count_response = get_document_count(
-            use_mcp=True
-        )  # Assuming get_document_count supports MCP
+        count_success, count_response = await get_document_count()
         assert count_success, (
             f"Failed to get document count via MCP: {count_response.get('error', 'Unknown error')}"
         )
@@ -129,7 +125,7 @@ def test_mcp_bulk_documents() -> None:
             print("Services stopped successfully after MCP bulk documents test.")
 
 
-def test_mcp_duplicate() -> None:
+async def test_mcp_duplicate() -> None:
     """Duplicate via MCP."""
     print("\nTesting MCP duplicate document addition...")
     process = None
@@ -149,8 +145,8 @@ def test_mcp_duplicate() -> None:
         # Add a single document
         doc_data = generate_unique_document(1)
         add_success_first, add_response_first = add_test_document(
-            doc_data["text"], doc_data["metadata"], use_mcp=True
-        )  # Assuming use_mcp flag or similar
+            doc_data["text"], doc_data["metadata"]
+        )
         assert add_success_first, (
             f"Failed to add initial document via MCP: {add_response_first.get('error', 'Unknown error')}"
         )
@@ -158,8 +154,8 @@ def test_mcp_duplicate() -> None:
 
         # Attempt to add the same document again
         add_success_second, add_response_second = add_test_document(
-            doc_data["text"], doc_data["metadata"], use_mcp=True
-        )  # Assuming use_mcp flag or similar
+            doc_data["text"], doc_data["metadata"]
+        )
 
         # Assert that the duplicate addition fails or is handled correctly
         # This assertion depends on how the API/MCP handles duplicates.
