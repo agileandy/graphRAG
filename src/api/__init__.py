@@ -1,3 +1,1 @@
-"""
-API module for GraphRAG project.
-"""
+"""API module for GraphRAG project."""

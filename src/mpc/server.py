@@ -1,5 +1,4 @@
-"""
-MPC (Message Passing Communication) server for GraphRAG project.
+"""MPC (Message Passing Communication) server for GraphRAG project.
 
 This module provides a simple MPC server that allows AI agents to interact with
 the GraphRAG system through a WebSocket interface.
@@ -9,23 +8,29 @@ Features:
 - Job status tracking and progress reporting
 - Duplicate detection for documents
 """
-import os
-import sys
-import json
+
 import asyncio
 import glob
+import json
+import logging
+import os
+import sys
 import time
+import traceback
+from typing import Any
+
 import websockets
-from typing import Dict, Any, Optional, Set
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+logger = logging.getLogger(__name__)
+
+from src.database.db_linkage import DatabaseLinkage
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
-from src.database.db_linkage import DatabaseLinkage
-from src.processing.job_manager import JobManager, JobStatus
 from src.processing.duplicate_detector import DuplicateDetector
+from src.processing.job_manager import JobManager, JobStatus
 
 # Initialize database connections
 neo4j_db = Neo4jDatabase()
@@ -39,12 +44,12 @@ job_manager = JobManager()
 duplicate_detector = DuplicateDetector(vector_db)
 
 # Map of client connections to their active jobs
-client_jobs: Dict[int, Set[str]] = {}
+client_jobs: dict[int, set[str]] = {}
+
 
 # Define handler functions
-async def handle_search(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle hybrid search request.
+async def handle_search(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle hybrid search request.
 
     Args:
         data: Request data containing:
@@ -54,39 +59,39 @@ async def handle_search(data: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Search results
-    """
-    if 'query' not in data:
-        return {'error': 'Missing required parameter: query'}
 
-    query = data['query']
-    n_results = data.get('n_results', 5)
-    max_hops = data.get('max_hops', 2)
+    """
+    if "query" not in data:
+        return {"error": "Missing required parameter: query"}
+
+    query = data["query"]
+    n_results = data.get("n_results", 5)
+    max_hops = data.get("max_hops", 2)
 
     try:
         results = db_linkage.hybrid_search(
-            query_text=query,
-            n_vector_results=n_results,
-            max_graph_hops=max_hops
+            query_text=query, n_vector_results=n_results, max_graph_hops=max_hops
         )
 
         return results
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
-async def handle_concept(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle concept request.
+
+async def handle_concept(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle concept request.
 
     Args:
         data: Request data
 
     Returns:
         Concept information and related concepts
-    """
-    if 'concept_name' not in data:
-        return {'error': 'Missing required parameter: concept_name'}
 
-    concept_name = data['concept_name']
+    """
+    if "concept_name" not in data:
+        return {"error": "Missing required parameter: concept_name"}
+
+    concept_name = data["concept_name"]
 
     try:
         # Find the concept by name (case-insensitive)
@@ -98,7 +103,7 @@ async def handle_concept(data: Dict[str, Any]) -> Dict[str, Any]:
         results = neo4j_db.run_query(query, {"name": concept_name})
 
         if not results:
-            return {'error': f"No concept found with name containing '{concept_name}'"}
+            return {"error": f"No concept found with name containing '{concept_name}'"}
 
         # Use the first matching concept
         concept_id = results[0]["id"]
@@ -122,30 +127,28 @@ async def handle_concept(data: Dict[str, Any]) -> Dict[str, Any]:
                 unique_related.append(item)
 
         return {
-            'concept': {
-                'id': concept_id,
-                'name': concept_name
-            },
-            'related_concepts': unique_related
+            "concept": {"id": concept_id, "name": concept_name},
+            "related_concepts": unique_related,
         }
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
-async def handle_documents(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle documents request.
+
+async def handle_documents(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle documents request.
 
     Args:
         data: Request data
 
     Returns:
         List of documents related to a concept
-    """
-    if 'concept_name' not in data:
-        return {'error': 'Missing required parameter: concept_name'}
 
-    concept_name = data['concept_name']
-    limit = data.get('limit', 5)
+    """
+    if "concept_name" not in data:
+        return {"error": "Missing required parameter: concept_name"}
+
+    concept_name = data["concept_name"]
+    limit = data.get("limit", 5)
 
     try:
         # Find the concept by name (case-insensitive)
@@ -157,16 +160,14 @@ async def handle_documents(data: Dict[str, Any]) -> Dict[str, Any]:
         results = neo4j_db.run_query(query, {"name": concept_name})
 
         if not results:
-            return {'error': f"No concept found with name containing '{concept_name}'"}
+            return {"error": f"No concept found with name containing '{concept_name}'"}
 
         # Use the first matching concept
         concept_id = results[0]["id"]
         concept_name = results[0]["name"]
 
         # Query vector database for chunks mentioning this concept
-        results_primary = vector_db.get(
-            where={"concept_id": concept_id}
-        )
+        results_primary = vector_db.get(where={"concept_id": concept_id})
 
         # Then, try to find in the comma-separated concept_ids field
         all_docs = vector_db.get()
@@ -199,25 +200,26 @@ async def handle_documents(data: Dict[str, Any]) -> Dict[str, Any]:
         # Format the response
         documents = []
         for i, doc_id in enumerate(combined_ids):
-            documents.append({
-                'id': doc_id,
-                'text': combined_docs[i],
-                'metadata': combined_metadatas[i]
-            })
+            documents.append(
+                {
+                    "id": doc_id,
+                    "text": combined_docs[i],
+                    "metadata": combined_metadatas[i],
+                }
+            )
 
         return {
-            'concept': {
-                'id': concept_id,
-                'name': concept_name
-            },
-            'documents': documents
+            "concept": {"id": concept_id, "name": concept_name},
+            "documents": documents,
         }
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
-async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Handle add document request.
+
+async def handle_add_document(
+    data: dict[str, Any], client_id: int | None = None
+) -> dict[str, Any]:
+    """Handle add document request.
 
     Args:
         data: Request data containing:
@@ -228,13 +230,14 @@ async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = N
 
     Returns:
         Status of the operation or job ID if async
-    """
-    if 'text' not in data:
-        return {'error': 'Missing required parameter: text'}
 
-    text = data['text']
-    metadata = data.get('metadata', {})
-    process_async = data.get('async_processing', data.get('async', False))
+    """
+    if "text" not in data:
+        return {"error": "Missing required parameter: text"}
+
+    text = data["text"]
+    metadata = data.get("metadata", {})
+    process_async = data.get("async_processing", data.get("async", False))
 
     try:
         # Ensure vector database is connected
@@ -242,15 +245,17 @@ async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = N
 
         # Ensure Neo4j database is connected
         if not neo4j_db.verify_connection():
-            return {'error': 'Neo4j database connection failed'}
+            return {"error": "Neo4j database connection failed"}
 
         # Check for duplicates
-        is_duplicate, existing_id, method = duplicate_detector.is_duplicate(text, metadata)
+        is_duplicate, existing_id, method = duplicate_detector.is_duplicate(
+            text, metadata
+        )
         if is_duplicate:
             return {
-                'status': 'duplicate',
-                'message': f'Document already exists in the database (detected by {method})',
-                'document_id': existing_id
+                "status": "duplicate",
+                "message": f"Document already exists in the database (detected by {method})",
+                "document_id": existing_id,
             }
 
         # If async processing is requested, create a job
@@ -258,11 +263,8 @@ async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = N
             # Create a job
             job = job_manager.create_job(
                 job_type="add-document",
-                params={
-                    'text': text,
-                    'metadata': metadata
-                },
-                created_by=str(client_id) if client_id else None
+                params={"text": text, "metadata": metadata},
+                created_by=str(client_id) if client_id else None,
             )
 
             # Add job to client's active jobs
@@ -275,49 +277,52 @@ async def handle_add_document(data: Dict[str, Any], client_id: Optional[int] = N
             job_manager.run_job_async(job, _process_add_document_job)
 
             return {
-                'status': 'accepted',
-                'message': 'Document processing started',
-                'job_id': job.job_id
+                "status": "accepted",
+                "message": "Document processing started",
+                "job_id": job.job_id,
             }
 
         # Synchronous processing
         # Import here to avoid circular imports
-        from scripts.document_processing.add_document_core import add_document_to_graphrag
+        from scripts.document_processing.add_document_core import (
+            add_document_to_graphrag,
+        )
 
         result = add_document_to_graphrag(
             text=text,
             metadata=metadata,
             neo4j_db=neo4j_db,
             vector_db=vector_db,
-            duplicate_detector=duplicate_detector
+            duplicate_detector=duplicate_detector,
         )
 
         return {
-            'status': 'success',
-            'message': 'Document added successfully',
-            'document_id': result.get('document_id') if result else None,
-            'entities': result.get('entities', []) if result else [],
-            'relationships': result.get('relationships', []) if result else []
+            "status": "success",
+            "message": "Document added successfully",
+            "document_id": result.get("document_id") if result else None,
+            "entities": result.get("entities", []) if result else [],
+            "relationships": result.get("relationships", []) if result else [],
         }
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
-async def _process_add_document_job(job) -> Dict[str, Any]:
-    """
-    Process an add document job.
+
+async def _process_add_document_job(job) -> dict[str, Any]:
+    """Process an add document job.
 
     Args:
         job: Job object
 
     Returns:
         Result of the operation
+
     """
     # Import here to avoid circular imports
     from scripts.document_processing.add_document_core import add_document_to_graphrag
 
     # Extract parameters
-    text = job.params['text']
-    metadata = job.params.get('metadata', {})
+    text = job.params["text"]
+    metadata = job.params.get("metadata", {})
 
     # Update job progress
     job.update_progress(0, 1)
@@ -328,21 +333,23 @@ async def _process_add_document_job(job) -> Dict[str, Any]:
         metadata=metadata,
         neo4j_db=neo4j_db,
         vector_db=vector_db,
-        duplicate_detector=duplicate_detector
+        duplicate_detector=duplicate_detector,
     )
 
     # Update job progress
     job.update_progress(1, 1)
 
     return {
-        'document_id': result.get('document_id') if result else None,
-        'entities': result.get('entities', []) if result else [],
-        'relationships': result.get('relationships', []) if result else []
+        "document_id": result.get("document_id") if result else None,
+        "entities": result.get("entities", []) if result else [],
+        "relationships": result.get("relationships", []) if result else [],
     }
 
-async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Handle add folder request.
+
+async def handle_add_folder(
+    data: dict[str, Any], client_id: int | None = None
+) -> dict[str, Any]:
+    """Handle add folder request.
 
     Args:
         data: Request data containing:
@@ -354,23 +361,27 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
 
     Returns:
         Status of the operation or job ID if async
-    """
-    if 'folder_path' not in data:
-        return {'error': 'Missing required parameter: folder_path'}
 
-    folder_path = data['folder_path']
-    recursive = data.get('recursive', False)
+    """
+    if "folder_path" not in data:
+        return {"error": "Missing required parameter: folder_path"}
+
+    folder_path = data["folder_path"]
+    recursive = data.get("recursive", False)
 
     # Import file handler to get supported extensions
     from src.processing.file_handler import FileHandler
-    default_file_types = [".txt", ".json"] + FileHandler.get_supported_extensions()
-    file_types = data.get('file_types', default_file_types)
 
-    process_async = data.get('async_processing', data.get('async', True))  # Default to async for folders
+    default_file_types = [".txt", ".json"] + FileHandler.get_supported_extensions()
+    file_types = data.get("file_types", default_file_types)
+
+    process_async = data.get(
+        "async_processing", data.get("async", True)
+    )  # Default to async for folders
 
     # Validate folder path
     if not os.path.isdir(folder_path):
-        return {'error': f"Folder not found: {folder_path}"}
+        return {"error": f"Folder not found: {folder_path}"}
 
     try:
         # Ensure vector database is connected
@@ -378,7 +389,7 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
 
         # Ensure Neo4j database is connected
         if not neo4j_db.verify_connection():
-            return {'error': 'Neo4j database connection failed'}
+            return {"error": "Neo4j database connection failed"}
 
         # Find all matching files
         all_files = []
@@ -394,11 +405,11 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
 
         if not all_files:
             return {
-                'status': 'warning',
-                'message': f"No matching files found in {folder_path}",
-                'processed_files': 0,
-                'entities': [],
-                'relationships': []
+                "status": "warning",
+                "message": f"No matching files found in {folder_path}",
+                "processed_files": 0,
+                "entities": [],
+                "relationships": [],
             }
 
         # If async processing is requested, create a job
@@ -407,12 +418,12 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
             job = job_manager.create_job(
                 job_type="add-folder",
                 params={
-                    'folder_path': folder_path,
-                    'recursive': recursive,
-                    'file_types': file_types,
-                    'files': all_files  # Pass the list of files to avoid re-scanning
+                    "folder_path": folder_path,
+                    "recursive": recursive,
+                    "file_types": file_types,
+                    "files": all_files,  # Pass the list of files to avoid re-scanning
                 },
-                created_by=str(client_id) if client_id else None
+                created_by=str(client_id) if client_id else None,
             )
 
             # Set initial job progress
@@ -425,18 +436,25 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                 client_jobs[client_id].add(job.job_id)
 
             # Start the job
-            job_manager.run_job_async(job, _process_add_folder_job)
+            # Use threading to avoid coroutine issues
+            import threading
+
+            thread = threading.Thread(target=_process_add_folder_job, args=(job,))
+            thread.daemon = True
+            thread.start()
 
             return {
-                'status': 'accepted',
-                'message': f'Processing {len(all_files)} files from {folder_path}',
-                'job_id': job.job_id,
-                'total_files': len(all_files)
+                "status": "accepted",
+                "message": f"Processing {len(all_files)} files from {folder_path}",
+                "job_id": job.job_id,
+                "total_files": len(all_files),
             }
 
         # Synchronous processing
         # Import here to avoid circular imports
-        from scripts.document_processing.add_document_core import add_document_to_graphrag
+        from scripts.document_processing.add_document_core import (
+            add_document_to_graphrag,
+        )
 
         # Process each file
         processed_files = 0
@@ -453,21 +471,21 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                 # Import file handler
                 from src.processing.file_handler import FileHandler
 
-                if file_ext == '.txt':
+                if file_ext == ".txt":
                     # Read text file
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         text = f.read()
 
                     # Create metadata from filename
                     metadata = {
                         "title": os.path.splitext(file_name)[0],
                         "source": "Text File",
-                        "file_path": file_path
+                        "file_path": file_path,
                     }
 
-                elif file_ext == '.json':
+                elif file_ext == ".json":
                     # Read JSON file
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         data = json.load(f)
 
                     # Extract text and metadata
@@ -490,7 +508,9 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                             skipped_files += 1
                             continue
                     except Exception as e:
-                        print(f"Error processing file {file_path} with FileHandler: {e}")
+                        print(
+                            f"Error processing file {file_path} with FileHandler: {e}"
+                        )
                         skipped_files += 1
                         continue
 
@@ -501,9 +521,13 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                     continue
 
                 # Check for duplicates
-                is_duplicate, _, method = duplicate_detector.is_duplicate(text, metadata)
+                is_duplicate, _, method = duplicate_detector.is_duplicate(
+                    text, metadata
+                )
                 if is_duplicate:
-                    print(f"Skipping duplicate file: {file_path} (detected by {method})")
+                    print(
+                        f"Skipping duplicate file: {file_path} (detected by {method})"
+                    )
                     duplicate_files += 1
                     continue
 
@@ -513,46 +537,49 @@ async def handle_add_folder(data: Dict[str, Any], client_id: Optional[int] = Non
                     metadata=metadata,
                     neo4j_db=neo4j_db,
                     vector_db=vector_db,
-                    duplicate_detector=duplicate_detector
+                    duplicate_detector=duplicate_detector,
                 )
 
                 processed_files += 1
-                all_entities.extend(result.get('entities', []) if result else [])
-                all_relationships.extend(result.get('relationships', []) if result else [])
+                all_entities.extend(result.get("entities", []) if result else [])
+                all_relationships.extend(
+                    result.get("relationships", []) if result else []
+                )
 
             except Exception as e:
                 print(f"Error processing file {file_path}: {e}")
                 skipped_files += 1
 
         return {
-            'status': 'success',
-            'message': f"Processed {processed_files} files from {folder_path}",
-            'processed_files': processed_files,
-            'skipped_files': skipped_files,
-            'duplicate_files': duplicate_files,
-            'total_files': len(all_files),
-            'entities': all_entities,
-            'relationships': all_relationships
+            "status": "success",
+            "message": f"Processed {processed_files} files from {folder_path}",
+            "processed_files": processed_files,
+            "skipped_files": skipped_files,
+            "duplicate_files": duplicate_files,
+            "total_files": len(all_files),
+            "entities": all_entities,
+            "relationships": all_relationships,
         }
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
-async def _process_add_folder_job(job) -> Dict[str, Any]:
-    """
-    Process an add folder job.
+
+def _process_add_folder_job(job) -> dict[str, Any]:
+    """Process an add folder job.
 
     Args:
         job: Job object
 
     Returns:
         Result of the operation
+
     """
     # Import here to avoid circular imports
     from scripts.document_processing.add_document_core import add_document_to_graphrag
 
     # Extract parameters
-    folder_path = job.params['folder_path']
-    all_files = job.params['files']
+    folder_path = job.params["folder_path"]
+    all_files = job.params["files"]
 
     # Process each file
     processed_files = 0
@@ -561,9 +588,16 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
     all_entities = []
     all_relationships = []
 
+    # Mark job as started
+    job.start()
+    print(
+        f"Starting job {job.job_id} to process {len(all_files)} files from {folder_path}"
+    )
+
     for i, file_path in enumerate(all_files):
         # Update job progress
         job.update_progress(i, len(all_files))
+        print(f"Processing file {i + 1}/{len(all_files)}: {file_path}")
 
         file_name = os.path.basename(file_path)
         file_ext = os.path.splitext(file_path)[1].lower()
@@ -572,26 +606,27 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
             # Import file handler
             from src.processing.file_handler import FileHandler
 
-            if file_ext == '.txt':
+            if file_ext == ".txt":
                 # Read text file
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     text = f.read()
 
                 # Create metadata from filename
                 metadata = {
                     "title": os.path.splitext(file_name)[0],
                     "source": "Text File",
-                    "file_path": file_path
+                    "file_path": file_path,
                 }
 
-            elif file_ext == '.json':
+            elif file_ext == ".json":
                 # Read JSON file
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     data = json.load(f)
 
                 # Extract text and metadata
                 text = data.pop("text", "")
                 if not text:
+                    print(f"No text found in JSON file: {file_path}")
                     skipped_files += 1
                     continue
 
@@ -620,24 +655,45 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
                 continue
 
             # Check for duplicates
-            is_duplicate, _, method = duplicate_detector.is_duplicate(text, metadata)
+            is_duplicate, existing_id, method = duplicate_detector.is_duplicate(
+                text, metadata
+            )
             if is_duplicate:
-                print(f"Skipping duplicate file: {file_path} (detected by {method})")
+                print(
+                    f"Skipping duplicate file: {file_path} (detected by {method}, existing ID: {existing_id})"
+                )
                 duplicate_files += 1
                 continue
 
             # Add document to GraphRAG system
+            print(f"Adding document to GraphRAG system: {file_path}")
             result = add_document_to_graphrag(
                 text=text,
                 metadata=metadata,
                 neo4j_db=neo4j_db,
                 vector_db=vector_db,
-                duplicate_detector=duplicate_detector
+                duplicate_detector=duplicate_detector,
             )
 
-            processed_files += 1
-            all_entities.extend(result.get('entities', []) if result else [])
-            all_relationships.extend(result.get('relationships', []) if result else [])
+            if result and result.get("status") == "success":
+                processed_files += 1
+                doc_id = result.get("document_id", "unknown")
+                print(f"Document added successfully with ID: {doc_id} from file: {file_path}")
+                all_entities.extend(result.get("entities", []))
+                all_relationships.extend(result.get("relationships", []))
+            elif result and result.get("status") == "failure":
+                error_message = result.get("error", "Unknown error from add_document_to_graphrag")
+                print(f"Failed to process document {file_path}: {error_message}")
+                # Consider if this should be a new counter e.g., failed_files_in_core_processing
+                skipped_files += 1
+            elif result is None: # This means add_document_to_graphrag identified it as a duplicate
+                print(f"Document {file_path} was identified as a duplicate by add_document_to_graphrag.")
+                # This path should ideally be less common if the pre-check at line 658 is effective
+                # and uses the same duplicate_detector instance.
+                duplicate_files += 1
+            else: # Unexpected result structure
+                print(f"Unexpected or empty result from add_document_to_graphrag for {file_path}: {result}")
+                skipped_files += 1
 
         except Exception as e:
             print(f"Error processing file {file_path}: {e}")
@@ -646,19 +702,26 @@ async def _process_add_folder_job(job) -> Dict[str, Any]:
     # Update final job progress
     job.update_progress(len(all_files), len(all_files))
 
-    return {
-        'message': f"Processed {processed_files} files from {folder_path}",
-        'processed_files': processed_files,
-        'skipped_files': skipped_files,
-        'duplicate_files': duplicate_files,
-        'total_files': len(all_files),
-        'entities_count': len(all_entities),
-        'relationships_count': len(all_relationships)
+    # Create result object
+    result = {
+        "message": f"Processed {processed_files} files from {folder_path}",
+        "processed_files": processed_files,
+        "skipped_files": skipped_files,
+        "duplicate_files": duplicate_files,
+        "total_files": len(all_files),
+        "entities_count": len(all_entities),
+        "relationships_count": len(all_relationships),
     }
 
-async def handle_books_by_concept(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle request to find books mentioning a specific concept.
+    # Mark job as completed with the result
+    job.complete(result)
+    print(f"Job {job.job_id} completed: {result['message']}")
+
+    return result
+
+
+async def handle_books_by_concept(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle request to find books mentioning a specific concept.
 
     Args:
         data: Request data containing:
@@ -666,11 +729,12 @@ async def handle_books_by_concept(data: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         List of books mentioning the concept
-    """
-    if 'concept_name' not in data:
-        return {'error': 'Missing required parameter: concept_name'}
 
-    concept_name = data['concept_name']
+    """
+    if "concept_name" not in data:
+        return {"error": "Missing required parameter: concept_name"}
+
+    concept_name = data["concept_name"]
 
     try:
         # Import here to avoid circular imports
@@ -678,17 +742,13 @@ async def handle_books_by_concept(data: Dict[str, Any]) -> Dict[str, Any]:
 
         books = find_books_by_concept(concept_name, neo4j_db)
 
-        return {
-            'status': 'success',
-            'concept_name': concept_name,
-            'books': books
-        }
+        return {"status": "success", "concept_name": concept_name, "books": books}
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
-async def handle_related_concepts(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle request to find concepts related to a specific concept.
+
+async def handle_related_concepts(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle request to find concepts related to a specific concept.
 
     Args:
         data: Request data containing:
@@ -697,12 +757,13 @@ async def handle_related_concepts(data: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         List of related concepts
-    """
-    if 'concept_name' not in data:
-        return {'error': 'Missing required parameter: concept_name'}
 
-    concept_name = data['concept_name']
-    max_hops = data.get('max_hops', 2)
+    """
+    if "concept_name" not in data:
+        return {"error": "Missing required parameter: concept_name"}
+
+    concept_name = data["concept_name"]
+    max_hops = data.get("max_hops", 2)
 
     try:
         # Import here to avoid circular imports
@@ -711,16 +772,16 @@ async def handle_related_concepts(data: Dict[str, Any]) -> Dict[str, Any]:
         related = find_related_concepts(concept_name, neo4j_db, max_hops)
 
         return {
-            'status': 'success',
-            'concept_name': concept_name,
-            'related_concepts': related
+            "status": "success",
+            "concept_name": concept_name,
+            "related_concepts": related,
         }
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
-async def handle_passages_about_concept(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle request to find passages about a specific concept.
+
+async def handle_passages_about_concept(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle request to find passages about a specific concept.
 
     Args:
         data: Request data containing:
@@ -729,12 +790,13 @@ async def handle_passages_about_concept(data: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         List of passages about the concept
-    """
-    if 'concept_name' not in data:
-        return {'error': 'Missing required parameter: concept_name'}
 
-    concept_name = data['concept_name']
-    limit = data.get('limit', 5)
+    """
+    if "concept_name" not in data:
+        return {"error": "Missing required parameter: concept_name"}
+
+    concept_name = data["concept_name"]
+    limit = data.get("limit", 5)
 
     try:
         # Import here to avoid circular imports
@@ -742,24 +804,21 @@ async def handle_passages_about_concept(data: Dict[str, Any]) -> Dict[str, Any]:
 
         passages = find_passages_about_concept(concept_name, neo4j_db, vector_db, limit)
 
-        return {
-            'status': 'success',
-            'concept_name': concept_name,
-            'passages': passages
-        }
+        return {"status": "success", "concept_name": concept_name, "passages": passages}
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
+
 
 # Simple ping handler for connection testing
-async def handle_ping(_: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle ping request.
+async def handle_ping(_: dict[str, Any]) -> dict[str, Any]:
+    """Handle ping request.
 
     Args:
         _: Request data (unused)
 
     Returns:
         Ping response
+
     """
     # Ensure vector database is connected
     vector_db.connect()
@@ -768,16 +827,18 @@ async def handle_ping(_: Dict[str, Any]) -> Dict[str, Any]:
     neo4j_db.verify_connection()
 
     return {
-        'status': 'success',
-        'message': 'Pong!',
-        'timestamp': time.time(),
-        'vector_db_collection': vector_db.collection.name if vector_db.collection else None,
-        'neo4j_connected': neo4j_db.verify_connection()
+        "status": "success",
+        "message": "Pong!",
+        "timestamp": time.time(),
+        "vector_db_collection": vector_db.collection.name
+        if vector_db.collection
+        else None,
+        "neo4j_connected": neo4j_db.verify_connection(),
     }
 
-async def handle_job_status(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Handle job status request.
+
+def handle_job_status(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle job status request.
 
     Args:
         data: Request data containing:
@@ -785,31 +846,43 @@ async def handle_job_status(data: Dict[str, Any]) -> Dict[str, Any]:
 
     Returns:
         Job status
-    """
-    if 'job_id' not in data:
-        return {'error': 'Missing required parameter: job_id'}
 
-    job_id = data['job_id']
+    """
+    if "job_id" not in data:
+        return {"error": "Missing required parameter: job_id"}
+
+    job_id = data["job_id"]
     job = job_manager.get_job(job_id)
 
     if not job:
-        return {'error': f"Job not found: {job_id}"}
+        return {"error": f"Job not found: {job_id}"}
 
-    return {
-        'status': job.status,
-        'progress': job.progress,
-        'total_items': job.total_items,
-        'processed_items': job.processed_items,
-        'created_at': job.created_at.isoformat() if job.created_at else None,
-        'started_at': job.started_at.isoformat() if job.started_at else None,
-        'completed_at': job.completed_at.isoformat() if job.completed_at else None,
-        'result': job.result,
-        'error': job.error
+    # Create a response with job details
+    response = {
+        "status": "success",
+        "job": {
+            "job_id": job.job_id,
+            "job_type": job.job_type,
+            "status": job.status,
+            "progress": job.progress,
+            "total_items": job.total_items,
+            "processed_items": job.processed_items,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            "result": job.result,
+            "error": job.error,
+        },
     }
 
-async def handle_list_jobs(data: Dict[str, Any], client_id: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Handle list jobs request.
+    print(f"Job status for {job_id}: {job.status}, progress: {job.progress:.1f}%")
+    return response
+
+
+async def handle_list_jobs(
+    data: dict[str, Any], client_id: int | None = None
+) -> dict[str, Any]:
+    """Handle list jobs request.
 
     Args:
         data: Request data containing:
@@ -819,35 +892,35 @@ async def handle_list_jobs(data: Dict[str, Any], client_id: Optional[int] = None
 
     Returns:
         List of jobs
+
     """
-    status = data.get('status')
-    job_type = data.get('job_type')
+    status = data.get("status")
+    job_type = data.get("job_type")
 
     # Convert status string to enum if provided
     if status and isinstance(status, str):
         try:
             status = JobStatus(status)
         except ValueError:
-            return {'error': f"Invalid job status: {status}"}
+            return {"error": f"Invalid job status: {status}"}
 
     # Get jobs
     jobs = job_manager.get_jobs(
         status=status,
         job_type=job_type,
-        created_by=str(client_id) if client_id else None
+        created_by=str(client_id) if client_id else None,
     )
 
     # Convert jobs to dictionaries
     job_dicts = [job.to_dict() for job in jobs]
 
-    return {
-        'status': 'success',
-        'jobs': job_dicts
-    }
+    return {"status": "success", "jobs": job_dicts}
 
-async def handle_cancel_job(data: Dict[str, Any], client_id: Optional[int] = None) -> Dict[str, Any]:
-    """
-    Handle cancel job request.
+
+async def handle_cancel_job(
+    data: dict[str, Any], client_id: int | None = None
+) -> dict[str, Any]:
+    """Handle cancel job request.
 
     Args:
         data: Request data containing:
@@ -856,62 +929,57 @@ async def handle_cancel_job(data: Dict[str, Any], client_id: Optional[int] = Non
 
     Returns:
         Status of the operation
-    """
-    if 'job_id' not in data:
-        return {'error': 'Missing required parameter: job_id'}
 
-    job_id = data['job_id']
+    """
+    if "job_id" not in data:
+        return {"error": "Missing required parameter: job_id"}
+
+    job_id = data["job_id"]
     job = job_manager.get_job(job_id)
 
     if not job:
-        return {'error': f"Job not found: {job_id}"}
+        return {"error": f"Job not found: {job_id}"}
 
     # Check if the client is allowed to cancel this job
     if client_id and job.created_by and job.created_by != str(client_id):
-        return {'error': f"Not authorized to cancel job: {job_id}"}
+        return {"error": f"Not authorized to cancel job: {job_id}"}
 
     # Cancel the job
     success = job_manager.cancel_job(job_id)
 
     if success:
-        return {
-            'status': 'success',
-            'message': f"Job cancelled: {job_id}"
-        }
+        return {"status": "success", "message": f"Job cancelled: {job_id}"}
     else:
-        return {
-            'error': f"Failed to cancel job: {job_id}"
-        }
+        return {"error": f"Failed to cancel job: {job_id}"}
+
 
 # Map of action handlers
 ACTION_HANDLERS = {
     # Utility tools
-    'ping': handle_ping,  # Simple ping for connection testing
-
+    "ping": handle_ping,  # Simple ping for connection testing
     # Search tools
-    'search': handle_search,  # Hybrid search
-    'concept': handle_concept,  # Get concept info
-    'documents': handle_documents,  # Get documents for concept
-    'books-by-concept': handle_books_by_concept,  # Find books mentioning a concept
-    'related-concepts': handle_related_concepts,  # Find related concepts
-    'passages-about-concept': handle_passages_about_concept,  # Find passages about a concept
-
+    "search": handle_search,  # Hybrid search
+    "concept": handle_concept,  # Get concept info
+    "documents": handle_documents,  # Get documents for concept
+    "books-by-concept": handle_books_by_concept,  # Find books mentioning a concept
+    "related-concepts": handle_related_concepts,  # Find related concepts
+    "passages-about-concept": handle_passages_about_concept,  # Find passages about a concept
     # Document addition tools
-    'add-document': handle_add_document,  # Add a single document
-    'add-folder': handle_add_folder,  # Add a folder of documents
-
+    "add-document": handle_add_document,  # Add a single document
+    "add-folder": handle_add_folder,  # Add a folder of documents
     # Job management tools
-    'job-status': handle_job_status,  # Get job status
-    'list-jobs': handle_list_jobs,  # List jobs
-    'cancel-job': handle_cancel_job  # Cancel a job
+    "job-status": handle_job_status,  # Get job status
+    "list-jobs": handle_list_jobs,  # List jobs
+    "cancel-job": handle_cancel_job,  # Cancel a job
 }
 
-async def handle_connection(websocket):
-    """
-    Handle WebSocket connection.
+
+async def handle_connection(websocket) -> None:
+    """Handle WebSocket connection.
 
     Args:
         websocket: WebSocket connection
+
     """
     client_id = id(websocket)
     print(f"Client connected: {client_id}")
@@ -926,20 +994,24 @@ async def handle_connection(websocket):
                 data = json.loads(message)
 
                 # Check if action is specified
-                if 'action' not in data:
-                    await websocket.send(json.dumps({
-                        'error': 'Missing required parameter: action'
-                    }))
+                if "action" not in data:
+                    await websocket.send(
+                        json.dumps({"error": "Missing required parameter: action"})
+                    )
                     continue
 
-                action = data['action']
+                action = data["action"]
 
                 # Check if action is supported
                 if action not in ACTION_HANDLERS:
-                    await websocket.send(json.dumps({
-                        'error': f"Unsupported action: {action}",
-                        'available_actions': list(ACTION_HANDLERS.keys())
-                    }))
+                    await websocket.send(
+                        json.dumps(
+                            {
+                                "error": f"Unsupported action: {action}",
+                                "available_actions": list(ACTION_HANDLERS.keys()),
+                            }
+                        )
+                    )
                     continue
 
                 # Handle action
@@ -947,8 +1019,9 @@ async def handle_connection(websocket):
 
                 # Check if handler accepts client_id parameter
                 import inspect
+
                 sig = inspect.signature(handler)
-                if 'client_id' in sig.parameters:
+                if "client_id" in sig.parameters:
                     result = await handler(data, client_id)
                 else:
                     result = await handler(data)
@@ -956,13 +1029,9 @@ async def handle_connection(websocket):
                 # Send response
                 await websocket.send(json.dumps(result))
             except json.JSONDecodeError:
-                await websocket.send(json.dumps({
-                    'error': 'Invalid JSON'
-                }))
+                await websocket.send(json.dumps({"error": "Invalid JSON"}))
             except Exception as e:
-                await websocket.send(json.dumps({
-                    'error': str(e)
-                }))
+                await websocket.send(json.dumps({"error": str(e)}))
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
@@ -971,35 +1040,65 @@ async def handle_connection(websocket):
             del client_jobs[client_id]
         print(f"Client disconnected: {client_id}")
 
-async def start_server(host: str = 'localhost', port: int = 8765):
-    """
-    Start the MPC server.
 
-    Args:
-        host: Server host
-        port: Server port
-    """
+async def start_server(host: str = "localhost", port: int = 8765) -> None:
+    """Start the MPC server."""
     server = await websockets.serve(handle_connection, host, port)
-    print(f"MPC server started on ws://{host}:{port}")
-    print(f"Available actions: {', '.join(ACTION_HANDLERS.keys())}")
+    logger.info(f"MPC server started on ws://{host}:{port}")
+    logger.info(f"Available actions: {', '.join(ACTION_HANDLERS.keys())}")
 
     # Keep the server running
     await server.wait_closed()
 
-def main():
-    """
-    Main function to start the MPC server.
-    """
+
+def main() -> None:
+    """Main function to start the MPC server."""
     import argparse
+
+    # Basic logging setup if no handlers are configured
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            stream=sys.stdout, # Ensure logs go to stdout
+        )
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Start the GraphRAG MPC server")
-    parser.add_argument("--host", type=str, default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=8765, help="Server port")
+    default_host = os.getenv("MPC_HOST", "0.0.0.0")
+    default_port = int(os.getenv("MPC_PORT", "8765"))
+    parser.add_argument(
+        "--host", type=str, default=default_host, help=f"Server host (default: {default_host})"
+    )
+    parser.add_argument(
+        "--port", type=int, default=default_port, help=f"Server port (default: {default_port})"
+    )
     args = parser.parse_args()
 
-    # Start the server
-    asyncio.run(start_server(args.host, args.port))
+    try:
+        logger.info(f"Attempting to start MPC server on {args.host}:{args.port}")
+        asyncio.run(start_server(args.host, args.port))
+    except OSError as e:
+        if e.errno == 48:  # Address already in use
+            logger.error(
+                f"ERROR: Port {args.port} is already in use on host {args.host}."
+            )
+            logger.error(
+                "Please check if another instance of the MPC server or another application is using this port."
+            )
+            logger.error("You can specify a different port using --port <number> or by setting the MPC_PORT environment variable.")
+        else:
+            logger.error(f"An OS error occurred: {e}")
+            logger.error(traceback.format_exc())
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("MPC server shutting down (KeyboardInterrupt).")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

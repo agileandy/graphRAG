@@ -24,9 +24,9 @@ tmux send-keys -t graphrag:0 './scripts/start_neo4j.sh' C-m
 tmux new-window -t graphrag:1 -n 'api'
 tmux send-keys -t graphrag:1 'sleep 5 && ./scripts/start_api_server.sh' C-m
 
-# Create a window for the MPC server
-tmux new-window -t graphrag:2 -n 'mpc'
-tmux send-keys -t graphrag:2 'sleep 5 && ./scripts/start_mpc_server.sh' C-m
+# Create a window for the MCP server
+tmux new-window -t graphrag:2 -n 'mcp'
+tmux send-keys -t graphrag:2 'sleep 5 && ./scripts/service_management/start_mcp_server.sh' C-m
 
 # Attach to the tmux session
 tmux attach-session -t graphrag

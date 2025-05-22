@@ -5,6 +5,12 @@
 # Change to the project root directory
 cd "$(dirname "$0")/.."
 
+# Activate the virtual environment
+source .venv-py312/bin/activate
+
+# Install the project in editable mode
+uv pip install -e .
+
 # Check if gunicorn is installed
 if ! command -v gunicorn &> /dev/null; then
     echo "❌ gunicorn is not installed. Please install it with: pip install gunicorn"

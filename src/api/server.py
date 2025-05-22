@@ -1,19 +1,24 @@
-"""
-Flask API server for GraphRAG project.
+"""Flask API server for GraphRAG project.
 
 This module provides a RESTful API for the GraphRAG system, allowing AI agents
 to interact with the system programmatically.
 """
+
+import glob
+import logging
 import os
 import sys
-import logging
-import glob
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from dotenv import load_dotenv
+import traceback
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+# Configure logging with more detailed format
+logging.basicConfig(
+    level=logging.DEBUG,  # Set to DEBUG for more verbose logging
+    format="%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)d - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 # Explicitly load environment variables from the config file
@@ -22,15 +27,17 @@ if os.path.exists(config_env_path):
     logger.info(f"Loading environment variables from {config_env_path}")
     load_dotenv(config_env_path)
 else:
-    logger.warning(f"Config file not found at {config_env_path}, falling back to default .env")
+    logger.warning(
+        f"Config file not found at {config_env_path}, falling back to default .env"
+    )
     load_dotenv()
 
 # Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+from src.database.db_linkage import DatabaseLinkage
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
-from src.database.db_linkage import DatabaseLinkage
 from src.processing.job_manager import JobManager
 
 # Initialize Flask app
@@ -55,13 +62,14 @@ if not vector_db.verify_connection():
     logger.info(f"ChromaDB directory: {vector_db.persist_directory}")
     # Continue anyway, as the connection might be established later
 
-@app.route('/health', methods=['GET'])
+
+@app.route("/health", methods=["GET"])
 def health_check():
-    """
-    Health check endpoint.
+    """Health check endpoint.
 
     Returns:
         Health status of the API and database connections
+
     """
     logger.info("Health check requested")
     logger.info(f"ChromaDB directory: {vector_db.persist_directory}")
@@ -72,27 +80,31 @@ def health_check():
     vector_db_status = vector_db.verify_connection()
     logger.info(f"Vector DB connection status: {vector_db_status}")
 
-    return jsonify({
-        'status': 'ok' if neo4j_status and vector_db_status else 'degraded',
-        'neo4j_connected': neo4j_status,
-        'vector_db_connected': vector_db_status,
-        'version': '1.0.0'
-    })
-@app.route('/version', methods=['GET'])
+    return jsonify(
+        {
+            "status": "ok" if neo4j_status and vector_db_status else "degraded",
+            "neo4j_connected": neo4j_status,
+            "vector_db_connected": vector_db_status,
+            "version": "1.0.0",
+        }
+    )
+
+
+@app.route("/version", methods=["GET"])
 def get_version():
-    """
-    Endpoint to get the application version.
+    """Endpoint to get the application version.
 
     Returns:
         A JSON object containing the application version.
-    """
-    app_version = os.getenv('APP_VERSION', 'unknown')
-    return jsonify({'version': app_version})
 
-@app.route('/search', methods=['POST'])
-def search():
     """
-    Perform a hybrid search using both vector and graph databases.
+    app_version = os.getenv("APP_VERSION", "unknown")
+    return jsonify({"version": app_version})
+
+
+@app.route("/search", methods=["POST"])
+def search():
+    """Perform a hybrid search using both vector and graph databases.
 
     Request body:
         query (str): Search query
@@ -102,16 +114,17 @@ def search():
 
     Returns:
         Search results
+
     """
     data = request.json
 
-    if not data or 'query' not in data:
-        return jsonify({'error': 'Missing required parameter: query'}), 400
+    if not data or "query" not in data:
+        return jsonify({"error": "Missing required parameter: query"}), 400
 
-    query = data['query']
-    n_results = data.get('n_results', 5)
-    max_hops = data.get('max_hops', 2)
-    repair_index = data.get('repair_index', True)
+    query = data["query"]
+    n_results = data.get("n_results", 5)
+    max_hops = data.get("max_hops", 2)
+    repair_index = data.get("repair_index", True)
 
     # Check vector database index health if repair_index is True
     if repair_index:
@@ -120,26 +133,26 @@ def search():
             # Try to repair the index
             success, repair_message = vector_db.repair_index()
             if not success:
-                return jsonify({
-                    'error': f"Vector database index is unhealthy and repair failed: {repair_message}",
-                    'vector_results': {
-                        'ids': [],
-                        'documents': [],
-                        'metadatas': [],
-                        'distances': []
-                    },
-                    'graph_results': []
-                }), 500
+                return jsonify(
+                    {
+                        "error": f"Vector database index is unhealthy and repair failed: {repair_message}",
+                        "vector_results": {
+                            "ids": [],
+                            "documents": [],
+                            "metadatas": [],
+                            "distances": [],
+                        },
+                        "graph_results": [],
+                    }
+                ), 500
 
     try:
         results = db_linkage.hybrid_search(
-            query_text=query,
-            n_vector_results=n_results,
-            max_graph_hops=max_hops
+            query_text=query, n_vector_results=n_results, max_graph_hops=max_hops
         )
 
         # Check if there's an error in the results
-        if 'error' in results:
+        if "error" in results:
             return jsonify(results), 500
 
         return jsonify(results)
@@ -149,28 +162,29 @@ def search():
 
         # Create a fallback response with empty results
         fallback_response = {
-            'error': error_message,
-            'vector_results': {
-                'ids': [],
-                'documents': [],
-                'metadatas': [],
-                'distances': []
+            "error": error_message,
+            "vector_results": {
+                "ids": [],
+                "documents": [],
+                "metadatas": [],
+                "distances": [],
             },
-            'graph_results': []
+            "graph_results": [],
         }
 
         return jsonify(fallback_response), 500
 
-@app.route('/concepts/<concept_name>', methods=['GET'])
+
+@app.route("/concepts/<concept_name>", methods=["GET"])
 def get_concept(concept_name: str):
-    """
-    Get information about a specific concept.
+    """Get information about a specific concept.
 
     Args:
         concept_name: Name of the concept
 
     Returns:
         Concept information and related concepts
+
     """
     try:
         # Find the concept by name (case-insensitive)
@@ -182,7 +196,9 @@ def get_concept(concept_name: str):
         results = neo4j_db.run_query(query, {"name": concept_name})
 
         if not results:
-            return jsonify({'error': f"No concept found with name containing '{concept_name}'"}), 404
+            return jsonify(
+                {"error": f"No concept found with name containing '{concept_name}'"}
+            ), 404
 
         # Use the first matching concept
         concept_id = results[0]["id"]
@@ -205,20 +221,19 @@ def get_concept(concept_name: str):
                 seen_ids.add(item["id"])
                 unique_related.append(item)
 
-        return jsonify({
-            'concept': {
-                'id': concept_id,
-                'name': concept_name
-            },
-            'related_concepts': unique_related
-        })
+        return jsonify(
+            {
+                "concept": {"id": concept_id, "name": concept_name},
+                "related_concepts": unique_related,
+            }
+        )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/documents', methods=['POST'])
+
+@app.route("/documents", methods=["POST"])
 def add_document():
-    """
-    Add a document to the GraphRAG system.
+    """Add a document to the GraphRAG system.
 
     Request body:
         text (str): Document text
@@ -226,67 +241,121 @@ def add_document():
 
     Returns:
         Status of the operation
+
     """
     data = request.json
 
-    if not data or 'text' not in data:
-        return jsonify({'error': 'Missing required parameter: text'}), 400
+    if not data or "text" not in data:
+        return jsonify({"error": "Missing required parameter: text"}), 400
 
-    text = data['text']
-    metadata = data.get('metadata', {})
+    text = data["text"]
+    metadata = data.get("metadata", {})
 
     try:
+        logger.debug("Step 1: Importing necessary modules for add_document.")
         # Import here to avoid circular imports
-        from scripts.document_processing.add_document_core import add_document_to_graphrag
+        from scripts.document_processing.add_document_core import (
+            add_document_to_graphrag,
+        )
         from src.processing.duplicate_detector import DuplicateDetector
 
+        logger.debug("Step 1a: Modules imported.")
+
+        logger.debug(
+            f"Step 2: Initializing DuplicateDetector with vector_db: {type(vector_db)}"
+        )
         # Initialize duplicate detector
         duplicate_detector = DuplicateDetector(vector_db)
+        logger.debug("Step 2a: DuplicateDetector initialized.")
 
+        logger.debug("Step 3: Generating document hash.")
         # Calculate document hash for duplicate checking
         doc_hash = duplicate_detector.generate_document_hash(text)
         metadata_with_hash = metadata.copy()
         metadata_with_hash["hash"] = doc_hash
+        logger.debug(f"Step 3a: Document hash generated: {doc_hash}")
 
+        logger.debug("Step 4: Checking for duplicates via is_duplicate.")
         # Check for duplicates before adding
-        is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(text, metadata_with_hash)
+        is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(
+            text, metadata_with_hash
+        )
+        logger.debug(
+            f"Step 4a: is_duplicate check complete. is_dup: {is_dup}, existing_doc_id: {existing_doc_id}, method: {method}"
+        )
 
+        logger.debug("Step 5: Calling add_document_to_graphrag.")
         result = add_document_to_graphrag(
             text=text,
             metadata=metadata,
             neo4j_db=neo4j_db,
             vector_db=vector_db,
-            duplicate_detector=duplicate_detector
+            duplicate_detector=duplicate_detector,
         )
 
-        if result:
-            # Document was added successfully
-            return jsonify({
-                'status': 'success',
-                'message': 'Document added successfully',
-                'document_id': result.get('document_id'),
-                'entities': result.get('entities', []),
-                'relationships': result.get('relationships', [])
-            })
-        else:
+        if result is None:
             # Document was a duplicate
-            return jsonify({
-                'status': 'duplicate',
-                'message': 'Document is a duplicate and was not added',
-                'document_id': existing_doc_id,
-                'duplicate_detection_method': method,
-                'entities': [],
-                'relationships': []
-            })
+            logger.info(
+                f"Document '{metadata.get('title', 'Unknown Title')}' is a duplicate (ID: {existing_doc_id}, Method: {method}). Not adding."
+            )
+            return jsonify(
+                {
+                    "status": "duplicate",
+                    "message": "Document is a duplicate and was not added.",
+                    "document_id": existing_doc_id,
+                    "duplicate_detection_method": method,
+                }
+            ), 200  # OK, but not created
+        elif isinstance(result, dict) and result.get("status") == "failure":
+            # An error occurred in add_document_to_graphrag
+            error_message = result.get(
+                "error", "An unknown error occurred during document processing."
+            )
+            logger.error(
+                f"Failed to add document '{metadata.get('title', 'Unknown Title')}': {error_message}"
+            )
+            return jsonify(
+                {"status": "failure", "error": error_message, "document_id": None}
+            ), 500  # Internal Server Error
+        elif isinstance(result, dict) and "document_id" in result:
+            # Document was added successfully
+            logger.info(
+                f"Successfully added document '{metadata.get('title', 'Unknown Title')}' with ID: {result.get('document_id')}"
+            )
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": "Document added successfully.",
+                    "document_id": result.get("document_id"),
+                    "entities": result.get("entities", []),
+                    "relationships": result.get("relationships", []),
+                }
+            ), 201  # Created
+        else:
+            # Unexpected result from add_document_to_graphrag
+            logger.error(
+                f"Unexpected result from add_document_to_graphrag for document '{metadata.get('title', 'Unknown Title')}': {result}"
+            )
+            return jsonify(
+                {
+                    "status": "failure",
+                    "error": "An unexpected error occurred during document processing.",
+                    "document_id": None,
+                }
+            ), 500
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        tb_str = traceback.format_exc()
+        logger.error(
+            f"Unhandled exception in add_document endpoint: {str(e)}\nTraceback:\n{tb_str}"
+        )
+        return jsonify(
+            {"error": f"Unhandled exception: {str(e)}", "traceback": tb_str, "document_id": None}
+        ), 500
 
-@app.route('/documents/folder', methods=['POST'])
+
+@app.route("/folders", methods=["POST"])
 def add_folder():
-    """
-    Add all documents from a folder to the GraphRAG system.
+    """Add all documents from a folder to the GraphRAG system.
     This endpoint processes documents asynchronously using the job management system.
 
     Request body:
@@ -297,20 +366,21 @@ def add_folder():
 
     Returns:
         Job information for tracking the folder processing
+
     """
     data = request.json
 
-    if not data or 'folder_path' not in data:
-        return jsonify({'error': 'Missing required parameter: folder_path'}), 400
+    if not data or "folder_path" not in data:
+        return jsonify({"error": "Missing required parameter: folder_path"}), 400
 
-    folder_path = data['folder_path']
-    recursive = data.get('recursive', False)
-    file_types = data.get('file_types', [".pdf", ".txt", ".md"])
-    default_metadata = data.get('default_metadata', {})
+    folder_path = data["folder_path"]
+    recursive = data.get("recursive", False)
+    file_types = data.get("file_types", [".pdf", ".txt", ".md"])
+    default_metadata = data.get("default_metadata", {})
 
     # Validate folder path
     if not os.path.isdir(folder_path):
-        return jsonify({'error': f"Folder not found: {folder_path}"}), 404
+        return jsonify({"error": f"Folder not found: {folder_path}"}), 404
 
     # Get list of files in the folder
     files = []
@@ -325,10 +395,12 @@ def add_folder():
             files.extend(glob.glob(pattern))
 
     if not files:
-        return jsonify({
-            'status': 'error',
-            'message': f"No files with types {file_types} found in {folder_path}"
-        }), 404
+        return jsonify(
+            {
+                "status": "error",
+                "message": f"No files with types {file_types} found in {folder_path}",
+            }
+        ), 404
 
     # Create a job for processing the folder
     job = job_manager.create_job(
@@ -338,24 +410,28 @@ def add_folder():
             "recursive": recursive,
             "file_types": file_types,
             "default_metadata": default_metadata,
-            "files": files
-        }
+            "files": files,
+        },
     )
 
     # Define the task function
     def process_folder_task(job):
-        """
-        Process all files in a folder.
+        """Process all files in a folder using multithreading.
 
         Args:
             job: Job object
 
         Returns:
             Processing results
+
         """
-        from scripts.document_processing.add_document_core import add_document_to_graphrag
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        from scripts.document_processing.add_document_core import (
+            add_document_to_graphrag,
+        )
         from src.processing.duplicate_detector import DuplicateDetector
-        import time
 
         # Initialize duplicate detector
         duplicate_detector = DuplicateDetector(vector_db)
@@ -367,29 +443,36 @@ def add_folder():
             "added_count": 0,
             "skipped_count": 0,
             "failed_count": 0,
-            "details": []
+            "details": [],
         }
 
-        # Process each file
-        for i, file_path in enumerate(files):
-            # Extract filename for logging
+        # Create a lock for thread-safe updates to results
+        results_lock = threading.Lock()
+        # Create a lock for thread-safe progress updates
+        progress_lock = threading.Lock()
+        # Track processed files count
+        processed_count = 0
+
+        # Define a function to process a single file
+        def process_file(file_info) -> None:
+            nonlocal processed_count
+            i, file_path = file_info
             filename = os.path.basename(file_path)
+            file_result = {"file": filename, "success": False}
 
             try:
-                # Update job progress
-                job.update_progress(i, len(files))
-
-                logger.info(f"Processing file {i+1}/{len(files)}: {filename}")
+                logger.info(f"Processing file {i + 1}/{len(files)}: {filename}")
 
                 # Read file content based on file type
                 try:
                     file_ext = os.path.splitext(file_path)[1].lower()
 
                     # Handle PDF files
-                    if file_ext == '.pdf':
+                    if file_ext == ".pdf":
                         try:
                             import PyPDF2
-                            with open(file_path, 'rb') as file:
+
+                            with open(file_path, "rb") as file:
                                 reader = PyPDF2.PdfReader(file)
                                 text = ""
                                 # Extract text from each page
@@ -398,60 +481,62 @@ def add_folder():
                                     text += page.extract_text() + "\n\n"
 
                             if not text.strip():
-                                logger.warning(f"PDF extraction returned empty text for {filename}")
-                                results["failed_count"] += 1
-                                results["details"].append({
-                                    "file": filename,
-                                    "success": False,
-                                    "error": "PDF extraction returned empty text"
-                                })
-                                continue
+                                logger.warning(
+                                    f"PDF extraction returned empty text for {filename}"
+                                )
+                                file_result["error"] = (
+                                    "PDF extraction returned empty text"
+                                )
+                                with results_lock:
+                                    results["failed_count"] += 1
+                                    results["details"].append(file_result)
+                                return
                         except ImportError:
-                            logger.error("PyPDF2 is not installed. Please install it with 'pip install PyPDF2'.")
-                            results["failed_count"] += 1
-                            results["details"].append({
-                                "file": filename,
-                                "success": False,
-                                "error": "PyPDF2 is not installed"
-                            })
-                            continue
+                            logger.error(
+                                "PyPDF2 is not installed. Please install it with 'pip install PyPDF2'."
+                            )
+                            file_result["error"] = "PyPDF2 is not installed"
+                            with results_lock:
+                                results["failed_count"] += 1
+                                results["details"].append(file_result)
+                            return
                         except Exception as e:
-                            logger.error(f"Failed to extract text from PDF {filename}: {str(e)}")
-                            results["failed_count"] += 1
-                            results["details"].append({
-                                "file": filename,
-                                "success": False,
-                                "error": f"Failed to extract text from PDF: {str(e)}"
-                            })
-                            continue
+                            logger.error(
+                                f"Failed to extract text from PDF {filename}: {str(e)}"
+                            )
+                            file_result["error"] = (
+                                f"Failed to extract text from PDF: {str(e)}"
+                            )
+                            with results_lock:
+                                results["failed_count"] += 1
+                                results["details"].append(file_result)
+                            return
                     # Handle text files
                     else:
                         try:
-                            with open(file_path, 'r', encoding='utf-8') as f:
+                            with open(file_path, encoding="utf-8") as f:
                                 text = f.read()
                         except UnicodeDecodeError:
                             # Try with a different encoding
                             try:
-                                with open(file_path, 'r', encoding='latin-1') as f:
+                                with open(file_path, encoding="latin-1") as f:
                                     text = f.read()
                             except Exception as e:
-                                logger.error(f"Failed to read file {filename}: {str(e)}")
-                                results["failed_count"] += 1
-                                results["details"].append({
-                                    "file": filename,
-                                    "success": False,
-                                    "error": f"Failed to read file: {str(e)}"
-                                })
-                                continue
+                                logger.error(
+                                    f"Failed to read file {filename}: {str(e)}"
+                                )
+                                file_result["error"] = f"Failed to read file: {str(e)}"
+                                with results_lock:
+                                    results["failed_count"] += 1
+                                    results["details"].append(file_result)
+                                return
                 except Exception as e:
                     logger.error(f"Failed to process file {filename}: {str(e)}")
-                    results["failed_count"] += 1
-                    results["details"].append({
-                        "file": filename,
-                        "success": False,
-                        "error": f"Failed to process file: {str(e)}"
-                    })
-                    continue
+                    file_result["error"] = f"Failed to process file: {str(e)}"
+                    with results_lock:
+                        results["failed_count"] += 1
+                        results["details"].append(file_result)
+                    return
 
                 # Create metadata for the document
                 metadata = default_metadata.copy()
@@ -474,58 +559,116 @@ def add_folder():
                 title = title.split("(")[0].strip()
 
                 # Set default metadata if not provided
-                if 'title' not in metadata:
-                    metadata['title'] = title
-                if 'author' not in metadata:
-                    metadata['author'] = author
-                if 'source' not in metadata:
-                    metadata['source'] = "Folder Import"
-                if 'filename' not in metadata:
-                    metadata['filename'] = filename
+                if "title" not in metadata:
+                    metadata["title"] = title
+                if "author" not in metadata:
+                    metadata["author"] = author
+                if "source" not in metadata:
+                    metadata["source"] = "Folder Import"
+                if "filename" not in metadata:
+                    metadata["filename"] = filename
 
                 # Add document to GraphRAG system
-                result = add_document_to_graphrag(
-                    text=text,
-                    metadata=metadata,
-                    neo4j_db=neo4j_db,
-                    vector_db=vector_db,
-                    duplicate_detector=duplicate_detector
+                logger.debug(
+                    f"Adding document to GraphRAG: {filename}, text length: {len(text)}, metadata: {metadata}"
                 )
+                try:
+                    # Force rule-based concept extraction for folder add
+                    # This is a workaround for the LLM-based extraction issues
+                    metadata["force_rule_based"] = True
 
-                if result:
-                    # Document was added successfully
-                    logger.info(f"Added document: {filename}")
-                    results["added_count"] += 1
-                    results["details"].append({
-                        "file": filename,
-                        "success": True,
-                        "document_id": result.get("document_id"),
-                        "entities_count": len(result.get("entities", [])),
-                        "relationships_count": len(result.get("relationships", []))
-                    })
-                else:
-                    # Document was a duplicate
-                    logger.info(f"Skipped duplicate document: {filename}")
-                    results["skipped_count"] += 1
-                    results["details"].append({
-                        "file": filename,
-                        "success": True,
-                        "status": "duplicate"
-                    })
+                    result = add_document_to_graphrag(
+                        text=text,
+                        metadata=metadata,
+                        neo4j_db=neo4j_db,
+                        vector_db=vector_db,
+                        duplicate_detector=duplicate_detector,
+                    )
 
-                # Wait a bit between files to avoid overwhelming the system
-                time.sleep(0.5)
+                    # Log the raw result for debugging
+                    logger.debug(f"Raw result from add_document_to_graphrag: {result}")
+
+                    if result:
+                        # Document was added successfully
+                        logger.info(
+                            f"Added document: {filename}, document_id: {result.get('document_id')}"
+                        )
+                        file_result["success"] = True
+                        file_result["document_id"] = result.get("document_id")
+                        file_result["entities_count"] = len(result.get("entities", []))
+                        file_result["relationships_count"] = len(
+                            result.get("relationships", [])
+                        )
+                        with results_lock:
+                            results["added_count"] += 1
+                            results["details"].append(file_result)
+                    else:
+                        # Document was a duplicate or failed
+                        logger.warning(
+                            f"Document not added: {filename}. Result was: {result}"
+                        )
+                        if (
+                            isinstance(result, dict)
+                            and result.get("status") == "duplicate"
+                        ):
+                            logger.info(f"Skipped duplicate document: {filename}")
+                            file_result["success"] = True
+                            file_result["status"] = "duplicate"
+                            with results_lock:
+                                results["skipped_count"] += 1
+                                results["details"].append(file_result)
+                        else:
+                            logger.error(
+                                f"Failed to add document: {filename}. Unknown result: {result}"
+                            )
+                            file_result["success"] = False
+                            file_result["error"] = (
+                                f"Unknown result from add_document_to_graphrag: {result}"
+                            )
+                            with results_lock:
+                                results["failed_count"] += 1
+                                results["details"].append(file_result)
+                except Exception as e:
+                    logger.error(
+                        f"Exception in add_document_to_graphrag for {filename}: {str(e)}"
+                    )
+                    logger.error(traceback.format_exc())
+                    file_result["success"] = False
+                    file_result["error"] = (
+                        f"Exception in add_document_to_graphrag: {str(e)}"
+                    )
+                    with results_lock:
+                        results["failed_count"] += 1
+                        results["details"].append(file_result)
 
             except Exception as e:
                 logger.error(f"Error processing file {filename}: {str(e)}")
-                results["failed_count"] += 1
-                results["details"].append({
-                    "file": filename,
-                    "success": False,
-                    "error": str(e)
-                })
+                file_result["error"] = str(e)
+                with results_lock:
+                    results["failed_count"] += 1
+                    results["details"].append(file_result)
+            finally:
+                # Update progress
+                with progress_lock:
+                    nonlocal processed_count
+                    processed_count += 1
+                    job.update_progress(processed_count, len(files))
 
-        # Update final job progress
+        # Start the job
+        job.start()
+
+        # Determine the number of worker threads (limit to a reasonable number)
+        max_workers = min(
+            10, len(files)
+        )  # Use at most 10 threads or number of files, whichever is smaller
+
+        # Process files in parallel using a thread pool
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all files for processing
+            file_infos = [(i, file_path) for i, file_path in enumerate(files)]
+            executor.map(process_file, file_infos)
+
+        # Ensure final progress is 100%
         job.update_progress(len(files), len(files))
 
         return results
@@ -534,35 +677,38 @@ def add_folder():
     job_manager.run_job_async(job, process_folder_task)
 
     # Return job information
-    return jsonify({
-        'status': 'accepted',
-        'message': 'Folder processing started',
-        'job_id': job.job_id,
-        'total_files': len(files)
-    })
+    return jsonify(
+        {
+            "status": "accepted",
+            "message": "Folder processing started",
+            "job_id": job.job_id,
+            "total_files": len(files),
+        }
+    )
 
-@app.route('/jobs/<job_id>', methods=['GET'])
+
+@app.route("/jobs/<job_id>", methods=["GET"])
 def get_job_status(job_id: str):
-    """
-    Get the status of an asynchronous job.
+    """Get the status of an asynchronous job.
 
     Args:
         job_id: Job ID
 
     Returns:
         Job status information
+
     """
     job = job_manager.get_job(job_id)
 
     if not job:
-        return jsonify({'error': f"Job not found: {job_id}"}), 404
+        return jsonify({"error": f"Job not found: {job_id}"}), 404
 
     return jsonify(job.to_dict())
 
-@app.route('/jobs', methods=['GET'])
+
+@app.route("/jobs", methods=["GET"])
 def list_jobs():
-    """
-    List all jobs, optionally filtered by status or type.
+    """List all jobs, optionally filtered by status or type.
 
     Query parameters:
         status: Filter by job status (queued, running, completed, failed, cancelled)
@@ -570,20 +716,22 @@ def list_jobs():
 
     Returns:
         List of jobs
+
     """
     # Get filter parameters
-    status_param = request.args.get('status')
-    job_type = request.args.get('type')
+    status_param = request.args.get("status")
+    job_type = request.args.get("type")
 
     # Convert status string to JobStatus enum if provided
     status = None
     if status_param:
         from src.processing.job_manager import JobStatus
+
         try:
             status = JobStatus(status_param)
         except ValueError:
             # Invalid status, return empty list
-            return jsonify({'jobs': []})
+            return jsonify({"jobs": []})
 
     # Get jobs
     jobs = job_manager.get_jobs(status=status, job_type=job_type)
@@ -591,18 +739,19 @@ def list_jobs():
     # Convert jobs to dictionaries
     job_dicts = [job.to_dict() for job in jobs]
 
-    return jsonify({'jobs': job_dicts})
+    return jsonify({"jobs": job_dicts})
 
-@app.route('/documents/<concept_name>', methods=['GET'])
+
+@app.route("/documents/<concept_name>", methods=["GET"])
 def get_documents_for_concept(concept_name: str):
-    """
-    Get documents related to a specific concept.
+    """Get documents related to a specific concept.
 
     Args:
         concept_name: Name of the concept
 
     Returns:
         List of related documents
+
     """
     try:
         # Find the concept by name (case-insensitive)
@@ -614,16 +763,16 @@ def get_documents_for_concept(concept_name: str):
         results = neo4j_db.run_query(query, {"name": concept_name})
 
         if not results:
-            return jsonify({'error': f"No concept found with name containing '{concept_name}'"}), 404
+            return jsonify(
+                {"error": f"No concept found with name containing '{concept_name}'"}
+            ), 404
 
         # Use the first matching concept
         concept_id = results[0]["id"]
         concept_name = results[0]["name"]
 
         # Query vector database for chunks mentioning this concept
-        results_primary = vector_db.get(
-            where={"concept_id": concept_id}
-        )
+        results_primary = vector_db.get(where={"concept_id": concept_id})
 
         # Then, try to find in the comma-separated concept_ids field
         all_docs = vector_db.get()
@@ -649,7 +798,7 @@ def get_documents_for_concept(concept_name: str):
         combined_metadatas = results_primary.get("metadatas", []) + filtered_metadatas
 
         # Limit the number of results (optional query parameter)
-        limit = request.args.get('limit', default=5, type=int)
+        limit = request.args.get("limit", default=5, type=int)
         combined_ids = combined_ids[:limit]
         combined_docs = combined_docs[:limit]
         combined_metadatas = combined_metadatas[:limit]
@@ -657,29 +806,31 @@ def get_documents_for_concept(concept_name: str):
         # Format the response
         documents = []
         for i, doc_id in enumerate(combined_ids):
-            documents.append({
-                'id': doc_id,
-                'text': combined_docs[i],
-                'metadata': combined_metadatas[i]
-            })
+            documents.append(
+                {
+                    "id": doc_id,
+                    "text": combined_docs[i],
+                    "metadata": combined_metadatas[i],
+                }
+            )
 
-        return jsonify({
-            'concept': {
-                'id': concept_id,
-                'name': concept_name
-            },
-            'documents': documents
-        })
+        return jsonify(
+            {
+                "concept": {"id": concept_id, "name": concept_name},
+                "documents": documents,
+            }
+        )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/books', methods=['GET'])
+
+@app.route("/books", methods=["GET"])
 def get_books():
-    """
-    Get all books in the system.
+    """Get all books in the system.
 
     Returns:
         List of books
+
     """
     try:
         query = """
@@ -688,22 +839,21 @@ def get_books():
         """
         books = neo4j_db.run_query(query)
 
-        return jsonify({
-            'books': books
-        })
+        return jsonify({"books": books})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/books/<book_title>', methods=['GET'])
+
+@app.route("/books/<book_title>", methods=["GET"])
 def get_book_concepts(book_title: str):
-    """
-    Get concepts mentioned in a specific book.
+    """Get concepts mentioned in a specific book.
 
     Args:
         book_title: Title of the book
 
     Returns:
         Book information and related concepts
+
     """
     try:
         # Find the book by title (case-insensitive)
@@ -715,7 +865,9 @@ def get_book_concepts(book_title: str):
         results = neo4j_db.run_query(query, {"title": book_title})
 
         if not results:
-            return jsonify({'error': f"No book found with title containing '{book_title}'"}), 404
+            return jsonify(
+                {"error": f"No book found with title containing '{book_title}'"}
+            ), 404
 
         # Use the first matching book
         book_id = results[0]["id"]
@@ -729,24 +881,23 @@ def get_book_concepts(book_title: str):
         """
         concepts = neo4j_db.run_query(query, {"book_id": book_id})
 
-        return jsonify({
-            'book': {
-                'id': book_id,
-                'title': book_title,
-                'filename': book_filename
-            },
-            'concepts': concepts
-        })
+        return jsonify(
+            {
+                "book": {"id": book_id, "title": book_title, "filename": book_filename},
+                "concepts": concepts,
+            }
+        )
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/concepts', methods=['GET'])
+
+@app.route("/concepts", methods=["GET"])
 def get_all_concepts():
-    """
-    Get all concepts in the system.
+    """Get all concepts in the system.
 
     Returns:
         List of concepts
+
     """
     try:
         query = """
@@ -755,26 +906,25 @@ def get_all_concepts():
         """
         concepts = neo4j_db.run_query(query)
 
-        return jsonify({
-            'concepts': concepts
-        })
+        return jsonify({"concepts": concepts})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 @app.teardown_appcontext
-def close_db_connections(error=None):
-    """
-    Close database connections when the application context ends.
-    """
+def close_db_connections(error=None) -> None:
+    """Close database connections when the application context ends."""
     neo4j_db.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Parse command line arguments
     import argparse
-    parser = argparse.ArgumentParser(description='Start the GraphRAG API server')
-    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host to bind to')
-    parser.add_argument('--port', type=int, default=5001, help='Port to bind to')
-    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+
+    parser = argparse.ArgumentParser(description="Start the GraphRAG API server")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=5001, help="Port to bind to")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     args = parser.parse_args()
 
     # Start the server

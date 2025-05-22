@@ -1,45 +1,61 @@
-"""
-LangChain tools for GraphRAG project.
+"""LangChain tools for GraphRAG project.
 
 This module provides LangChain tools for interacting with the GraphRAG system,
 making it easy to integrate with AI agents.
 """
+
 import os
+from typing import Any
+
 import requests
-from typing import Dict, List, Any, Optional
-from pydantic import BaseModel, Field
 from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
 from src.config import get_port
 
 # Get API port from centralized configuration
-api_port = get_port('api')
+api_port = get_port("api")
 
 # Default API URL
 DEFAULT_API_URL = os.getenv("GRAPHRAG_API_URL", f"http://localhost:{api_port}")
 
+
 class GraphRAGSearchInput(BaseModel):
     """Input for GraphRAG search tool."""
-    query: str = Field(..., description="The search query to send to the GraphRAG system")
+
+    query: str = Field(
+        ..., description="The search query to send to the GraphRAG system"
+    )
     n_results: int = Field(5, description="Number of vector results to return")
     max_hops: int = Field(2, description="Maximum number of hops in the graph")
 
+
 class GraphRAGConceptInput(BaseModel):
     """Input for GraphRAG concept tool."""
+
     concept_name: str = Field(..., description="Name of the concept to explore")
+
 
 class GraphRAGDocumentInput(BaseModel):
     """Input for GraphRAG document tool."""
-    concept_name: str = Field(..., description="Name of the concept to find documents for")
+
+    concept_name: str = Field(
+        ..., description="Name of the concept to find documents for"
+    )
     limit: int = Field(5, description="Maximum number of documents to return")
+
 
 class GraphRAGAddDocumentInput(BaseModel):
     """Input for GraphRAG add document tool."""
+
     text: str = Field(..., description="Document text to add to the GraphRAG system")
-    title: Optional[str] = Field(None, description="Document title")
-    source: Optional[str] = Field(None, description="Document source")
+    title: str | None = Field(None, description="Document title")
+    source: str | None = Field(None, description="Document source")
+
 
 class GraphRAGSearchTool(BaseTool):
     """Tool for searching the GraphRAG system."""
+
     name = "graphrag_search"
     description = """
     Use this tool to search the GraphRAG system with a query.
@@ -48,14 +64,10 @@ class GraphRAGSearchTool(BaseTool):
     args_schema = GraphRAGSearchInput
     api_url: str = DEFAULT_API_URL
 
-    def _run(self, query: str, n_results: int = 5, max_hops: int = 2) -> Dict[str, Any]:
+    def _run(self, query: str, n_results: int = 5, max_hops: int = 2) -> dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/search"
-        data = {
-            "query": query,
-            "n_results": n_results,
-            "max_hops": max_hops
-        }
+        data = {"query": query, "n_results": n_results, "max_hops": max_hops}
 
         try:
             response = requests.post(url, json=data)
@@ -64,8 +76,10 @@ class GraphRAGSearchTool(BaseTool):
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
+
 class GraphRAGConceptTool(BaseTool):
     """Tool for exploring concepts in the GraphRAG system."""
+
     name = "graphrag_concept"
     description = """
     Use this tool to explore a concept in the GraphRAG system.
@@ -74,7 +88,7 @@ class GraphRAGConceptTool(BaseTool):
     args_schema = GraphRAGConceptInput
     api_url: str = DEFAULT_API_URL
 
-    def _run(self, concept_name: str) -> Dict[str, Any]:
+    def _run(self, concept_name: str) -> dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/concepts/{concept_name}"
 
@@ -85,8 +99,10 @@ class GraphRAGConceptTool(BaseTool):
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
+
 class GraphRAGDocumentTool(BaseTool):
     """Tool for finding documents related to a concept in the GraphRAG system."""
+
     name = "graphrag_documents"
     description = """
     Use this tool to find documents related to a concept in the GraphRAG system.
@@ -95,7 +111,7 @@ class GraphRAGDocumentTool(BaseTool):
     args_schema = GraphRAGDocumentInput
     api_url: str = DEFAULT_API_URL
 
-    def _run(self, concept_name: str, limit: int = 5) -> Dict[str, Any]:
+    def _run(self, concept_name: str, limit: int = 5) -> dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/documents/{concept_name}?limit={limit}"
 
@@ -106,8 +122,10 @@ class GraphRAGDocumentTool(BaseTool):
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
+
 class GraphRAGAddDocumentTool(BaseTool):
     """Tool for adding a document to the GraphRAG system."""
+
     name = "graphrag_add_document"
     description = """
     Use this tool to add a document to the GraphRAG system.
@@ -116,7 +134,9 @@ class GraphRAGAddDocumentTool(BaseTool):
     args_schema = GraphRAGAddDocumentInput
     api_url: str = DEFAULT_API_URL
 
-    def _run(self, text: str, title: Optional[str] = None, source: Optional[str] = None) -> Dict[str, Any]:
+    def _run(
+        self, text: str, title: str | None = None, source: str | None = None
+    ) -> dict[str, Any]:
         """Run the tool."""
         url = f"{self.api_url}/documents"
 
@@ -126,10 +146,7 @@ class GraphRAGAddDocumentTool(BaseTool):
         if source:
             metadata["source"] = source
 
-        data = {
-            "text": text,
-            "metadata": metadata
-        }
+        data = {"text": text, "metadata": metadata}
 
         try:
             response = requests.post(url, json=data)
@@ -138,15 +155,16 @@ class GraphRAGAddDocumentTool(BaseTool):
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
 
-def get_graphrag_tools(api_url: Optional[str] = None) -> List[BaseTool]:
-    """
-    Get a list of GraphRAG tools for use with LangChain.
+
+def get_graphrag_tools(api_url: str | None = None) -> list[BaseTool]:
+    """Get a list of GraphRAG tools for use with LangChain.
 
     Args:
         api_url: URL of the GraphRAG API server (default: from environment or centralized configuration)
 
     Returns:
         List of LangChain tools
+
     """
     url = api_url or DEFAULT_API_URL
 
@@ -154,5 +172,5 @@ def get_graphrag_tools(api_url: Optional[str] = None) -> List[BaseTool]:
         GraphRAGSearchTool(api_url=url),
         GraphRAGConceptTool(api_url=url),
         GraphRAGDocumentTool(api_url=url),
-        GraphRAGAddDocumentTool(api_url=url)
+        GraphRAGAddDocumentTool(api_url=url),
     ]
