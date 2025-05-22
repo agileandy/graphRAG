@@ -10,11 +10,11 @@ import json
 import os
 import sys
 
-# Add the project root directory to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Add src directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp import ClientSession  # noqa: E402
+from mcp.client.streamable_http import streamablehttp_client  # noqa: E402
 
 
 async def connect_to_server(host: str, port: int):
@@ -53,7 +53,7 @@ async def update_bug(
     session, bug_id: int, status: str | None = None, resolution: str | None = None
 ):
     """Update an existing bug."""
-    params = {"id": bug_id}
+    params: dict[str, int | str] = {"id": bug_id}
 
     if status:
         params["status"] = status
@@ -232,9 +232,13 @@ async def command_mode(host: str, port: int, args) -> None:
 
 def main() -> None:
     """Main function."""
-    parser = argparse.ArgumentParser(description="Bug Tracking MCP Client")
-    parser.add_argument("--host", type=str, default="localhost", help="MCP server host")
-    parser.add_argument("--port", type=int, default=5005, help="MCP server port")
+    parser = argparse.ArgumentParser(
+        description="Bug Tracking MCP Client"
+    )
+    parser.add_argument("--host", type=str, default="localhost",
+                       help="MCP server host")
+    parser.add_argument("--port", type=int, default=5005,
+                       help="MCP server port")
 
     subparsers = parser.add_subparsers(dest="action", help="Action to perform")
 

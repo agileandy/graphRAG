@@ -315,7 +315,7 @@ def add_document():
                 f"Failed to add document '{metadata.get('title', 'Unknown Title')}': {error_message}"
             )
             return jsonify(
-                {"status": "failure", "error": error_message}
+                {"status": "failure", "error": error_message, "document_id": None}
             ), 500  # Internal Server Error
         elif isinstance(result, dict) and "document_id" in result:
             # Document was added successfully
@@ -340,6 +340,7 @@ def add_document():
                 {
                     "status": "failure",
                     "error": "An unexpected error occurred during document processing.",
+                    "document_id": None,
                 }
             ), 500
     except Exception as e:
@@ -348,7 +349,7 @@ def add_document():
             f"Unhandled exception in add_document endpoint: {str(e)}\nTraceback:\n{tb_str}"
         )
         return jsonify(
-            {"error": f"Unhandled exception: {str(e)}", "traceback": tb_str}
+            {"error": f"Unhandled exception: {str(e)}", "traceback": tb_str, "document_id": None}
         ), 500
 
 

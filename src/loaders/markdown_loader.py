@@ -71,7 +71,7 @@ class MarkdownLoader:
                     metadata = yaml.safe_load(frontmatter)
 
                     # Remove the frontmatter from the content
-                    md_content = md_content[end_idx + 3 :].strip()
+                    md_content = md_content[end_idx + 3:].strip()
             except Exception as e:
                 print(f"Error parsing frontmatter: {e}")
 
@@ -92,7 +92,8 @@ class MarkdownLoader:
         html = markdown.markdown(md_content)
 
         # Simple HTML to text conversion
-        # This is a basic implementation - for production, consider using a more robust HTML-to-text converter
+        # Basic HTML-to-text conversion
+        # For production, use a more robust converter like html2text
         import re
 
         # Remove HTML tags

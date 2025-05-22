@@ -1,7 +1,7 @@
 import time
 import uuid
 
-from scripts.database_management.clean_database import clean_database
+from scripts.database_management.clean_database import clean_database, clean_neo4j, clean_chromadb
 from tests.regression.test_utils import (
     add_test_document,
     cancel_job,
@@ -49,7 +49,7 @@ def test_mcp_job_status() -> None:
         for i in range(num_documents):
             doc_data = generate_unique_document(i)
             add_success, add_response = add_test_document(
-                doc_data["text"], doc_data["metadata"], use_mcp=True
+                doc_data["text"], doc_data["metadata"]
             )  # Assuming use_mcp flag or similar
             assert add_success, (
                 f"Failed to add document {i + 1} via MCP: {add_response.get('error', 'Unknown error')}"
@@ -75,7 +75,7 @@ def test_mcp_job_status() -> None:
 
         while time.time() - start_time < timeout:
             status_success, status_response = get_job_status(
-                job_id, use_mcp=True
+                job_id
             )  # Assuming use_mcp flag or similar
             assert status_success, (
                 f"Failed to get job status for {job_id} via MCP: {status_response.get('error', 'Unknown error')}"
@@ -129,7 +129,7 @@ def test_mcp_job_cancellation() -> None:
         for i in range(num_documents):
             doc_data = generate_unique_document(i)
             add_success, add_response = add_test_document(
-                doc_data["text"], doc_data["metadata"], use_mcp=True
+                doc_data["text"], doc_data["metadata"]
             )  # Assuming use_mcp flag or similar
             assert add_success, (
                 f"Failed to add document {i + 1} via MCP: {add_response.get('error', 'Unknown error')}"
@@ -153,7 +153,7 @@ def test_mcp_job_cancellation() -> None:
 
         # Cancel the job via MCP
         cancel_success, cancel_response = cancel_job(
-            job_id, use_mcp=True
+            job_id
         )  # Assuming use_mcp flag or similar
         assert cancel_success, (
             f"Failed to cancel job {job_id} via MCP: {cancel_response.get('error', 'Unknown error')}"
@@ -167,7 +167,7 @@ def test_mcp_job_cancellation() -> None:
 
         while time.time() - start_time < timeout:
             status_success, status_response = get_job_status(
-                job_id, use_mcp=True
+                job_id
             )  # Assuming use_mcp flag or similar
             assert status_success, (
                 f"Failed to get job status for {job_id} after cancellation via MCP: {status_response.get('error', 'Unknown error')}"

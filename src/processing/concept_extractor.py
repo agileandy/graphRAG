@@ -77,6 +77,7 @@ DOMAIN_STOPWORDS = {
         "may",
         "might",
         "must",
+        "part", # Added "part"
         "this",
         "that",
         "these",
@@ -229,15 +230,14 @@ def load_llm_config(config_path: str | None = None) -> dict[str, Any]:
     try:
         with open(config_path) as f:
             config = json.load(f)
-        return config
     except Exception as e:
-        logger.error(f"Error loading LLM config: {e}")
+        logger.warning(f"Error loading LLM config from {config_path}: {e}. Falling back to default config.")
         # Return default config
-        return {
+        config = {
             "_comment": "To use OpenRouter for concept extraction, replace OPENROUTER_API_KEY with your actual API key from https://openrouter.ai/",
             "primary_provider": {
                 "type": "openrouter",
-                "api_key": "OPENROUTER_API_KEY",
+                "api_key": "OPENROUTER_API_KEY", # Placeholder
                 "model": "google/gemini-2.0-flash-exp:free",
                 "temperature": 0.1,
                 "max_tokens": 1000,
@@ -250,6 +250,27 @@ def load_llm_config(config_path: str | None = None) -> dict[str, Any]:
                 "timeout": 60,
             },
         }
+
+    # Specifically adjust for OpenRouter API key if it's the primary provider
+    primary_provider_config = config.get("primary_provider", {})
+    if primary_provider_config.get("type") == "openrouter":
+        env_api_key = os.getenv("OPENROUTER_API_KEY")
+        # Get key from config, which might be the placeholder if default was used
+        config_api_key = primary_provider_config.get("api_key")
+
+        if env_api_key:
+            primary_provider_config["api_key"] = env_api_key
+            logger.info("Using OpenRouter API key from OPENROUTER_API_KEY environment variable.")
+        elif config_api_key == "OPENROUTER_API_KEY" or not config_api_key:
+            logger.warning(
+                "OpenRouter API key is a placeholder or missing in LLM configuration, "
+                "and OPENROUTER_API_KEY environment variable is not set. "
+                "OpenRouter will be effectively disabled or fail if used."
+            )
+            primary_provider_config["api_key"] = "" # Ensure placeholder is not used
+        # If config_api_key is present and not the placeholder, and no env var, it will be used.
+
+    return config
 
 
 def setup_llm_manager(config: dict[str, Any]) -> LLMManager | None:
@@ -349,8 +370,27 @@ class ConceptExtractor:
             DOMAIN_STOPWORDS.get(domain, set())
         )
 
-        # Load domain-specific concept patterns if available
-        self.domain_patterns = self._load_domain_patterns(domain)
+        # Load and compile domain-specific concept patterns
+        raw_domain_patterns = self._load_domain_patterns(domain)
+        self.compiled_domain_patterns = [
+            re.compile(p, re.IGNORECASE) for p in raw_domain_patterns
+        ]
+
+        # General patterns for compound nouns and hyphenated terms
+        self.compound_noun_pattern_str = r"\b([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)+)\b" # Matches sequences of capitalized words
+        self.hyphenated_term_pattern_str = r"\b([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)+)\b"
+        # Pattern for acronyms (e.g., NLP, AI, LLM)
+        self.acronym_pattern_str = r"\b([A-Z]{2,})\b"
+
+
+        self.compiled_compound_noun_pattern = re.compile(self.compound_noun_pattern_str)
+        self.compiled_hyphenated_term_pattern = re.compile(self.hyphenated_term_pattern_str)
+        self.compiled_acronym_pattern = re.compile(self.acronym_pattern_str)
+
+        # Basic pattern for single or multiple words (potential concepts)
+        # This will be used as a fallback and then filtered
+        self.general_term_pattern_str = r"\b([a-zA-Z][a-zA-Z0-9]*(?:\s+[a-zA-Z][a-zA-Z0-9]*){0,3})\b" # Up to 4 words
+        self.compiled_general_term_pattern = re.compile(self.general_term_pattern_str, re.IGNORECASE)
 
     def _load_domain_patterns(self, domain: str) -> list[str]:
         """Load domain-specific concept patterns.
@@ -363,144 +403,212 @@ class ConceptExtractor:
 
         """
         # Default patterns for technical concepts
-        default_patterns = [
-            r"\b[A-Z][a-z]+ (Learning|Network|Model|Algorithm|Framework)\b",  # ML concepts
-            r"\b(Deep|Machine|Reinforcement|Supervised|Unsupervised) Learning\b",  # Learning types
-            r"\b(Neural Network|Decision Tree|Random Forest|Support Vector Machine|Gradient Boosting)\b",  # ML models
-            r"\b(Industry 4\.0|Industry 5\.0|Internet of Things|IoT|AI|ML|DL)\b",  # Industry concepts
-            r"\b(Big Data|Cloud Computing|Edge Computing|Blockchain|Quantum Computing)\b",  # Tech concepts
+        patterns = [
+            # General ML/AI
+            r"\b[A-Z][a-z]+ (Learning|Network|Model|Algorithm|System|Framework|Technique|Approach)\b",
+            r"\b(Deep|Machine|Reinforcement|Supervised|Unsupervised|Self-supervised|Federated) Learning\b",
+            r"\b(Artificial Intelligence|AI|Machine Learning|ML|Deep Learning|DL)\b",
+            r"\b(Neural Network(?:s)?|NN)\b",
+            r"\b(Decision Tree(?:s)?|Random Forest(?:s)?|Support Vector Machine(?:s)?|SVM|Gradient Boosting)\b",
+            r"\b(Natural Language Processing|NLP|Computer Vision|CV)\b",
+            r"\b(Large Language Model(?:s)?|LLM(?:s)?|Generative AI|GenAI)\b",
+            r"\b(Transformer(?: Model)?|Attention Mechanism|Self-Attention)\b",
+            r"\b(Embedding(?:s)?|Tokenization|Vector Database(?:s)?)\b",
+            # Broader Tech
+            r"\b(Industry 4\.0|Industry 5\.0|Internet of Things|IoT)\b",
+            r"\b(Big Data|Data Mining|Data Science|Data Analysis)\b",
+            r"\b(Cloud Computing|Edge Computing|Fog Computing)\b",
+            r"\b(Blockchain|Cryptocurrency|Smart Contract(?:s)?)\b",
+            r"\b(Quantum Computing|Quantum Supremacy)\b",
+            r"\b(Cybersecurity|Network Security|Information Security)\b",
+            r"\b(Virtual Reality|VR|Augmented Reality|AR|Mixed Reality|MR)\b",
+            r"\b(Robotic Process Automation|RPA)\b",
+            # Specific tools/frameworks - can be expanded or loaded from config
+            r"\b(TensorFlow|PyTorch|Keras|Scikit-learn)\b",
+            r"\b(Apache Spark|Apache Hadoop)\b",
+            r"\b(Docker|Kubernetes)\b",
         ]
 
-        # TODO: Load patterns from a configuration file based on domain
-        return default_patterns
+        # Domain-specific additions (example for 'academic')
+        if domain == "academic":
+            patterns.extend([
+                r"\b(Literature Review|Systematic Review)\b",
+                r"\b(Case Study|Empirical Study)\b",
+                r"\b(Statistical Analysis|Hypothesis Testing)\b",
+            ])
+        elif domain == "finance": # Example of another domain
+            patterns.extend([
+                r"\b(Algorithmic Trading|High-Frequency Trading)\b",
+                r"\b(Risk Management|Credit Scoring)\b",
+                r"\b(FinTech|Regulatory Technology|RegTech)\b",
+            ])
+
+
+        # TODO: Load patterns from a configuration file based on domain for more flexibility
+        return patterns
+
+    def _normalize_plural(self, term: str) -> str:
+        """Attempt to normalize plural forms to singular.
+        This is a simple heuristic and may not cover all cases or be perfectly accurate.
+        """
+        lower_term = term.lower()
+        if len(lower_term) < 3: # Avoid processing very short terms like "is", "as"
+            return term
+
+        if lower_term.endswith("ies"):
+            if len(lower_term) > 3 and lower_term[-4].lower() not in "aeiou": # e.g., 'studies' -> 'study'
+                # Preserve case of the letter before 'y'
+                return term[:-3] + ("Y" if term[-3].isupper() else "y")
+        elif lower_term.endswith("ses"): # e.g., 'processes' -> 'process', 'gases' -> 'gas'
+             if lower_term.endswith("sses"): # e.g. 'glasses' -> 'glass'
+                 return term[:-2]
+             # Avoid 'analysis', 'basis', etc. - these are often singular or have irregular plurals
+             # Check common irregulars that end in 'ses' if they are singular
+             if lower_term not in ["analyses", "bases", "crises", "diagnoses", "ellipses", "hypotheses", "oases", "paralyses", "parentheses", "synopses", "syntheses", "theses", "series", "species"]:
+                # if it was 'processes' -> 'process'
+                if len(term) > 1 and term[:-1].lower() + 's' == lower_term : # check if removing s makes sense
+                     return term[:-1]
+                # if it was 'gases' -> 'gas'
+                elif len(term) > 2 and term[:-2].lower() + 'es' == lower_term: # check if removing es makes sense
+                     return term[:-2]
+
+        elif lower_term.endswith("es"):
+            # e.g., 'boxes' -> 'box', 'wishes' -> 'wish'
+            # Avoid 'series', 'species', 'clothes', 'mathematics', 'physics', 'news'
+            # also avoid common verbs like 'goes', 'does'
+            if lower_term not in ["series", "species", "clothes", "mathematics", "physics", "news", "goes", "does"]:
+                if len(lower_term) > 2 and (lower_term.endswith("xes") or lower_term.endswith("shes") or lower_term.endswith("ches") or lower_term.endswith("oes")):
+                     # Check if removing 'es' leaves a valid word structure, very heuristic
+                    if len(term[:-2]) > 1 : # Avoid 'he' -> 'h'
+                        return term[:-2]
+
+        # General 's' removal, avoid possessives and double 's'
+        if lower_term.endswith("s") and not lower_term.endswith("ss") and not lower_term.endswith("us"): # avoid 'class', 'bus'
+            # Avoid possessives like 'it's' or words like 'analysis'
+            if "'" not in term and len(term[:-1]) > 1: # Ensure base is not too short
+                 # Check if base form is substantially different or too short
+                if len(term[:-1]) >= (self.min_concept_length -1 if self.min_concept_length > 1 else 1): # Allow shorter base if min_concept_length is 1
+                    # A simple check: if removing 's' results in a word in stopwords, it might be a verb (e.g. "uses" -> "use")
+                    # This is imperfect. For now, just remove 's'.
+                    return term[:-1]
+        return term
 
     def extract_concepts_rule_based(self, text: str) -> list[str]:
         """Extract concepts using rule-based approach.
 
-        Args:
-            text: Input text
+        This method applies a series of regular expressions to identify
+        potential concepts. It prioritizes domain-specific patterns and
+        then applies more general ones.
 
-        Returns:
-            List of extracted concepts
-
+        Steps:
+        1. Preprocess text (e.g., normalize whitespace).
+        2. Apply compiled regex patterns (domain-specific, compound, hyphenated, acronyms).
+        3. Apply a general term pattern as a fallback.
+        4. Normalize extracted concepts (e.g., lowercase, handle plurals).
+        5. Filter concepts based on length, stopwords, and validity using _is_valid_concept.
+        6. Return a list of unique, valid concepts.
         """
-        concepts = []
+        if not text:
+            return []
 
-        # Extract noun phrases using regex patterns
-        # Look for capitalized phrases that might be concepts
-        cap_phrases = re.findall(r"\b[A-Z][a-zA-Z]+(?: [a-zA-Z]+){0,4}\b", text)
-        concepts.extend(
-            [phrase for phrase in cap_phrases if self._is_valid_concept(phrase)]
-        )
+        processed_text = re.sub(r"\s+", " ", text).strip()
+        extracted_phrases = set()
 
-        # Extract domain-specific patterns
-        for pattern in self.domain_patterns:
-            matches = re.findall(pattern, text)
-            concepts.extend(
-                [match for match in matches if self._is_valid_concept(match)]
-            )
+        # --- Apply Compiled Patterns ---
+        # 1. Domain-specific patterns (most specific)
+        # These patterns are already compiled with re.IGNORECASE in __init__
+        for pattern_obj in self.compiled_domain_patterns:
+            try:
+                matches = pattern_obj.findall(processed_text)
+                for match in matches:
+                    if isinstance(match, tuple):
+                        # Handle patterns that return multiple groups, join non-empty ones
+                        phrase = " ".join(m for m in match if m and m.strip()).strip()
+                    elif isinstance(match, str):
+                        phrase = match.strip()
+                    else:
+                        continue # Should not happen with findall if pattern is valid
+                    if phrase:
+                        extracted_phrases.add(phrase)
+            except re.error as e:
+                logger.warning(f"Regex error with domain pattern {pattern_obj.pattern}: {e}")
 
-        # Extract common technical terms and phrases
-        # Look for phrases with technical keywords
-        tech_keywords = [
-            "algorithm",
-            "framework",
-            "model",
-            "system",
-            "network",
-            "protocol",
-            "architecture",
-            "platform",
-            "language",
-            "interface",
-            "database",
-            "learning",
-            "intelligence",
-            "neural",
-            "data",
-            "cloud",
-            "computing",
-            "security",
-            "encryption",
-            "blockchain",
-            "internet",
-            "web",
-            "api",
-            "software",
-            "hardware",
-            "device",
-            "sensor",
-            "robot",
-            "automation",
-            "prompt",
-            "engineering",
-            "llm",
-            "gpt",
-            "ai",
-            "ml",
-            "nlp",
-            "rag",
-        ]
+        # 2. Compound Noun Pattern (Capitalized sequences)
+        # This pattern is compiled without IGNORECASE to respect capitalization
+        try:
+            matches = self.compiled_compound_noun_pattern.findall(processed_text)
+            for match in matches: # This pattern returns a single string match
+                if isinstance(match, str) and match.strip():
+                     extracted_phrases.add(match.strip())
+        except re.error as e:
+            logger.warning(f"Regex error with compound noun pattern: {e}")
 
-        # Create patterns for technical terms
-        for keyword in tech_keywords:
-            # Look for phrases where the keyword is the main term
-            # e.g., "machine learning", "neural network", "cloud computing"
-            pattern = rf"\b[a-zA-Z]+ {keyword}\b"
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            concepts.extend(
-                [match.strip() for match in matches if self._is_valid_concept(match)]
-            )
+        # 3. Hyphenated Term Pattern
+        # This pattern is compiled without IGNORECASE by default, can be made case-insensitive if needed
+        try:
+            matches = self.compiled_hyphenated_term_pattern.findall(processed_text)
+            for match in matches: # This pattern returns a single string match
+                if isinstance(match, str) and match.strip():
+                    extracted_phrases.add(match.strip())
+        except re.error as e:
+            logger.warning(f"Regex error with hyphenated term pattern: {e}")
 
-            # Look for phrases where the keyword is a modifier
-            # e.g., "learning algorithm", "network architecture", "data model"
-            pattern = rf"\b{keyword} [a-zA-Z]+\b"
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            concepts.extend(
-                [match.strip() for match in matches if self._is_valid_concept(match)]
-            )
+        # 4. Acronym Pattern (e.g., NLP, AI, LLM)
+        # This pattern is compiled without IGNORECASE to match uppercase acronyms
+        try:
+            matches = self.compiled_acronym_pattern.findall(processed_text)
+            for match in matches: # This pattern returns a single string match
+                if isinstance(match, str) and match.strip() and len(match) > 1 : # Ensure it's a multi-letter acronym
+                    extracted_phrases.add(match.strip())
+        except re.error as e:
+            logger.warning(f"Regex error with acronym pattern: {e}")
 
-        # Extract multi-word technical terms (2-3 words)
-        # This catches phrases like "artificial neural network", "deep learning model"
-        multi_word_patterns = [
-            r"\b[A-Za-z]+ [A-Za-z]+ [A-Za-z]+\b",  # 3-word phrases
-            r"\b[A-Za-z]+ [A-Za-z]+\b",  # 2-word phrases
-        ]
+        # 5. General Term Pattern (as a fallback, compiled with IGNORECASE)
+        # This helps catch terms not covered by specific patterns.
+        try:
+            matches = self.compiled_general_term_pattern.findall(processed_text)
+            for match_candidate in matches: # This pattern returns a single string match
+                if isinstance(match_candidate, str) and match_candidate.strip():
+                    extracted_phrases.add(match_candidate.strip())
+        except re.error as e:
+            logger.warning(f"Regex error with general term pattern: {e}")
 
-        for pattern in multi_word_patterns:
-            matches = re.findall(pattern, text)
-            # Filter matches to only include those with technical relevance
-            for match in matches:
-                match = match.strip()
-                # Check if the phrase contains any technical keywords or is capitalized
-                if (
-                    any(keyword in match.lower() for keyword in tech_keywords)
-                    or match[0].isupper()
-                ) and self._is_valid_concept(match):
-                    concepts.append(match)
+        # --- Normalization and Filtering ---
+        final_concepts = set()
+        for phrase in extracted_phrases:
+            # Strip whitespace again in case any pattern left some
+            cleaned_phrase = phrase.strip()
+            if not cleaned_phrase:
+                continue
 
-        # Extract acronyms that might be technical terms
-        acronyms = re.findall(r"\b[A-Z]{2,5}\b", text)
-        concepts.extend([acronym for acronym in acronyms if len(acronym) >= 2])
+            # Attempt plural normalization.
+            # For multi-word phrases, normalize the last word.
+            # For single-word phrases, normalize the word itself.
+            words = cleaned_phrase.split()
+            if len(words) > 0: # Ensure there are words to process
+                if len(words) > 1:
+                    # Try normalizing the last word of a multi-word phrase
+                    last_word_normalized = self._normalize_plural(words[-1])
+                    # Reconstruct the phrase only if normalization changed the last word and it's not empty
+                    if last_word_normalized and last_word_normalized.lower() != words[-1].lower():
+                        normalized_phrase_str = " ".join(words[:-1] + [last_word_normalized])
+                    else: # No change or empty result, keep original
+                        normalized_phrase_str = cleaned_phrase
+                else: # Single word phrase
+                    normalized_phrase_str = self._normalize_plural(cleaned_phrase)
+            else: # Should not happen if cleaned_phrase is not empty
+                normalized_phrase_str = cleaned_phrase
 
-        # Remove duplicates and normalize
-        unique_concepts = set()
-        normalized_concepts = []
+            # Use _is_valid_concept for filtering (length, stopwords etc.)
+            # It's assumed _is_valid_concept handles its own casing logic for checks.
+            if self._is_valid_concept(normalized_phrase_str):
+                # Add the version that _is_valid_concept approved, then lowercase for set uniqueness.
+                final_concepts.add(normalized_phrase_str.lower())
+            # Fallback: if normalized version is not valid, check original cleaned phrase
+            elif self._is_valid_concept(cleaned_phrase):
+                final_concepts.add(cleaned_phrase.lower())
 
-        for concept in concepts:
-            # Normalize concept (capitalize first letter of each word)
-            words = concept.split()
-            normalized = " ".join(
-                word.capitalize() if not word.isupper() else word for word in words
-            )
-
-            # Add to list if not already present
-            if normalized.lower() not in unique_concepts:
-                unique_concepts.add(normalized.lower())
-                normalized_concepts.append(normalized)
-
-        # Sort alphabetically
-        return sorted(normalized_concepts)
+        return sorted(list(final_concepts))
 
     def extract_concepts_nlp(self, text: str) -> list[str]:
         """Extract concepts using NLP-based approach with spaCy.
@@ -900,12 +1008,25 @@ class ConceptExtractor:
         optimal_chunk_size = optimize_chunk_size(text, default_size=chunk_size)
 
         # Use the smart chunking algorithm from document processor
-        return smart_chunk_text(
-            text,
-            chunk_size=optimal_chunk_size,
-            overlap=overlap,
-            semantic_boundaries=True,
-        )
+        try:
+            raw_chunks = smart_chunk_text(
+                text,
+                chunk_size=optimal_chunk_size,
+                overlap=overlap,
+                semantic_boundaries=True,
+            )
+            # Ensure it's a list of strings
+            if isinstance(raw_chunks, list) and all(isinstance(c, str) for c in raw_chunks):
+                return raw_chunks
+            elif isinstance(raw_chunks, list): # It's a list, but not of strings
+                logger.warning(f"smart_chunk_text returned a list containing non-string elements from text (length {len(text)}). Converting all to string.")
+                return [str(item) for item in raw_chunks] # Attempt conversion
+            else:
+                logger.warning(f"smart_chunk_text did not return a list for text (length {len(text)}). Got {type(raw_chunks)}. Returning empty list.")
+                return []
+        except Exception as e:
+            logger.error(f"Error calling smart_chunk_text for text (length {len(text)}): {e}. Returning empty list.", exc_info=True)
+            return []
 
     def extract_concepts(
         self, text: str, method: str = "auto", max_concepts: int = 20

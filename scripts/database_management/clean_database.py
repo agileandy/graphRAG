@@ -21,7 +21,6 @@ from dotenv import load_dotenv
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 
-
 def clean_neo4j(neo4j_db: Neo4jDatabase, confirm: bool = False) -> bool:
     """Clear all data from Neo4j.
 
@@ -74,7 +73,6 @@ def clean_neo4j(neo4j_db: Neo4jDatabase, confirm: bool = False) -> bool:
     else:
         print(f"❌ Failed to clear all data. {new_count} nodes remain.")
         return False
-
 
 def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool:
     """Physically delete Neo4j database files.
@@ -237,7 +235,6 @@ def physically_delete_neo4j(confirm: bool = False, restart: bool = True) -> bool
 
     return success
 
-
 def clean_chromadb(vector_db: VectorDatabase, confirm: bool = False) -> bool:
     """Reset the ChromaDB vector database.
 
@@ -283,6 +280,40 @@ def clean_chromadb(vector_db: VectorDatabase, confirm: bool = False) -> bool:
         print(f"❌ Failed to delete ChromaDB directory: {e}")
         return False
 
+def clean_database(neo4j_confirm: bool = False, chromadb_confirm: bool = False) -> tuple:
+    """Clean both Neo4j and ChromaDB databases.
+
+    Args:
+        neo4j_confirm: Whether to skip Neo4j confirmation prompt
+        chromadb_confirm: Whether to skip ChromaDB confirmation prompt
+
+    Returns:
+        A tuple (success: bool, response: dict) with success status and response message
+    """
+    try:
+        # Load environment variables
+        load_dotenv()
+
+        # Initialize databases
+        neo4j_db = Neo4jDatabase()
+        vector_db = VectorDatabase()
+
+        # Clean Neo4j
+        neo4j_success = clean_neo4j(neo4j_db, neo4j_confirm)
+
+        # Clean ChromaDB
+        chromadb_success = clean_chromadb(vector_db, chromadb_confirm)
+
+        # Close Neo4j connection
+        neo4j_db.close()
+
+        return True, {
+            "message": "Database cleaning completed successfully",
+            "neo4j": {"success": neo4j_success},
+            "chromadb": {"success": chromadb_success}
+        }
+    except Exception as e:
+        return False, {"error": str(e)}
 
 def main() -> None:
     """Main function to clean the GraphRAG database."""
@@ -341,7 +372,6 @@ def main() -> None:
     neo4j_db.close()
 
     print("\n✅ Database cleaning completed")
-
 
 if __name__ == "__main__":
     main()
