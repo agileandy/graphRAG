@@ -230,7 +230,7 @@ class OpenRouterProvider(LLMProvider):
 
     def __init__(
         self,
-        api_key: str,
+        api_key: str | None = None,
         model: str = "google/gemini-2.0-flash-exp:free",
         embedding_model: str | None = None,
         temperature: float = 0.0,
@@ -240,7 +240,7 @@ class OpenRouterProvider(LLMProvider):
         """Initialize OpenRouter provider.
 
         Args:
-            api_key: OpenRouter API key
+            api_key: OpenRouter API key (if None, will try to load from OPENROUTER_API_KEY env var)
             model: Model name to use (default: google/gemini-2.0-flash-exp:free)
             embedding_model: Model for embeddings (if different)
             temperature: Temperature for generation
@@ -249,7 +249,11 @@ class OpenRouterProvider(LLMProvider):
 
         """
         self.api_base = "https://openrouter.ai/api/v1"
-        self.api_key = api_key
+        # Try to get API key from environment if not provided
+        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
+        if not self.api_key:
+            logger.warning("No OpenRouter API key provided and OPENROUTER_API_KEY environment variable not set")
+        
         self.model = model
         self.embedding_model = (
             embedding_model or "openai/text-embedding-ada-002"
