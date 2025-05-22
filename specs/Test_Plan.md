@@ -4,6 +4,66 @@
 
 This document outlines the existing testing assets and practices within the GraphRAG project. It serves as an initial consolidation of findings to inform a more comprehensive test strategy. The project primarily utilizes Python for its testing efforts, with a significant number of tests located in the `tests/` directory.
 
+## 2. Test Structure and Organization
+
+### 2.1. Test Directories:
+*   **`tests/`**: Main directory for all tests.
+    *   **`tests/component/`**: Contains component-level tests.
+    *   **`tests/regression/`**: Contains regression tests, including subdirectories for `mcp_tests/`, `program_suite/`, and `web_api_tests/`.
+    *   **`tests/regression/data/`**: Contains test data for regression tests (as per `tests/regression/README.md`).
+    *   A `test_pdf.pdf` file exists directly under `tests/`, likely used by `tests/test_file_handlers.py`. The script `tests/test_file_handlers.py` also references a `test_files/` directory (e.g., `test_files/test_markdown.md`), but this directory was not directly observed in the root of `tests/`.
+
+### 2.2. Test Script Files:
+The `tests/` directory and its subdirectories contain numerous Python test files (`test_*.py`). Key categories include:
+
+*   **General Tests (in `tests/`):**
+    *   `test_add_document_with_concepts.py`
+    *   `test_api_add_document.py`
+    *   `test_duplicate_detection.py`
+    *   `test_end_to_end.py`
+    *   `test_file_handlers.py`
+    *   `test_mcp_add_document_with_concepts.py`
+    *   `test_mcp_add_document.py`
+    *   `test_mcp_concept.py`
+    *   `test_mcp_connection.py`
+    *   `test_mcp_search.py`
+    *   `test_mcp_server.py`
+    *   `test_mpc_search_graphrag.py` (likely a typo, should be mcp)
+    *   `test_neo4j.py`
+    *   `test_setup.py`
+
+*   **Component Tests (in `tests/component/`):**
+    *   `test_async_processing.py`
+    *   `test_concept_extraction.py`
+    *   `test_deduplication.py`
+    *   `test_embedding_model.py`
+    *   `test_llm_concept_extraction.py`
+    *   `test_llm_integration.py`
+    *   `test_mcp_connection.py`
+    *   `test_mcp_search.py`
+    *   `test_neo4j.py`
+    *   `test_vector_db.py`
+
+*   **Regression Tests (in `tests/regression/` and its subdirectories):**
+    *   A suite of tests covering service start/stop, DB initialization, document operations, NLP processing, search, deduplication, and MCP/API functionalities.
+    *   Examples:
+        *   **Web API Tests:**
+            *   `web_api_tests/01_test_server_management.py` (start/stop tests)
+            *   `web_api_tests/02_test_database_initialize.py` (database initialization tests)
+            *   `web_api_tests/03_test_document_operations.py` (document operations tests)
+            *   `web_api_tests/04_test_folder_operations.py` (folder operations tests)
+            *   `web_api_tests/05_test_search_operations.py` (search operations tests)
+        *   **MCP Tests:**
+            *   `mcp_tests/01_test_server_management.py` (MCP start/stop tests)
+            *   `mcp_tests/02_test_database_initialize.py` (MCP database initialization tests)
+            *   `mcp_tests/03_test_document_operations.py` (MCP document operations tests)
+            *   `mcp_tests/04_test_folder_operations.py` (MCP folder operations tests)
+            *   `mcp_tests/05_test_search_operations.py` (MCP search operations tests)
+
+*   **Other Test-related Scripts:**
+    *   Various scripts in `scripts/database_management/` (e.g., `verify_neo4j.py`, `verify_vector_db.py`) perform connection tests and basic operation checks.
+    *   `test_ollama_python.py`, `test_document_chunking.py`, `test_concept_extraction_chunking.py` appear to be standalone test scripts.
+
 ## 2. Existing Test Assets
 
 ### 2.1. Test Directories:
@@ -46,7 +106,21 @@ The `tests/` directory and its subdirectories contain numerous Python test files
 
 *   **Regression Tests (in `tests/regression/` and its subdirectories):**
     *   A suite of tests covering service start/stop, DB initialization, document operations, NLP processing, search, deduplication, and MCP/API functionalities.
-    *   Examples: `test_01_start_stop.py`, `web_api_tests/test_03_document_operations.py`, `mcp_tests/test_04_search_operations.py`.
+    *   Examples:
+        *   **Web API Tests:**
+            *   `web_api_tests/01_test_server_management.py` (start/stop tests)
+            *   `web_api_tests/02_test_database_initialize.py` (database initialization tests)
+            *   `web_api_tests/03_test_document_operations.py` (document operations tests)
+            *   `web_api_tests/04_test_folder_operations.py` (folder operations tests)
+            *   `web_api_tests/05_test_search_operations.py` (search operations tests)
+            *   `web_api_tests/06_test_job_management.py` (job management tests)
+        *   **MCP Tests:**
+            *   `mcp_tests/01_test_server_management.py` (MCP start/stop tests)
+            *   `mcp_tests/02_test_database_initialize.py` (MCP database initialization tests)
+            *   `mcp_tests/03_test_document_operations.py` (MCP document operations tests)
+            *   `mcp_tests/04_test_folder_operations.py` (MCP folder operations tests)
+            *   `mcp_tests/05_test_search_operations.py` (MCP search operations tests)
+            *   `mcp_tests/06_test_job_management.py` (MCP job management tests)
 
 *   **Other Test-related Scripts:**
     *   Various scripts in `scripts/database_management/` (e.g., `verify_neo4j.py`, `verify_vector_db.py`) perform connection tests and basic operation checks.
@@ -124,6 +198,7 @@ Wait for the services to initialize. You can check their status with:
 The `tests/regression/test_utils.py` script also contains a `wait_for_api_ready()` function that tests use internally.
 *   Database Initialization: After services are up and databases are clean, run `uv run --python .venv-py312/bin/python scripts/database_management/initialize_database.py` to ensure schemas, indexes, and constraints are correctly set up.
 *
+
 ### 3.1. Unit Testing
 Unit tests are written using pytest to verify individual components.
 They are located in the `tests/unit` directory.
@@ -163,7 +238,6 @@ Based on the recent Bug Audit Report, the following unit tests have been added t
 
 These unit tests aim to prevent regressions related to the fixed bugs and improve the overall stability of the configuration and processing components.
 
-
 **4. Run Tests:**
 
 *   **Running all tests with `pytest` (Recommended for comprehensive checks & coverage):**
@@ -183,9 +257,16 @@ These unit tests aim to prevent regressions related to the fixed bugs and improv
     You can run specific regression tests by their module path.
     ```bash
     # Example:
-    uv run python -m tests.regression.test_01_start_stop
-    uv run python -m tests.regression.web_api_tests.test_03_document_operations
-    uv run python -m tests.regression.mcp_tests.test_04_search_operations
+    uv run python -m tests.regression.web_api_tests.01_test_server_management
+    uv run python -m tests.regression.web_api_tests.02_test_database_initialize
+    uv run python -m tests.regression.web_api_tests.03_test_document_operations
+    uv run python -m tests.regression.web_api_tests.04_test_folder_operations
+    uv run python -m tests.regression.web_api_tests.05_test_search_operations
+    uv run python -m tests.regression.mcp_tests.01_test_server_management
+    uv run python -m tests.regression.mcp_tests.02_test_database_initialize
+    uv run python -m tests.regression.mcp_tests.03_test_document_operations
+    uv run python -m tests.regression.mcp_tests.04_test_folder_operations
+    uv run python -m tests.regression.mcp_tests.05_test_search_operations
     ```
 
 *   **Running Individual Component or Other Tests:**
@@ -227,7 +308,7 @@ Areas potentially lacking or needing more detailed investigation for coverage:
 *   **Coverage Reporting:** Implement and regularly review test coverage reports (e.g., using `pytest-cov`) to identify untested code paths.
 *   **Standardize Test Execution:** While `pytest` is available, ensure all tests can be discovered and run through it for consistency.
 *   **Clarity on `test_mpc_search_graphrag.py`:** This filename likely contains a typo and should be `test_mcp_search_graphrag.py`.
-*   **Leverage Utility Scripts:** Systematically integrate the utility scripts from the `./scripts/` directory into the automated testing lifecycle for setup, data management, verification, and diagnostics, as detailed in Section 9.
+*   **Leverage Utility Scripts:** Systematically integrate the utility scripts from the `./scripts/` directory into the automated testing lifecycle for setup, data preparation, verification, and diagnostics, as detailed in Section 9.
 ## 9. Leveraging Utility Scripts for Enhanced Testing
 
 The project contains a rich set of utility scripts in the `./scripts/` directory that can significantly enhance the testing process, from environment setup and data preparation to diagnostics and verification. Integrating these scripts into the testing workflow can lead to more robust, repeatable, and efficient testing.
