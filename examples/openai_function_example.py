@@ -39,7 +39,8 @@ def main() -> None:
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful assistant that can search and explore the GraphRAG knowledge base. Use the available functions to help the user find information.",
+            "content": "You are a helpful assistant that can search and explore the "
+            "GraphRAG knowledge base. Use functions to help users find info.",
         }
     ]
 
@@ -94,7 +95,7 @@ def main() -> None:
 
                     # Get final response
                     final_response = openai.chat.completions.create(
-                        model="gpt-4-turbo",  # or another model that supports function calling
+                        model="gpt-4-turbo",  # or another model with function support
                         messages=messages,
                     )
 

@@ -77,7 +77,7 @@ DOMAIN_STOPWORDS = {
         "may",
         "might",
         "must",
-        "part", # Added "part"
+        "part",  # Added "part"
         "this",
         "that",
         "these",
@@ -231,13 +231,15 @@ def load_llm_config(config_path: str | None = None) -> dict[str, Any]:
         with open(config_path) as f:
             config = json.load(f)
     except Exception as e:
-        logger.warning(f"Error loading LLM config from {config_path}: {e}. Falling back to default config.")
+        logger.warning(
+            f"Error loading LLM config from {config_path}: {e}. Falling back to default config."
+        )
         # Return default config
         config = {
             "_comment": "To use OpenRouter for concept extraction, replace OPENROUTER_API_KEY with your actual API key from https://openrouter.ai/",
             "primary_provider": {
                 "type": "openrouter",
-                "api_key": "OPENROUTER_API_KEY", # Placeholder
+                "api_key": "OPENROUTER_API_KEY",  # Placeholder
                 "model": "google/gemini-2.0-flash-exp:free",
                 "temperature": 0.1,
                 "max_tokens": 1000,
@@ -260,14 +262,16 @@ def load_llm_config(config_path: str | None = None) -> dict[str, Any]:
 
         if env_api_key:
             primary_provider_config["api_key"] = env_api_key
-            logger.info("Using OpenRouter API key from OPENROUTER_API_KEY environment variable.")
+            logger.info(
+                "Using OpenRouter API key from OPENROUTER_API_KEY environment variable."
+            )
         elif config_api_key == "OPENROUTER_API_KEY" or not config_api_key:
             logger.warning(
                 "OpenRouter API key is a placeholder or missing in LLM configuration, "
                 "and OPENROUTER_API_KEY environment variable is not set. "
                 "OpenRouter will be effectively disabled or fail if used."
             )
-            primary_provider_config["api_key"] = "" # Ensure placeholder is not used
+            primary_provider_config["api_key"] = ""  # Ensure placeholder is not used
         # If config_api_key is present and not the placeholder, and no env var, it will be used.
 
     return config
@@ -377,20 +381,23 @@ class ConceptExtractor:
         ]
 
         # General patterns for compound nouns and hyphenated terms
-        self.compound_noun_pattern_str = r"\b([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)+)\b" # Matches sequences of capitalized words
+        self.compound_noun_pattern_str = r"\b([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)+)\b"  # Matches sequences of capitalized words
         self.hyphenated_term_pattern_str = r"\b([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)+)\b"
         # Pattern for acronyms (e.g., NLP, AI, LLM)
         self.acronym_pattern_str = r"\b([A-Z]{2,})\b"
 
-
         self.compiled_compound_noun_pattern = re.compile(self.compound_noun_pattern_str)
-        self.compiled_hyphenated_term_pattern = re.compile(self.hyphenated_term_pattern_str)
+        self.compiled_hyphenated_term_pattern = re.compile(
+            self.hyphenated_term_pattern_str
+        )
         self.compiled_acronym_pattern = re.compile(self.acronym_pattern_str)
 
         # Basic pattern for single or multiple words (potential concepts)
         # This will be used as a fallback and then filtered
-        self.general_term_pattern_str = r"\b([a-zA-Z][a-zA-Z0-9]*(?:\s+[a-zA-Z][a-zA-Z0-9]*){0,3})\b" # Up to 4 words
-        self.compiled_general_term_pattern = re.compile(self.general_term_pattern_str, re.IGNORECASE)
+        self.general_term_pattern_str = r"\b([a-zA-Z][a-zA-Z0-9]*(?:\s+[a-zA-Z][a-zA-Z0-9]*){0,3})\b"  # Up to 4 words
+        self.compiled_general_term_pattern = re.compile(
+            self.general_term_pattern_str, re.IGNORECASE
+        )
 
     def _load_domain_patterns(self, domain: str) -> list[str]:
         """Load domain-specific concept patterns.
@@ -431,18 +438,21 @@ class ConceptExtractor:
 
         # Domain-specific additions (example for 'academic')
         if domain == "academic":
-            patterns.extend([
-                r"\b(Literature Review|Systematic Review)\b",
-                r"\b(Case Study|Empirical Study)\b",
-                r"\b(Statistical Analysis|Hypothesis Testing)\b",
-            ])
-        elif domain == "finance": # Example of another domain
-            patterns.extend([
-                r"\b(Algorithmic Trading|High-Frequency Trading)\b",
-                r"\b(Risk Management|Credit Scoring)\b",
-                r"\b(FinTech|Regulatory Technology|RegTech)\b",
-            ])
-
+            patterns.extend(
+                [
+                    r"\b(Literature Review|Systematic Review)\b",
+                    r"\b(Case Study|Empirical Study)\b",
+                    r"\b(Statistical Analysis|Hypothesis Testing)\b",
+                ]
+            )
+        elif domain == "finance":  # Example of another domain
+            patterns.extend(
+                [
+                    r"\b(Algorithmic Trading|High-Frequency Trading)\b",
+                    r"\b(Risk Management|Credit Scoring)\b",
+                    r"\b(FinTech|Regulatory Technology|RegTech)\b",
+                ]
+            )
 
         # TODO: Load patterns from a configuration file based on domain for more flexibility
         return patterns
@@ -452,42 +462,85 @@ class ConceptExtractor:
         This is a simple heuristic and may not cover all cases or be perfectly accurate.
         """
         lower_term = term.lower()
-        if len(lower_term) < 3: # Avoid processing very short terms like "is", "as"
+        if len(lower_term) < 3:  # Avoid processing very short terms like "is", "as"
             return term
 
         if lower_term.endswith("ies"):
-            if len(lower_term) > 3 and lower_term[-4].lower() not in "aeiou": # e.g., 'studies' -> 'study'
+            if (
+                len(lower_term) > 3 and lower_term[-4].lower() not in "aeiou"
+            ):  # e.g., 'studies' -> 'study'
                 # Preserve case of the letter before 'y'
                 return term[:-3] + ("Y" if term[-3].isupper() else "y")
-        elif lower_term.endswith("ses"): # e.g., 'processes' -> 'process', 'gases' -> 'gas'
-             if lower_term.endswith("sses"): # e.g. 'glasses' -> 'glass'
-                 return term[:-2]
-             # Avoid 'analysis', 'basis', etc. - these are often singular or have irregular plurals
-             # Check common irregulars that end in 'ses' if they are singular
-             if lower_term not in ["analyses", "bases", "crises", "diagnoses", "ellipses", "hypotheses", "oases", "paralyses", "parentheses", "synopses", "syntheses", "theses", "series", "species"]:
+        elif lower_term.endswith(
+            "ses"
+        ):  # e.g., 'processes' -> 'process', 'gases' -> 'gas'
+            if lower_term.endswith("sses"):  # e.g. 'glasses' -> 'glass'
+                return term[:-2]
+            # Avoid 'analysis', 'basis', etc. - these are often singular or have irregular plurals
+            # Check common irregulars that end in 'ses' if they are singular
+            if lower_term not in [
+                "analyses",
+                "bases",
+                "crises",
+                "diagnoses",
+                "ellipses",
+                "hypotheses",
+                "oases",
+                "paralyses",
+                "parentheses",
+                "synopses",
+                "syntheses",
+                "theses",
+                "series",
+                "species",
+            ]:
                 # if it was 'processes' -> 'process'
-                if len(term) > 1 and term[:-1].lower() + 's' == lower_term : # check if removing s makes sense
-                     return term[:-1]
+                if (
+                    len(term) > 1 and term[:-1].lower() + "s" == lower_term
+                ):  # check if removing s makes sense
+                    return term[:-1]
                 # if it was 'gases' -> 'gas'
-                elif len(term) > 2 and term[:-2].lower() + 'es' == lower_term: # check if removing es makes sense
-                     return term[:-2]
+                elif (
+                    len(term) > 2 and term[:-2].lower() + "es" == lower_term
+                ):  # check if removing es makes sense
+                    return term[:-2]
 
         elif lower_term.endswith("es"):
             # e.g., 'boxes' -> 'box', 'wishes' -> 'wish'
             # Avoid 'series', 'species', 'clothes', 'mathematics', 'physics', 'news'
             # also avoid common verbs like 'goes', 'does'
-            if lower_term not in ["series", "species", "clothes", "mathematics", "physics", "news", "goes", "does"]:
-                if len(lower_term) > 2 and (lower_term.endswith("xes") or lower_term.endswith("shes") or lower_term.endswith("ches") or lower_term.endswith("oes")):
-                     # Check if removing 'es' leaves a valid word structure, very heuristic
-                    if len(term[:-2]) > 1 : # Avoid 'he' -> 'h'
+            if lower_term not in [
+                "series",
+                "species",
+                "clothes",
+                "mathematics",
+                "physics",
+                "news",
+                "goes",
+                "does",
+            ]:
+                if len(lower_term) > 2 and (
+                    lower_term.endswith("xes")
+                    or lower_term.endswith("shes")
+                    or lower_term.endswith("ches")
+                    or lower_term.endswith("oes")
+                ):
+                    # Check if removing 'es' leaves a valid word structure, very heuristic
+                    if len(term[:-2]) > 1:  # Avoid 'he' -> 'h'
                         return term[:-2]
 
         # General 's' removal, avoid possessives and double 's'
-        if lower_term.endswith("s") and not lower_term.endswith("ss") and not lower_term.endswith("us"): # avoid 'class', 'bus'
+        if (
+            lower_term.endswith("s")
+            and not lower_term.endswith("ss")
+            and not lower_term.endswith("us")
+        ):  # avoid 'class', 'bus'
             # Avoid possessives like 'it's' or words like 'analysis'
-            if "'" not in term and len(term[:-1]) > 1: # Ensure base is not too short
-                 # Check if base form is substantially different or too short
-                if len(term[:-1]) >= (self.min_concept_length -1 if self.min_concept_length > 1 else 1): # Allow shorter base if min_concept_length is 1
+            if "'" not in term and len(term[:-1]) > 1:  # Ensure base is not too short
+                # Check if base form is substantially different or too short
+                if len(term[:-1]) >= (
+                    self.min_concept_length - 1 if self.min_concept_length > 1 else 1
+                ):  # Allow shorter base if min_concept_length is 1
                     # A simple check: if removing 's' results in a word in stopwords, it might be a verb (e.g. "uses" -> "use")
                     # This is imperfect. For now, just remove 's'.
                     return term[:-1]
@@ -527,19 +580,21 @@ class ConceptExtractor:
                     elif isinstance(match, str):
                         phrase = match.strip()
                     else:
-                        continue # Should not happen with findall if pattern is valid
+                        continue  # Should not happen with findall if pattern is valid
                     if phrase:
                         extracted_phrases.add(phrase)
             except re.error as e:
-                logger.warning(f"Regex error with domain pattern {pattern_obj.pattern}: {e}")
+                logger.warning(
+                    f"Regex error with domain pattern {pattern_obj.pattern}: {e}"
+                )
 
         # 2. Compound Noun Pattern (Capitalized sequences)
         # This pattern is compiled without IGNORECASE to respect capitalization
         try:
             matches = self.compiled_compound_noun_pattern.findall(processed_text)
-            for match in matches: # This pattern returns a single string match
+            for match in matches:  # This pattern returns a single string match
                 if isinstance(match, str) and match.strip():
-                     extracted_phrases.add(match.strip())
+                    extracted_phrases.add(match.strip())
         except re.error as e:
             logger.warning(f"Regex error with compound noun pattern: {e}")
 
@@ -547,7 +602,7 @@ class ConceptExtractor:
         # This pattern is compiled without IGNORECASE by default, can be made case-insensitive if needed
         try:
             matches = self.compiled_hyphenated_term_pattern.findall(processed_text)
-            for match in matches: # This pattern returns a single string match
+            for match in matches:  # This pattern returns a single string match
                 if isinstance(match, str) and match.strip():
                     extracted_phrases.add(match.strip())
         except re.error as e:
@@ -557,8 +612,10 @@ class ConceptExtractor:
         # This pattern is compiled without IGNORECASE to match uppercase acronyms
         try:
             matches = self.compiled_acronym_pattern.findall(processed_text)
-            for match in matches: # This pattern returns a single string match
-                if isinstance(match, str) and match.strip() and len(match) > 1 : # Ensure it's a multi-letter acronym
+            for match in matches:  # This pattern returns a single string match
+                if (
+                    isinstance(match, str) and match.strip() and len(match) > 1
+                ):  # Ensure it's a multi-letter acronym
                     extracted_phrases.add(match.strip())
         except re.error as e:
             logger.warning(f"Regex error with acronym pattern: {e}")
@@ -567,7 +624,9 @@ class ConceptExtractor:
         # This helps catch terms not covered by specific patterns.
         try:
             matches = self.compiled_general_term_pattern.findall(processed_text)
-            for match_candidate in matches: # This pattern returns a single string match
+            for (
+                match_candidate
+            ) in matches:  # This pattern returns a single string match
                 if isinstance(match_candidate, str) and match_candidate.strip():
                     extracted_phrases.add(match_candidate.strip())
         except re.error as e:
@@ -585,18 +644,23 @@ class ConceptExtractor:
             # For multi-word phrases, normalize the last word.
             # For single-word phrases, normalize the word itself.
             words = cleaned_phrase.split()
-            if len(words) > 0: # Ensure there are words to process
+            if len(words) > 0:  # Ensure there are words to process
                 if len(words) > 1:
                     # Try normalizing the last word of a multi-word phrase
                     last_word_normalized = self._normalize_plural(words[-1])
                     # Reconstruct the phrase only if normalization changed the last word and it's not empty
-                    if last_word_normalized and last_word_normalized.lower() != words[-1].lower():
-                        normalized_phrase_str = " ".join(words[:-1] + [last_word_normalized])
-                    else: # No change or empty result, keep original
+                    if (
+                        last_word_normalized
+                        and last_word_normalized.lower() != words[-1].lower()
+                    ):
+                        normalized_phrase_str = " ".join(
+                            words[:-1] + [last_word_normalized]
+                        )
+                    else:  # No change or empty result, keep original
                         normalized_phrase_str = cleaned_phrase
-                else: # Single word phrase
+                else:  # Single word phrase
                     normalized_phrase_str = self._normalize_plural(cleaned_phrase)
-            else: # Should not happen if cleaned_phrase is not empty
+            else:  # Should not happen if cleaned_phrase is not empty
                 normalized_phrase_str = cleaned_phrase
 
             # Use _is_valid_concept for filtering (length, stopwords etc.)
@@ -1016,16 +1080,25 @@ class ConceptExtractor:
                 semantic_boundaries=True,
             )
             # Ensure it's a list of strings
-            if isinstance(raw_chunks, list) and all(isinstance(c, str) for c in raw_chunks):
+            if isinstance(raw_chunks, list) and all(
+                isinstance(c, str) for c in raw_chunks
+            ):
                 return raw_chunks
-            elif isinstance(raw_chunks, list): # It's a list, but not of strings
-                logger.warning(f"smart_chunk_text returned a list containing non-string elements from text (length {len(text)}). Converting all to string.")
-                return [str(item) for item in raw_chunks] # Attempt conversion
+            elif isinstance(raw_chunks, list):  # It's a list, but not of strings
+                logger.warning(
+                    f"smart_chunk_text returned a list containing non-string elements from text (length {len(text)}). Converting all to string."
+                )
+                return [str(item) for item in raw_chunks]  # Attempt conversion
             else:
-                logger.warning(f"smart_chunk_text did not return a list for text (length {len(text)}). Got {type(raw_chunks)}. Returning empty list.")
+                logger.warning(
+                    f"smart_chunk_text did not return a list for text (length {len(text)}). Got {type(raw_chunks)}. Returning empty list."
+                )
                 return []
         except Exception as e:
-            logger.error(f"Error calling smart_chunk_text for text (length {len(text)}): {e}. Returning empty list.", exc_info=True)
+            logger.error(
+                f"Error calling smart_chunk_text for text (length {len(text)}): {e}. Returning empty list.",
+                exc_info=True,
+            )
             return []
 
     def extract_concepts(

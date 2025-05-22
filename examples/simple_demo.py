@@ -36,14 +36,14 @@ def main() -> None:
     document_text = """
     GraphRAG: Enhancing Large Language Models with Knowledge Graphs
 
-    GraphRAG is an innovative approach that combines Retrieval-Augmented Generation (RAG)
+    GraphRAG is an innovative approach that combines Retrieval-Augmented Generation
     with knowledge graphs to enhance the capabilities of Large Language Models (LLMs).
-    Traditional RAG systems rely solely on vector embeddings to retrieve relevant information,
+    Traditional RAG systems rely solely on vector embeddings to retrieve information,
     which can miss important semantic relationships between concepts.
 
     By incorporating knowledge graphs, GraphRAG explicitly represents the relationships
     between entities and concepts, enabling more sophisticated retrieval that considers
-    the semantic structure of the information. This approach is particularly valuable for
+    the semantic structure of the information. This approach is valuable for
     complex domains where understanding the relationships between concepts is crucial.
 
     The key components of a GraphRAG system include:
@@ -78,7 +78,8 @@ def main() -> None:
     print("\nDocument added successfully!")
     print(f"Document ID: {result['doc_id']}")
     print(
-        f"Extracted entities: {', '.join(entity['name'] for entity in result['entities'])}"
+        f"Extracted entities: "
+        f"{', '.join(entity['name'] for entity in result['entities'])}"
     )
     print(f"Created relationships: {len(result['relationships'])}")
 
@@ -105,10 +106,12 @@ def main() -> None:
     print("\n✅ Demo completed successfully!")
     print("\nNext steps:")
     print(
-        "1. Try adding more documents with 'python scripts/batch_process.py --create-examples'"
+        "1. Try adding more documents with "
+        "'python scripts/batch_process.py --create-examples'"
     )
     print(
-        "2. Process the example documents with 'python scripts/batch_process.py --dir ./example_docs'"
+        "2. Process the example documents with "
+        "'python scripts/batch_process.py --dir ./example_docs'"
     )
     print("3. Query the system interactively with 'python scripts/query_graphrag.py'")
 

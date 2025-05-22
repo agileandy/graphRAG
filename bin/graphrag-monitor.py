@@ -134,9 +134,7 @@ def check_service(service) -> bool | None:
             # Service is running
             return True
         else:
-            logging.warning(
-                f"{name} service is not running (PID {pid} not found)"
-            )
+            logging.warning(f"{name} service is not running (PID {pid} not found)")
             return False
     except psutil.NoSuchProcess:
         logging.warning(f"{name} service is not running (PID {pid} not found)")

@@ -8,6 +8,9 @@ This module provides common functionality used by all agent tools:
 - Logging
 """
 
+
+from src.config import get_port, load_config
+=======
 import json
 import logging
 import os
@@ -43,6 +46,11 @@ DEFAULT_CONFIG = {
 }
 
 
+def get_mpc_url() -> str:
+    """
+    Get the MPC server URL from configuration.
+=======
+
 def load_config() -> dict[str, str]:
     """Load configuration from environment variables with defaults.
 
@@ -72,6 +80,7 @@ def load_config() -> dict[str, str]:
 
 def get_mcp_url() -> str:
     """Get the MCP server URL from configuration.
+
 
     Returns:
         MCP server URL

@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from mcp.types import TextContent
 
+
 class TestBugTracking:
     """Test suite for bug tracking functionality."""
 

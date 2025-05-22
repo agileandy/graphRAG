@@ -556,7 +556,9 @@ def extract_relationships(
     return final_rels
 
 
-def _create_neo4j_document_node(neo4j_db: Neo4jDatabase, properties: dict[str, Any]) -> None:
+def _create_neo4j_document_node(
+    neo4j_db: Neo4jDatabase, properties: dict[str, Any]
+) -> None:
     query = """
     MERGE (d:Document {id: $id})
     ON CREATE SET d += $props, d.created_at = datetime(), d.updated_at = datetime()
@@ -568,7 +570,9 @@ def _create_neo4j_document_node(neo4j_db: Neo4jDatabase, properties: dict[str, A
     logger.info(f"Ensured Document node: {properties['id']}")
 
 
-def _create_neo4j_chunk_node(neo4j_db: Neo4jDatabase, properties: dict[str, Any]) -> None:
+def _create_neo4j_chunk_node(
+    neo4j_db: Neo4jDatabase, properties: dict[str, Any]
+) -> None:
     query = """
     MERGE (c:Chunk {id: $id})
     ON CREATE SET c += $props, c.created_at = datetime()
@@ -580,7 +584,9 @@ def _create_neo4j_chunk_node(neo4j_db: Neo4jDatabase, properties: dict[str, Any]
     logger.info(f"Ensured Chunk node: {properties['id']}")
 
 
-def _link_document_to_chunk(neo4j_db: Neo4jDatabase, doc_id: str, chunk_id: str) -> None:
+def _link_document_to_chunk(
+    neo4j_db: Neo4jDatabase, doc_id: str, chunk_id: str
+) -> None:
     query = """
     MATCH (d:Document {id: $doc_id})
     MATCH (c:Chunk {id: $chunk_id})

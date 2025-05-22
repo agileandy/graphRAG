@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Bug Tracking API Client.
 
-This script provides a command-line interface to interact with the Bug Tracking API server.
+This script provides a command-line interface to interact with the Bug Tracking API
+server.
 """
 
 import argparse
@@ -105,7 +106,8 @@ def interactive_mode(host: str, port: int) -> None:
                 if result.get("total_records", 0) > 0:
                     for bug in result.get("bugs", []):
                         print(
-                            f"ID: {bug['id']}, Status: {bug['status']}, Description: {bug['description']}"
+                            f"ID: {bug['id']}, Status: {bug['status']}, "
+                            f"Description: {bug['description']}"
                         )
                 else:
                     print("No bugs found.")
