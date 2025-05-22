@@ -4,14 +4,22 @@
 import json
 import os
 import sys
+from dotenv import load_dotenv
 
 import requests
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# OpenRouter API key
-API_KEY = "YOUR_OPENROUTER_API_KEY"
+# Load environment variables
+load_dotenv()
+
+# Get OpenRouter API key from environment variable
+API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+if not API_KEY:
+    print("Error: OPENROUTER_API_KEY environment variable is not set.")
+    print("Please set it in your .env file or export it in your shell.")
+    sys.exit(1)
 
 # Model to use
 MODEL = "meta-llama/llama-4-maverick:free"
