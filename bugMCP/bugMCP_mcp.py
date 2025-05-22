@@ -62,14 +62,7 @@ mcp = FastMCP(
 
 
 @mcp.tool(
-    description="Add a new bug to the system",
-    annotations={
-        "title": "Add Bug",
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-        "openWorldHint": False,
-    },
+    description="Add a new bug to the system"
 )
 def add_bug(description: str, cause: str) -> dict[str, Any]:
     """Add a new bug to the system.
@@ -104,14 +97,7 @@ def add_bug(description: str, cause: str) -> dict[str, Any]:
 
 
 @mcp.tool(
-    description="Update an existing bug",
-    annotations={
-        "title": "Update Bug",
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
+    description="Update an existing bug"
 )
 def update_bug(
     id: int, status: str | None = None, resolution: str | None = None
@@ -158,14 +144,7 @@ def update_bug(
 
 
 @mcp.tool(
-    description="Delete a bug from the system",
-    annotations={
-        "title": "Delete Bug",
-        "readOnlyHint": False,
-        "destructiveHint": True,
-        "idempotentHint": True,
-        "openWorldHint": False,
-    },
+    description="Delete a bug from the system"
 )
 def delete_bug(id: int) -> dict[str, Any]:
     """Delete a bug from the system.
@@ -189,8 +168,7 @@ def delete_bug(id: int) -> dict[str, Any]:
 
 
 @mcp.tool(
-    description="Get a specific bug by ID",
-    annotations={"title": "Get Bug", "readOnlyHint": True, "openWorldHint": False},
+    description="Get a specific bug by ID"
 )
 def get_bug(id: int) -> dict[str, Any]:
     """Get a specific bug by ID.
@@ -211,8 +189,7 @@ def get_bug(id: int) -> dict[str, Any]:
 
 
 @mcp.tool(
-    description="List all bugs in the system",
-    annotations={"title": "List Bugs", "readOnlyHint": True, "openWorldHint": False},
+    description="List all bugs in the system"
 )
 def list_bugs() -> dict[str, Any]:
     """List all bugs in the system.
@@ -255,7 +232,7 @@ def main() -> None:
 
     # Start the server using the MCP run method
     logger.info(f"Starting Bug Tracking MCP server on {args.host}:{args.port}")
-    mcp.run(transport="streamable-http", port=args.port)
+    mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":

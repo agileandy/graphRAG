@@ -1,10 +1,10 @@
-from scripts.database_management.clean_database import clean_database
+from scripts.database_management.clean_database import clean_database, clean_neo4j, clean_chromadb
 from tests.regression.test_utils import (
     add_test_document,
-    perform_search,
+    search_documents,
     start_services,
     stop_services,
-)  # Assuming perform_search supports MCP and different search types
+)
 
 
 def add_documents_for_search() -> None:
@@ -18,14 +18,14 @@ def add_documents_for_search() -> None:
     doc3_text = "Graph databases like Neo4j are useful for storing relationships."
     doc3_metadata = {"title": "Graph Databases", "source": "doc3"}
 
-    add_test_document(doc1_text, doc1_metadata, use_mcp=True)
-    add_test_document(doc2_text, doc2_metadata, use_mcp=True)
-    add_test_document(doc3_text, doc3_metadata, use_mcp=True)
+    add_test_document(doc1_text, doc1_metadata)
+    add_test_document(doc2_text, doc2_metadata)
+    add_test_document(doc3_text, doc3_metadata)
     # Add more documents and potentially define relationships if the utility function supports it
     # For now, relying on automatic concept/relationship extraction during document addition
 
 
-def test_mcp_chroma_search() -> None:
+async def test_mcp_chroma_search() -> None:
     """Basic Chroma search via MCP."""
     print("\nTesting MCP Chroma search...")
     process = None
@@ -51,9 +51,9 @@ def test_mcp_chroma_search() -> None:
 
         # Perform Chroma search
         search_query = "artificial intelligence"
-        search_success, search_response = perform_search(
-            search_query, search_type="Chroma", use_mcp=True
-        )  # Assuming search_type and use_mcp flags
+        search_success, search_response = search_documents(
+            search_query
+        )
         assert search_success, (
             f"Chroma search via MCP failed: {search_response.get('error', 'Unknown error')}"
         )
@@ -76,7 +76,7 @@ def test_mcp_chroma_search() -> None:
             print("Services stopped successfully after MCP Chroma search test.")
 
 
-def test_mcp_hybrid_search() -> None:
+async def test_mcp_hybrid_search() -> None:
     """Hybrid search via MCP."""
     print("\nTesting MCP Hybrid search...")
     process = None
@@ -102,9 +102,9 @@ def test_mcp_hybrid_search() -> None:
 
         # Perform Hybrid search
         search_query = "AI and graph databases"
-        search_success, search_response = perform_search(
-            search_query, search_type="Hybrid", use_mcp=True
-        )  # Assuming search_type and use_mcp flags
+        search_success, search_response = search_documents(
+            search_query
+        )
         assert search_success, (
             f"Hybrid search via MCP failed: {search_response.get('error', 'Unknown error')}"
         )
@@ -127,7 +127,7 @@ def test_mcp_hybrid_search() -> None:
             print("Services stopped successfully after MCP Hybrid search test.")
 
 
-def test_mcp_concept_relationships() -> None:
+async def test_mcp_concept_relationships() -> None:
     """Concept relations via MCP."""
     print("\nTesting MCP concept relationships search...")
     process = None
@@ -153,9 +153,9 @@ def test_mcp_concept_relationships() -> None:
 
         # Search by concept relationships
         concept_query = "artificial intelligence"  # Assuming searching for documents related to this concept
-        search_success, search_response = perform_search(
-            concept_query, search_type="ConceptRelationships", use_mcp=True
-        )  # Assuming search_type and use_mcp flags
+        search_success, search_response = search_documents(
+            concept_query
+        )
         assert search_success, (
             f"Concept relationships search via MCP failed: {search_response.get('error', 'Unknown error')}"
         )

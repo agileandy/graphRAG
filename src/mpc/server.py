@@ -12,15 +12,19 @@ Features:
 import asyncio
 import glob
 import json
+import logging
 import os
 import sys
 import time
+import traceback
 from typing import Any
 
 import websockets
 
 # Add the project root directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+logger = logging.getLogger(__name__)
 
 from src.database.db_linkage import DatabaseLinkage
 from src.database.neo4j_db import Neo4jDatabase
@@ -671,15 +675,25 @@ def _process_add_folder_job(job) -> dict[str, Any]:
                 duplicate_detector=duplicate_detector,
             )
 
-            if result:
+            if result and result.get("status") == "success":
                 processed_files += 1
                 doc_id = result.get("document_id", "unknown")
-                print(f"Document added successfully with ID: {doc_id}")
+                print(f"Document added successfully with ID: {doc_id} from file: {file_path}")
                 all_entities.extend(result.get("entities", []))
                 all_relationships.extend(result.get("relationships", []))
-            else:
-                print(f"Document was not added (likely a duplicate): {file_path}")
+            elif result and result.get("status") == "failure":
+                error_message = result.get("error", "Unknown error from add_document_to_graphrag")
+                print(f"Failed to process document {file_path}: {error_message}")
+                # Consider if this should be a new counter e.g., failed_files_in_core_processing
+                skipped_files += 1
+            elif result is None: # This means add_document_to_graphrag identified it as a duplicate
+                print(f"Document {file_path} was identified as a duplicate by add_document_to_graphrag.")
+                # This path should ideally be less common if the pre-check at line 658 is effective
+                # and uses the same duplicate_detector instance.
                 duplicate_files += 1
+            else: # Unexpected result structure
+                print(f"Unexpected or empty result from add_document_to_graphrag for {file_path}: {result}")
+                skipped_files += 1
 
         except Exception as e:
             print(f"Error processing file {file_path}: {e}")
@@ -1028,16 +1042,10 @@ async def handle_connection(websocket) -> None:
 
 
 async def start_server(host: str = "localhost", port: int = 8765) -> None:
-    """Start the MPC server.
-
-    Args:
-        host: Server host
-        port: Server port
-
-    """
+    """Start the MPC server."""
     server = await websockets.serve(handle_connection, host, port)
-    print(f"MPC server started on ws://{host}:{port}")
-    print(f"Available actions: {', '.join(ACTION_HANDLERS.keys())}")
+    logger.info(f"MPC server started on ws://{host}:{port}")
+    logger.info(f"Available actions: {', '.join(ACTION_HANDLERS.keys())}")
 
     # Keep the server running
     await server.wait_closed()
@@ -1047,14 +1055,49 @@ def main() -> None:
     """Main function to start the MPC server."""
     import argparse
 
+    # Basic logging setup if no handlers are configured
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            stream=sys.stdout, # Ensure logs go to stdout
+        )
+
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Start the GraphRAG MPC server")
-    parser.add_argument("--host", type=str, default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=8765, help="Server port")
+    default_host = os.getenv("MPC_HOST", "0.0.0.0")
+    default_port = int(os.getenv("MPC_PORT", "8765"))
+    parser.add_argument(
+        "--host", type=str, default=default_host, help=f"Server host (default: {default_host})"
+    )
+    parser.add_argument(
+        "--port", type=int, default=default_port, help=f"Server port (default: {default_port})"
+    )
     args = parser.parse_args()
 
-    # Start the server
-    asyncio.run(start_server(args.host, args.port))
+    try:
+        logger.info(f"Attempting to start MPC server on {args.host}:{args.port}")
+        asyncio.run(start_server(args.host, args.port))
+    except OSError as e:
+        if e.errno == 48:  # Address already in use
+            logger.error(
+                f"ERROR: Port {args.port} is already in use on host {args.host}."
+            )
+            logger.error(
+                "Please check if another instance of the MPC server or another application is using this port."
+            )
+            logger.error("You can specify a different port using --port <number> or by setting the MPC_PORT environment variable.")
+        else:
+            logger.error(f"An OS error occurred: {e}")
+            logger.error(traceback.format_exc())
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("MPC server shutting down (KeyboardInterrupt).")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
 
 
 if __name__ == "__main__":

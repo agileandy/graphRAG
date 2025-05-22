@@ -95,7 +95,7 @@ def start_service(
             for i, arg in enumerate(command):
                 if arg == str(port):
                     command[i] = str(new_port)
-                elif f"--port={port}" in arg:
+                elif f"--port={port}" in arg:  # noqa: E203
                     command[i] = f"--port={new_port}"
                 elif f"--port {port}" in " ".join(command[i : i + 2]):
                     if arg == "--port":

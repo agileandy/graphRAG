@@ -39,6 +39,7 @@ DEFAULT_PORTS = {
     "api": 5001,  # Main GraphRAG API
     # MCP Services
     "mcp": 8767,  # Model Context Protocol server
+    "mpc": 8765,  # Message Passing Communication server
     "bug_mcp": 5005,  # Bug tracking MCP server
     # Database Services
     "neo4j_bolt": 7687,  # Neo4j Bolt protocol

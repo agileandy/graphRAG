@@ -24,7 +24,7 @@ from src.database.db_linkage import DatabaseLinkage
 from src.database.neo4j_db import Neo4jDatabase
 from src.database.vector_db import VectorDatabase
 from src.processing.duplicate_detector import DuplicateDetector
-from src.processing.job_manager import JobManager
+from src.processing.job_manager import JobManager, Job, JobStatus # Import Job and JobStatus
 
 # Configure logging
 logging.basicConfig(
@@ -55,12 +55,12 @@ TOOLS = [
     {
         "name": "ping",
         "description": "Simple ping for connection testing",
-        "parameters": {"type": "object", "properties": {}, "required": []},
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "search",
         "description": "Perform hybrid search across the GraphRAG system",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "Search query"},
@@ -81,7 +81,7 @@ TOOLS = [
     {
         "name": "concept",
         "description": "Get information about a concept",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "concept_name": {"type": "string", "description": "Name of the concept"}
@@ -92,7 +92,7 @@ TOOLS = [
     {
         "name": "documents",
         "description": "Get documents for a concept",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "concept_name": {
@@ -111,7 +111,7 @@ TOOLS = [
     {
         "name": "books-by-concept",
         "description": "Find books mentioning a concept",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "concept_name": {
@@ -130,7 +130,7 @@ TOOLS = [
     {
         "name": "related-concepts",
         "description": "Find concepts related to a concept",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "concept_name": {
@@ -149,7 +149,7 @@ TOOLS = [
     {
         "name": "passages-about-concept",
         "description": "Find passages about a concept",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "concept_name": {
@@ -166,31 +166,31 @@ TOOLS = [
         },
     },
     {
-        "name": "add-document",
-        "description": "Add a single document to the system",
-        "parameters": {
+        "name": "add_bug",
+        "description": "Add a new bug to the system",
+        "inputSchema": {
             "type": "object",
             "properties": {
-                "text": {"type": "string", "description": "Document text"},
-                "file_path": {"type": "string", "description": "Path to document file"},
+                "description": {"type": "string", "description": "Bug description"},
+                "cause": {"type": "string", "description": "Bug cause"},
                 "metadata": {
                     "type": "object",
-                    "description": "Document metadata",
+                    "description": "Bug metadata",
                     "default": {},
                 },
                 "async": {
                     "type": "boolean",
-                    "description": "Process document asynchronously",
+                    "description": "Process bug asynchronously",
                     "default": True,
                 },
             },
-            "oneOf": [{"required": ["text"]}, {"required": ["file_path"]}],
+            "required": ["description", "cause"],
         },
     },
     {
         "name": "add-folder",
         "description": "Add a folder of documents to the system",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "folder_path": {
@@ -214,7 +214,7 @@ TOOLS = [
     {
         "name": "job-status",
         "description": "Get status of a job",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {"job_id": {"type": "string", "description": "Job ID"}},
             "required": ["job_id"],
@@ -223,13 +223,13 @@ TOOLS = [
     {
         "name": "list-jobs",
         "description": "List all jobs",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {
                 "status": {
                     "type": "string",
                     "description": "Filter jobs by status",
-                    "enum": ["pending", "running", "completed", "failed", "cancelled"],
+                    "enum": ["queued", "running", "completed", "failed", "cancelled"],
                     "default": None,
                 },
                 "limit": {
@@ -244,7 +244,7 @@ TOOLS = [
     {
         "name": "cancel-job",
         "description": "Cancel a job",
-        "parameters": {
+        "inputSchema": {
             "type": "object",
             "properties": {"job_id": {"type": "string", "description": "Job ID"}},
             "required": ["job_id"],
@@ -321,7 +321,6 @@ async def handle_concept(parameters: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         Concept information
-
     """
     concept_name = parameters.get("concept_name")
 
@@ -378,7 +377,6 @@ async def handle_documents(parameters: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         Documents mentioning the concept
-
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 5)
@@ -399,19 +397,13 @@ async def handle_documents(parameters: dict[str, Any]) -> dict[str, Any]:
         )
 
         return {
-            "concept": concept_name,
             "documents": [
-                {
-                    "title": doc["title"],
-                    "id": doc["id"],
-                    "author": doc.get("author", ""),
-                    "year": doc.get("year", ""),
-                }
+                {"title": doc["title"], "id": doc["id"], "author": doc.get("author"), "year": doc.get("year")}
                 for doc in documents
-            ],
+            ]
         }
     except Exception as e:
-        logger.exception(f"Error getting documents: {e}")
+        logger.exception(f"Error getting documents for concept: {e}")
         return {"error": str(e)}
 
 
@@ -425,7 +417,6 @@ async def handle_books_by_concept(parameters: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         Books mentioning the concept
-
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 5)
@@ -436,29 +427,22 @@ async def handle_books_by_concept(parameters: dict[str, Any]) -> dict[str, Any]:
     try:
         # Query Neo4j for books mentioning the concept
         query = """
-        MATCH (c:Concept {name: $concept_name})<-[:MENTIONS]-(s:Section)<-[:CONTAINS*]-(b:Book)
-        RETURN distinct b.title as title, b.id as id, b.author as author, b.year as year
+        MATCH (c:Concept {name: $concept_name})<-[:MENTIONS]-(s:Section)<-[:CONTAINS*]-(d:Document)
+        WHERE d.document_type = 'book'
+        RETURN distinct d.title as title, d.id as id, d.author as author, d.year as year
         LIMIT $limit
         """
 
-        books = neo4j_db.run_query(
-            query, {"concept_name": concept_name, "limit": limit}
-        )
+        books = neo4j_db.run_query(query, {"concept_name": concept_name, "limit": limit})
 
         return {
-            "concept": concept_name,
             "books": [
-                {
-                    "title": book["title"],
-                    "id": book["id"],
-                    "author": book.get("author", ""),
-                    "year": book.get("year", ""),
-                }
+                {"title": book["title"], "id": book["id"], "author": book.get("author"), "year": book.get("year")}
                 for book in books
-            ],
+            ]
         }
     except Exception as e:
-        logger.exception(f"Error getting books: {e}")
+        logger.exception(f"Error getting books by concept: {e}")
         return {"error": str(e)}
 
 
@@ -471,8 +455,7 @@ async def handle_related_concepts(parameters: dict[str, Any]) -> dict[str, Any]:
             - limit: Optional maximum number of related concepts to return (default: 10)
 
     Returns:
-        Concepts related to the given concept
-
+        Related concepts
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 10)
@@ -489,17 +472,9 @@ async def handle_related_concepts(parameters: dict[str, Any]) -> dict[str, Any]:
         LIMIT $limit
         """
 
-        related_concepts = neo4j_db.run_query(
-            query, {"concept_name": concept_name, "limit": limit}
-        )
+        related = neo4j_db.run_query(query, {"concept_name": concept_name, "limit": limit})
 
-        return {
-            "concept": concept_name,
-            "related_concepts": [
-                {"name": concept["name"], "strength": concept["strength"]}
-                for concept in related_concepts
-            ],
-        }
+        return {"related_concepts": related}
     except Exception as e:
         logger.exception(f"Error getting related concepts: {e}")
         return {"error": str(e)}
@@ -514,8 +489,7 @@ async def handle_passages_about_concept(parameters: dict[str, Any]) -> dict[str,
             - limit: Optional maximum number of passages to return (default: 5)
 
     Returns:
-        Passages about the concept
-
+        Passages mentioning the concept
     """
     concept_name = parameters.get("concept_name")
     limit = parameters.get("limit", 5)
@@ -524,125 +498,155 @@ async def handle_passages_about_concept(parameters: dict[str, Any]) -> dict[str,
         return {"error": "Missing required parameter: concept_name"}
 
     try:
-        # Get concept node ID from Neo4j
+        # Query Neo4j for passages mentioning the concept
         query = """
-        MATCH (c:Concept {name: $concept_name})
-        RETURN id(c) as node_id
+        MATCH (c:Concept {name: $concept_name})<-[:MENTIONS]-(p:Passage)
+        RETURN p.text as text, p.document_id as document_id, p.section_id as section_id
+        LIMIT $limit
         """
 
-        result = neo4j_db.run_query_and_return_single(
-            query, {"concept_name": concept_name}
-        )
+        passages = neo4j_db.run_query(query, {"concept_name": concept_name, "limit": limit})
 
-        if not result:
-            return {"error": f"Concept not found: {concept_name}"}
-
-        node_id = result["node_id"]
-
-        # Get chunks mentioning the concept
-        chunks = db_linkage.get_node_chunks(node_id, "Concept")
-
-        # Limit the number of chunks
-        chunks = chunks[:limit]
-
-        return {
-            "concept": concept_name,
-            "passages": [
-                {
-                    "text": chunk["text"],
-                    "document": chunk["metadata"].get("document_title", ""),
-                    "section": chunk["metadata"].get("section_title", ""),
-                    "page": chunk["metadata"].get("page", ""),
-                }
-                for chunk in chunks
-            ],
-        }
+        return {"passages": passages}
     except Exception as e:
-        logger.exception(f"Error getting passages: {e}")
+        logger.exception(f"Error getting passages about concept: {e}")
         return {"error": str(e)}
 
 
-async def handle_add_document(parameters: dict[str, Any]) -> dict[str, Any]:
-    """Handle add-document request.
+def _run_add_document_task(job: Job) -> dict[str, Any] | None:
+    """Wrapper function to run add_document_to_graphrag for a job."""
+    from scripts.document_processing.add_document_core import (
+        add_document_to_graphrag,
+    )
+    job_params = job.params
+    # For add_bug, we expect 'description' and 'cause'
+    description = job_params.get("description")
+    cause = job_params.get("cause")
+
+    if description is None or cause is None:
+        logger.error(f"Job {job.job_id} for add_bug is missing 'description' or 'cause' parameter.")
+        return {"status": "failure", "error": "Missing 'description' or 'cause' parameter for add_bug job."}
+
+    text_param = f"Description: {description}\nCause: {cause}"
+
+    return add_document_to_graphrag(
+        text=text_param,
+        metadata=job_params.get("metadata", {}),
+        neo4j_db=neo4j_db,
+        vector_db=vector_db,
+        duplicate_detector=duplicate_detector,
+    )
+
+# TODO: Implement a similar wrapper for add_folder if async folder processing is needed
+# def _run_add_folder_task(job: Job) -> dict[str, Any] | None:
+#     """Wrapper function to run folder processing for a job."""
+#     # from scripts.document_processing.add_document_core import process_folder_task
+#     # job_params = job.params
+#     # return process_folder_task(job_params.get("folder_path"), ...)
+#     return {"status": "pending", "message": "Async folder processing not yet fully implemented"}
+
+
+async def handle_add_bug(parameters: dict[str, Any]) -> dict[str, Any]:
+    """Handle add_bug request.
 
     Args:
         parameters: Request parameters:
-            - text: Document text (optional if file_path is provided)
-            - file_path: Path to document file (optional if text is provided)
-            - metadata: Optional document metadata
-            - async: Optional flag to process document asynchronously (default: true)
+            - description: Bug description
+            - cause: Bug cause
+            - metadata: Optional bug metadata
+            - async: Optional boolean to process asynchronously (default: True)
 
     Returns:
-        Result of adding the document
-
+        Status of the operation
     """
-    text = parameters.get("text")
-    file_path = parameters.get("file_path")
+    description = parameters.get("description")
+    cause = parameters.get("cause")
     metadata = parameters.get("metadata", {})
     process_async = parameters.get("async", True)
 
-    if not text and not file_path:
-        return {
-            "error": "Missing required parameter: either text or file_path must be provided"
-        }
+    if not description or not cause:
+        return {"error": "'description' and 'cause' are required"}
+
+    text_for_processing = f"Description: {description}\nCause: {cause}"
+    if "title" not in metadata:
+        metadata["title"] = description
 
     try:
-        # If file_path is provided, read the file
-        if file_path and not text:
-            if not os.path.exists(file_path):
-                return {"error": f"File not found: {file_path}"}
+        doc_hash = duplicate_detector.generate_document_hash(text_for_processing)
+        metadata_with_hash = metadata.copy()
+        metadata_with_hash["hash"] = doc_hash
 
-            with open(file_path) as f:
-                text = f.read()
+        is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(
+            text_for_processing, metadata_with_hash
+        )
 
-        # Import here to avoid circular imports
-        from scripts.add_document import add_document_to_graphrag
+        if is_dup:
+            logger.info(
+                f"Bug '{metadata.get('title', 'Unknown Title')}' is a duplicate (ID: {existing_doc_id}, Method: {method}). Not adding."
+            )
+            return {
+                "status": "duplicate",
+                "message": "Bug is a duplicate and was not added.",
+                "bug_id": existing_doc_id,
+                "duplicate_detection_method": method,
+            }
 
         if process_async:
-            # Create a job for asynchronous processing
             job = job_manager.create_job(
-                job_type="process_document",
-                params={"text": text, "metadata": metadata},
-                created_by="mcp_server",
+                "add_bug",
+                {
+                    "description": description,
+                    "cause": cause,
+                    "metadata": metadata,
+                },
             )
-
-            # Start the job asynchronously
-            job_manager.run_job_async(
-                job=job,
-                task_func=lambda: add_document_to_graphrag(
-                    text=text,
-                    metadata=metadata,
-                    neo4j_db=neo4j_db,
-                    vector_db=vector_db,
-                    duplicate_detector=duplicate_detector,
-                ),
-            )
-
-            return {
-                "job_id": job.job_id,
-                "status": "pending",
-                "message": "Document processing started",
-            }
+            job_manager.run_job_async(job, _run_add_document_task)
+            return {"status": "accepted", "message": "Bug processing started", "job_id": job.job_id, "bug_id": None}
         else:
-            # Process synchronously
+            from scripts.document_processing.add_document_core import (
+                add_document_to_graphrag,
+            )
             result = add_document_to_graphrag(
-                text=text,
+                text=text_for_processing,
                 metadata=metadata,
                 neo4j_db=neo4j_db,
                 vector_db=vector_db,
                 duplicate_detector=duplicate_detector,
             )
+            if result is None: # This implies a duplicate was found by add_document_to_graphrag
+                 # Re-check with duplicate_detector to get the ID of the duplicate
+                 logger.info("Synchronous add_document_to_graphrag returned None, re-checking for duplicate ID.")
+                 is_dup_again, existing_doc_id_again, method_again = duplicate_detector.is_duplicate(
+                     text_for_processing, metadata_with_hash
+                 )
+                 if is_dup_again:
+                     logger.info(f"Confirmed duplicate on re-check. Existing ID: {existing_doc_id_again}, Method: {method_again}")
+                     return {
+                        "status": "duplicate",
+                        "message": "Bug is a duplicate (detected during final processing) and was not added.",
+                        "bug_id": existing_doc_id_again,
+                        "duplicate_detection_method": method_again,
+                    }
+                 else:
+                     # This case implies add_document_to_graphrag returned None for a reason other than a detectable duplicate,
+                     # or the duplicate status somehow changed. This is less expected.
+                     logger.warning("add_document_to_graphrag returned None, but no duplicate found on re-check.")
+                     return {
+                        "status": "failure",
+                        "message": "Bug processing failed after initial duplicate check, and no duplicate found on re-check.",
+                        "bug_id": None,
+                        "error": "Inconsistent duplicate detection or other processing error."
+                     }
+            elif isinstance(result, dict) and result.get("status") == "failure":
+                return {"status": "failure", "error": result.get("error"), "bug_id": None}
+            elif isinstance(result, dict) and "document_id" in result:
+                return {"status": "success", "message": "Bug added successfully.", "bug_id": result.get("document_id")}
+            else:
+                 return {"status": "failure", "error": "An unexpected error occurred during synchronous bug processing.", "bug_id": None}
 
-            return {
-                "status": "success",
-                "message": "Document added successfully",
-                "document_id": result.get("document_id") if result else None,
-                "entities": result.get("entities", []) if result else [],
-                "relationships": result.get("relationships", []) if result else [],
-            }
     except Exception as e:
-        logger.exception(f"Error adding document: {e}")
-        return {"error": str(e)}
+        logger.exception(f"Error adding bug: {e}")
+        return {"status": "failure", "error": str(e), "bug_id": None}
 
 
 async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
@@ -652,11 +656,10 @@ async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
         parameters: Request parameters:
             - folder_path: Path to folder containing documents
             - metadata: Optional document metadata
-            - async: Optional flag to process documents asynchronously (default: true)
+            - async: Optional boolean to process asynchronously (default: True)
 
     Returns:
-        Result of adding the folder
-
+        Status of the operation
     """
     folder_path = parameters.get("folder_path")
     metadata = parameters.get("metadata", {})
@@ -665,111 +668,96 @@ async def handle_add_folder(parameters: dict[str, Any]) -> dict[str, Any]:
     if not folder_path:
         return {"error": "Missing required parameter: folder_path"}
 
-    if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+    if not os.path.isdir(folder_path):
         return {"error": f"Folder not found: {folder_path}"}
 
-    try:
-        # Find all documents in the folder
-        document_files = []
-        for ext in ["*.pdf", "*.txt", "*.md"]:
-            document_files.extend(glob.glob(os.path.join(folder_path, ext)))
+    supported_file_types = [".pdf", ".txt", ".md"]
+    files_to_process = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if any(file.endswith(ext) for ext in supported_file_types):
+                files_to_process.append(os.path.join(root, file))
 
-        if not document_files:
-            return {"error": f"No documents found in folder: {folder_path}"}
+    if not files_to_process:
+        return {"status": "completed", "message": f"No supported files found in folder: {folder_path}"}
 
-        # Import here to avoid circular imports
-        from scripts.add_document import add_document_to_graphrag
+    if process_async:
+        job = job_manager.create_job(
+            "add_folder",
+            {
+                "folder_path": folder_path,
+                "files_to_process": files_to_process,
+                "metadata": metadata,
+            },
+        )
+        # TODO: Implement actual asynchronous folder processing task and pass it here
+        # job_manager.run_job_async(job, _run_add_folder_task)
+        logger.warning("Async folder processing is not fully implemented, job created but not run.")
+        return {"status": "accepted", "message": f"Folder processing job created for {len(files_to_process)} files", "job_id": job.job_id}
+    else:
+        results = []
+        for file_path in files_to_process:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    text = f.read()
+                file_metadata = metadata.copy()
+                if "title" not in file_metadata:
+                    file_metadata["title"] = os.path.basename(file_path)
 
-        if process_async:
-            # Create a job for asynchronous processing
-            job = job_manager.create_job(
-                job_type="process_folder",
-                params={"folder_path": folder_path, "metadata": metadata},
-                created_by="mcp_server",
-            )
+                if text is None:
+                     results.append({"status": "failure", "error": f"Could not read text from file: {os.path.basename(file_path)}", "document_id": None, "file": os.path.basename(file_path)})
+                     continue
 
-            # Start the job asynchronously
-            async def process_folder() -> None:
-                total_files = len(document_files)
-                processed_files = 0
+                doc_hash = duplicate_detector.generate_document_hash(text)
+                file_metadata_with_hash = file_metadata.copy()
+                file_metadata_with_hash["hash"] = doc_hash
 
-                job.start()
-
-                for file_path in document_files:
-                    try:
-                        with open(file_path) as f:
-                            text = f.read()
-
-                        file_metadata = metadata.copy()
-                        file_metadata["file_path"] = file_path
-
-                        add_document_to_graphrag(
-                            text=text,
-                            metadata=file_metadata,
-                            neo4j_db=neo4j_db,
-                            vector_db=vector_db,
-                            duplicate_detector=duplicate_detector,
-                        )
-
-                        processed_files += 1
-                        job.update_progress(processed_files, total_files)
-                    except Exception as e:
-                        logger.exception(f"Error processing file {file_path}: {e}")
-
-                job.complete(
-                    {"processed_files": processed_files, "total_files": total_files}
+                is_dup, existing_doc_id, method = duplicate_detector.is_duplicate(
+                    text, file_metadata_with_hash
                 )
 
-            # Run the folder processing task
-            asyncio.create_task(process_folder())
-
-            return {
-                "job_id": job.job_id,
-                "status": "pending",
-                "message": f"Folder processing started ({len(document_files)} files)",
-            }
-        else:
-            # Process synchronously
-            processed_files = 0
-            results = []
-
-            for file_path in document_files:
-                try:
-                    with open(file_path) as f:
-                        text = f.read()
-
-                    file_metadata = metadata.copy()
-                    file_metadata["file_path"] = file_path
-
-                    result = add_document_to_graphrag(
-                        text=text,
-                        metadata=file_metadata,
-                        neo4j_db=neo4j_db,
-                        vector_db=vector_db,
-                        duplicate_detector=duplicate_detector,
+                if is_dup:
+                    logger.info(
+                        f"Document '{file_metadata.get('title', 'Unknown Title')}' is a duplicate (ID: {existing_doc_id}, Method: {method}). Not adding."
                     )
+                    results.append({
+                        "status": "duplicate",
+                        "message": f"Document '{os.path.basename(file_path)}' is a duplicate.",
+                        "document_id": existing_doc_id,
+                        "duplicate_detection_method": method,
+                    })
+                    continue
 
-                    processed_files += 1
-                    results.append(
-                        {
-                            "file_path": file_path,
-                            "document_id": result.get("document_id")
-                            if result
-                            else None,
-                        }
-                    )
-                except Exception as e:
-                    logger.exception(f"Error processing file {file_path}: {e}")
-                    results.append({"file_path": file_path, "error": str(e)})
+                from scripts.document_processing.add_document_core import (
+                    add_document_to_graphrag,
+                )
 
-            return {
-                "status": "success",
-                "message": f"Folder processed successfully ({processed_files}/{len(document_files)} files)",
-                "results": results,
-            }
-    except Exception as e:
-        logger.exception(f"Error adding folder: {e}")
-        return {"error": str(e)}
+                result = add_document_to_graphrag(
+                    text=text,
+                    metadata=file_metadata,
+                    neo4j_db=neo4j_db,
+                    vector_db=vector_db,
+                    duplicate_detector=duplicate_detector,
+                )
+                if result is None:
+                     results.append({
+                        "status": "duplicate",
+                        "message": f"Document '{os.path.basename(file_path)}' is a duplicate.",
+                        "document_id": None,
+                        "duplicate_detection_method": "unknown",
+                    })
+                elif isinstance(result, dict) and result.get("status") == "failure":
+                    results.append({"status": "failure", "error": result.get("error"), "document_id": None, "file": os.path.basename(file_path)})
+                elif isinstance(result, dict) and "document_id" in result:
+                    results.append({"status": "success", "document_id": result.get("document_id"), "file": os.path.basename(file_path)})
+                else:
+                     results.append({"status": "failure", "error": "An unexpected error occurred during synchronous document processing.", "document_id": None, "file": os.path.basename(file_path)})
+
+            except Exception as e:
+                logger.exception(f"Error processing file {file_path}: {e}")
+                results.append({"status": "failure", "error": str(e), "document_id": None, "file": os.path.basename(file_path)})
+
+        return {"status": "completed", "results": results}
 
 
 async def handle_job_status(parameters: dict[str, Any]) -> dict[str, Any]:
@@ -781,61 +769,28 @@ async def handle_job_status(parameters: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         Job status
-
     """
     job_id = parameters.get("job_id")
-    logger.info(f"Job status request received for job_id: {job_id}")
-    logger.debug(f"Full parameters: {parameters}")
 
     if not job_id:
-        logger.warning("Job status request missing required parameter: job_id")
         return {"error": "Missing required parameter: job_id"}
 
-    try:
-        logger.debug(f"Attempting to retrieve job with ID: {job_id}")
-        job = job_manager.get_job(job_id)
+    job = job_manager.get_job(job_id)
 
-        if not job:
-            logger.warning(f"Job not found: {job_id}")
-            return {"error": f"Job not found: {job_id}"}
+    if not job:
+        return {"error": f"Job not found: {job_id}"}
 
-        logger.debug(f"Job {job_id} found with status: {job.status}")
-        logger.debug(
-            f"Job details: type={job.job_type}, progress={job.progress:.1f}%, "
-            + f"processed={job.processed_items}/{job.total_items}"
-        )
+    job_message = job.error if job.status == JobStatus.FAILED else (job.result if job.status == JobStatus.COMPLETED else None)
 
-        # Create a response with job details
-        response = {
-            "status": "success",
-            "job": {
-                "job_id": job.job_id,
-                "job_type": job.job_type,
-                "status": job.status,
-                "progress": job.progress,
-                "processed_items": job.processed_items,
-                "total_items": job.total_items,
-                "created_at": job.created_at.isoformat() if job.created_at else None,
-                "started_at": job.started_at.isoformat() if job.started_at else None,
-                "completed_at": job.completed_at.isoformat()
-                if job.completed_at
-                else None,
-                "result": job.result,
-                "error": job.error,
-            },
-        }
-
-        logger.info(
-            f"Job status for {job_id}: {job.status}, progress: {job.progress:.1f}%"
-        )
-        logger.debug(f"Full response: {response}")
-        return response
-    except Exception as e:
-        logger.exception(f"Error getting job status for job {job_id}: {e}")
-        import traceback
-
-        logger.debug(f"Exception traceback: {traceback.format_exc()}")
-        return {"error": str(e)}
+    return {
+        "job_id": job.job_id,
+        "status": job.status.value,
+        "progress": job.progress,
+        "message": job_message,
+        "result": job.result,
+        "created_at": job.created_at.isoformat(),
+        "updated_at": job.completed_at.isoformat() if job.completed_at else None,
+    }
 
 
 async def handle_list_jobs(parameters: dict[str, Any]) -> dict[str, Any]:
@@ -843,49 +798,34 @@ async def handle_list_jobs(parameters: dict[str, Any]) -> dict[str, Any]:
 
     Args:
         parameters: Request parameters:
-            - status: Optional filter by job status
-            - limit: Optional maximum number of jobs to return (default: 10)
+            - status: Optional filter by status
+            - limit: Optional maximum number of jobs to return
 
     Returns:
         List of jobs
-
     """
-    status = parameters.get("status")
+    status_filter_str = parameters.get("status")
+    status_filter = JobStatus(status_filter_str) if status_filter_str else None
     limit = parameters.get("limit", 10)
 
-    try:
-        # Get all jobs from the job manager
-        all_jobs = job_manager.jobs.values()
+    all_jobs = job_manager.get_jobs(status=status_filter)
 
-        # Filter by status if specified
-        if status:
-            jobs = [j for j in all_jobs if j.status == status]
-        else:
-            jobs = list(all_jobs)
+    jobs_to_return = all_jobs[:limit]
 
-        # Sort jobs by creation time (newest first)
-        jobs.sort(key=lambda j: j.created_at if j.created_at else 0, reverse=True)
 
-        # Limit the number of jobs
-        jobs = jobs[:limit]
-
-        return {
-            "jobs": [
-                {
-                    "job_id": job.job_id,
-                    "job_type": job.job_type,
-                    "status": job.status,
-                    "progress": job.progress,
-                    "created_at": job.created_at.isoformat()
-                    if job.created_at
-                    else None,
-                }
-                for job in jobs
-            ]
-        }
-    except Exception as e:
-        logger.exception(f"Error listing jobs: {e}")
-        return {"error": str(e)}
+    return {
+        "jobs": [
+            {
+                "job_id": job.job_id,
+                "status": job.status.value,
+                "progress": job.progress,
+                "message": job.error if job.status == JobStatus.FAILED else (job.result if job.status == JobStatus.COMPLETED else None),
+                "created_at": job.created_at.isoformat(),
+                "updated_at": job.completed_at.isoformat() if job.completed_at else None,
+            }
+            for job in jobs_to_return
+        ]
+    }
 
 
 async def handle_cancel_job(parameters: dict[str, Any]) -> dict[str, Any]:
@@ -896,41 +836,19 @@ async def handle_cancel_job(parameters: dict[str, Any]) -> dict[str, Any]:
             - job_id: Job ID
 
     Returns:
-        Result of cancelling the job
-
+        Status of the operation
     """
     job_id = parameters.get("job_id")
 
     if not job_id:
         return {"error": "Missing required parameter: job_id"}
 
-    try:
-        result = job_manager.cancel_job(job_id)
+    success = job_manager.cancel_job(job_id)
 
-        if result:
-            return {"status": "success", "message": f"Job cancelled: {job_id}"}
-        else:
-            return {"error": f"Failed to cancel job: {job_id}"}
-    except Exception as e:
-        logger.exception(f"Error cancelling job: {e}")
-        return {"error": str(e)}
-
-
-# Map of tool handlers
-TOOL_HANDLERS = {
-    "ping": handle_ping,
-    "search": handle_search,
-    "concept": handle_concept,
-    "documents": handle_documents,
-    "books-by-concept": handle_books_by_concept,
-    "related-concepts": handle_related_concepts,
-    "passages-about-concept": handle_passages_about_concept,
-    "add-document": handle_add_document,
-    "add-folder": handle_add_folder,
-    "job-status": handle_job_status,
-    "list-jobs": handle_list_jobs,
-    "cancel-job": handle_cancel_job,
-}
+    if success:
+        return {"status": "success", "message": f"Job {job_id} cancelled"}
+    else:
+        return {"status": "error", "message": f"Job {job_id} not found or cannot be cancelled"}
 
 
 async def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
@@ -941,20 +859,26 @@ async def handle_initialize(params: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         Initialize response
-
     """
-    client_protocol_version = params.get("protocolVersion")
+    client_capabilities = params.get("capabilities", {})
     client_info = params.get("clientInfo", {})
+    protocol_version = params.get("protocolVersion")
 
-    logger.info(
-        f"Client connected: {client_info.get('name')} {client_info.get('version')}"
-    )
-    logger.info(f"Client protocol version: {client_protocol_version}")
+    logger.info(f"Client connected: {client_info.get('name')} {client_info.get('version')}")
+    logger.info(f"Client protocol version: {protocol_version}")
+
+    # TODO: Implement capability negotiation
 
     return {
-        "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
         "protocolVersion": MCP_PROTOCOL_VERSION,
-        "capabilities": {},
+        "capabilities": {
+            "tools": {"listChanged": False},
+            "resources": {"subscribe": False, "listChanged": False},
+            "prompts": {"listChanged": False},
+            "logging": {},
+        },
+        "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
+        "instructions": "This is the GraphRAG MCP server. Available tools: ping, search, concept, documents, books-by-concept, related-concepts, passages-about-concept, add_bug, add-folder, job-status, list-jobs, cancel-job.",
     }
 
 
@@ -962,13 +886,28 @@ async def handle_get_tools(_: dict[str, Any]) -> dict[str, Any]:
     """Handle getTools request.
 
     Args:
-        _: GetTools parameters (unused)
+        _: Request parameters (ignored)
 
     Returns:
-        GetTools response with tool definitions
-
+        List of available tools
     """
     return {"tools": TOOLS}
+
+
+TOOL_HANDLERS = {
+    "ping": handle_ping,
+    "search": handle_search,
+    "concept": handle_concept,
+    "documents": handle_documents,
+    "books-by-concept": handle_books_by_concept,
+    "related-concepts": handle_related_concepts,
+    "passages-about-concept": handle_passages_about_concept,
+    "add_bug": handle_add_bug,
+    "add-folder": handle_add_folder,
+    "job-status": handle_job_status,
+    "list-jobs": handle_list_jobs,
+    "cancel-job": handle_cancel_job,
+}
 
 
 async def handle_invoke_tool(params: dict[str, Any]) -> dict[str, Any]:
@@ -978,28 +917,44 @@ async def handle_invoke_tool(params: dict[str, Any]) -> dict[str, Any]:
         params: InvokeTool parameters
 
     Returns:
-        InvokeTool response with tool result
-
+        InvokeTool response with tool result, conforming to CallToolResult schema.
     """
     tool_name = params.get("name")
-    tool_parameters = params.get("parameters", {})
+    tool_arguments = params.get("arguments", {}) # Corrected key to "arguments"
 
-    if tool_name not in TOOL_HANDLERS:
-        return {
+    if tool_name is None or tool_name not in TOOL_HANDLERS:
+        error_response = {
             "error": {
                 "code": -32601,
                 "message": f"Tool not found: {tool_name}",
                 "data": {"availableTools": list(TOOL_HANDLERS.keys())},
             }
         }
+        return {
+            "content": [{"type": "text", "text": json.dumps(error_response)}],
+            "isError": True
+        }
 
     try:
         handler = TOOL_HANDLERS[tool_name]
-        result = await handler(tool_parameters)
-        return {"result": result}
+        tool_result_data = await handler(tool_arguments) # Pass tool_arguments
+
+        if isinstance(tool_result_data, dict) and "error" in tool_result_data:
+             return {
+                "content": [{"type": "text", "text": json.dumps(tool_result_data)}],
+                "isError": True
+            }
+        return {
+            "content": [{"type": "text", "text": json.dumps(tool_result_data)}],
+            "isError": False
+        }
     except Exception as e:
         logger.exception(f"Error invoking tool {tool_name}")
-        return {"error": {"code": -32603, "message": f"Error invoking tool: {str(e)}"}}
+        error_payload = {"error": f"Error invoking tool: {str(e)}"}
+        return {
+            "content": [{"type": "text", "text": json.dumps(error_payload)}] ,
+            "isError": True,
+        }
 
 
 async def handle_connection(websocket) -> None:
@@ -1061,37 +1016,34 @@ async def handle_connection(websocket) -> None:
                     continue
 
                 # Handle method
-                result = None
-                error = None
+                result_payload = None
+                error_payload = None
 
                 logger.info(f"Processing method '{method}' from client {client_id}")
 
                 if method == "initialize":
-                    result = await handle_initialize(params)
-                elif method == "getTools":
-                    result = await handle_get_tools(params)
-                elif method == "invokeTool":
-                    result = await handle_invoke_tool(params)
+                    result_payload = await handle_initialize(params)
+                elif method == "getTools" or method == "tools/list":
+                    result_payload = await handle_get_tools(params)
+                elif method == "invokeTool" or method == "tools/call":
+                    result_payload = await handle_invoke_tool(params)
                 else:
-                    error = {"code": -32601, "message": f"Method not found: {method}"}
                     logger.warning(f"Unknown method '{method}' from client {client_id}")
+                    error_payload = {"code": -32601, "message": f"Method not found: {method}"}
 
                 # Prepare response
                 response = {"jsonrpc": "2.0", "id": request_id}
 
-                if error:
-                    response["error"] = error
-                else:
-                    response["result"] = result
+                if error_payload:
+                    response["error"] = error_payload
+                elif result_payload is not None:
+                    response["result"] = result_payload
 
-                # Send response
-                logger.debug(
-                    f"Sending response to client {client_id} for method '{method}'"
-                )
-                await websocket.send(json.dumps(response))
+                # Send response if it's a request (has an id)
+                if request_id is not None:
+                    await websocket.send(json.dumps(response))
 
             except json.JSONDecodeError as e:
-                # Invalid JSON
                 logger.warning(f"JSON parse error from client {client_id}: {e}")
                 response = {
                     "jsonrpc": "2.0",
@@ -1100,8 +1052,7 @@ async def handle_connection(websocket) -> None:
                 }
                 await websocket.send(json.dumps(response))
             except Exception as e:
-                # Internal error
-                logger.exception(f"Error handling message from client {client_id}")
+                logger.exception(f"Error handling message from client {client_id}: {e}")
                 response = {
                     "jsonrpc": "2.0",
                     "error": {"code": -32603, "message": f"Internal error: {str(e)}"},
@@ -1152,14 +1103,9 @@ def main() -> None:
     # Set logging level
     logger.setLevel(getattr(logging, args.log_level))
 
-    # Start the server
-    try:
-        asyncio.run(start_server(args.host, args.port))
-    except KeyboardInterrupt:
-        logger.info("Server stopped by user")
-    except Exception:
-        logger.exception("Error starting server")
-        sys.exit(1)
+    # Run the server
+    logger.info(f"Starting MCP server on {args.host}:{args.port}")
+    asyncio.run(start_server(host=args.host, port=args.port))
 
 
 if __name__ == "__main__":
